@@ -175,6 +175,7 @@ h1{font-size:24px;margin:4px 0 6px}
   main{padding:0!important;max-width:none}
   .pv{box-shadow:none;margin:0;padding:0;max-width:none}
   .pv.map{zoom:var(--fit,1)}
+  .pv+.pv{break-before:page;page-break-before:always}
   .strip,.strip div{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 #player{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--sheetbg);border-top:1px solid var(--line);padding:8px 20px;backdrop-filter:blur(8px)}
@@ -318,7 +319,7 @@ function viewSetlist(){
   const others=bandSongs().filter(s=>!sl.songIds.includes(s.id));
   return topbar('setlist')+`<main>
   <div class="hstack"><select data-change="pickSetlist">${sls.map(x=>`<option value="${x.id}" ${x.id===sl.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
-    <button class="ghost" data-act="renameSetlist">名前を変更</button><span class="spacer"></span>
+    <button class="ghost" data-act="renameSetlist">名前を変更</button><span class="spacer"></span><button data-act="shareSetlist">🔗 セトリを共有</button>
     <button data-act="newSetlist">＋ セトリ</button><button class="ghost" data-act="delSetlist">削除</button></div>
   <h1>${esc(sl.name)}</h1>
   <div class="card studio"><div class="hstack"><span class="sub">次のスタジオ</span><span class="spacer"></span><b>${daysLeft(st.date)}</b></div>
@@ -573,30 +574,38 @@ function mapHTML(s,withNotes){let pos=1;
     <table class="mtable">${rows}</table></div>`}
 
 /* ---------- share (URL) ---------- */
-async function packSong(s){
-  const d={v:1,t:s.title,bpm:s.bpm,m:s.meter,k:s.key,u:s.url,b:s.blocks.map(b=>({ty:b.type,n:b.name,no:b.note,tg:b.tags,st:b.start,
+function songData(s){return {t:s.title,bpm:s.bpm,m:s.meter,k:s.key,u:s.url,b:s.blocks.map(b=>({ty:b.type,n:b.name,no:b.note,tg:b.tags,st:b.start,
     bars:b.bars.map(x=>{let c=x.cells.slice();while(c.length&&!c[c.length-1])c.pop();return [x.n,c,x.lyric]}),
-    tx:b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text)}))};
+    tx:b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text)}))}}
+async function packData(d){
   const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   const u8=new Uint8Array(await new Response(cs).arrayBuffer());let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode(...u8.subarray(i,i+8192));
   return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-async function unpackSong(code){
+const packSong=s=>packData(Object.assign({v:1},songData(s)));
+async function unpackShared(code){
   code=code.trim().replace(/^.*#\/import\//,'');const bin=atob(code.replace(/-/g,'+').replace(/_/g,'/'));
   const ds=new Blob([Uint8Array.from(bin,c=>c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  const d=JSON.parse(await new Response(ds).text());if(!d||d.v!==1||!Array.isArray(d.b))throw new Error('形式が違います');return d}
+  const d=JSON.parse(await new Response(ds).text());
+  if(d&&d.v===1&&Array.isArray(d.b))return {songs:[d]};
+  if(d&&d.v===1&&Array.isArray(d.songs))return {setlist:d.sl||'共有セトリ',songs:d.songs};
+  throw new Error('形式が違います')}
 function songFromShared(d,bandId){return {id:uid(),bandId,title:d.t||'無題',bpm:d.bpm||'',meter:d.m||'4/4',key:d.k||'',url:d.u||'',
   blocks:d.b.map(b=>({id:uid(),type:TYPES[b.ty]?b.ty:'X',name:b.n||'',note:b.no||'',tags:b.tg||[],start:b.st??null,
     bars:b.bars.map(([n,c,l])=>({n,cells:Array.from({length:n},(_,i)=>c[i]||''),lyric:l||''})),
     memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()}))}))}}
 const PUBLIC_URL='https://miragelog3.github.io/kopiban-note/';
 function shareBase(){return (S.prefs.shareBase||(location.protocol==='file:'?PUBLIC_URL:location.href.split('#')[0])).trim()}
-async function openShare(){const s=curSong();const code=await packSong(s);const link=shareBase()+'#/import/'+code;
-  const local=false;
+async function openShare(kind){
+  let title,code;
+  if(kind==='setlist'){const sl=curSetlist();const songs=sl.songIds.map(songById).filter(Boolean);
+    if(!songs.length)return toast('セトリに曲がありません');title=`セトリ「${sl.name}」(${songs.length}曲)`;code=await packData({v:1,sl:sl.name,songs:songs.map(songData)})}
+  else{const s=curSong();title=`「${s.title}」`;code=await packSong(s)}
+  const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
-  <div class="hstack"><b>「${esc(s.title)}」を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+  <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
   <div class="sub">共有リンク</div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
-  ${local?`<p class="note" style="color:var(--accent)">⚠ アプリがまだこのPCの中にあるので、このリンクはこのPCでしか開けません。友達に渡すときは、相手にもこのアプリ(index.html)を渡して、下の「共有コード」を送ってください。相手は「設定 → 共有コードを読み込む」に貼れば取り込めます。</p>`:''}
+  ${link.length>8000?`<p class="note" style="color:var(--accent)">リンクが長め(${link.length}文字)なので、アプリによっては途中で切れるかもしれません。切れたら下の共有コードを送ってください。</p>`:''}
   <div class="sub" style="margin-top:10px">共有コード(${code.length}文字)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   </div>`}
 function viewImport(){
@@ -604,24 +613,25 @@ function viewImport(){
 let impTab='map';
 async function fillImport(){
   const el=$('#impBody');if(!el)return;
-  try{const d=await unpackSong(R.a);const s=songFromShared(d,band().id);PENDING=s;
-    const body=(impTab==='map'?mapHTML(s,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=');
-    el.innerHTML=`<div class="card noprint"><b>共有された曲を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の曲に追加」すると、あなたの端末だけにコピーが保存されます。編集しても共有した人には反映されません。</p>
+  try{const d=await unpackShared(R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs};
+    const isSl=!!d.setlist;
+    const body=songs.map(s=>(impTab==='map'?mapHTML(s,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
+    const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span><ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
+    el.innerHTML=`<div class="card noprint"><b>共有された${isSl?'セトリ':'曲'}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${isSl?'セトリ':'曲'}に追加」すると、あなたの端末だけにコピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
       <span class="sub">追加先バンド: ${esc(band().name)}</span>
-      ${curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
-      <button class="primary" data-act="doImportSong">自分の曲に追加</button></div></div>${body}`}
-  catch(e){el.innerHTML=`<span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span>`}}
+      ${!isSl&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
+      <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div></div>${toc}${body}`}
+  catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
 let PENDING=null;
-
 /* ---------- settings ---------- */
 function viewSettings(){
   return topbar('settings')+`<main><h1>設定</h1>
   <div class="card"><b>バンド</b><div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
     <button data-act="newBand">＋ バンドを追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">このバンドを削除</button>':''}</div></div>
   <div class="card"><b>表示</b><div class="hstack" style="margin-top:8px"><select data-change="theme">${Object.entries(THEMES).map(([k,l])=>`<option value="${k}" ${(S.prefs.theme||'auto')===k?'selected':''}>${l}${k==='auto'?'(PCの設定に合わせる)':''}</option>`).join('')}</select></div></div>
-  <div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を貼ると、その曲を取り込めます。</p>
+  <div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を貼ると、その曲やセトリを取り込めます。</p>
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     <p class="note" style="margin-top:12px">アプリをネット上に置いた場合は、そのURLをここに入れると共有リンクがそこを指すようになります。</p>
     <input value="${esc(S.prefs.shareBase||'')}" data-input="shareBase" placeholder="空欄なら https://miragelog3.github.io/kopiban-note/" style="width:100%"></div>
@@ -680,10 +690,14 @@ const ACT={
   pTie(){P.tie=!P.tie;applyParts()},
   pDel(){Object.assign(P,{root:'',acc:'',q:'',bass:'',bassAcc:'',lit:'',tie:false,slash:false});applyParts()},
   pMove:t=>move(+t.dataset.v),
-  share:openShare,
+  share:()=>openShare('song'),
+  shareSetlist:()=>openShare('setlist'),
   impTab(t){impTab=t.dataset.v;fillImport()},
   async copy(t){const i=$('#'+t.dataset.t);i.select();try{await navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}toast('コピーしました')},
-  doImportSong(){const s=PENDING;if(!s)return;S.songs.push(s);const c=$('#impSl');if(c&&c.checked&&curSetlist())curSetlist().songIds.push(s.id);PENDING=null;save();location.hash='#/song/'+s.id;toast('追加しました')},
+  doImportSong(){const p=PENDING;if(!p)return;S.songs.push(...p.songs);PENDING=null;
+    if(p.setlist){const sl={id:uid(),bandId:band().id,name:p.setlist,songIds:p.songs.map(s=>s.id),studio:{date:'',start:'',end:'',place:''}};S.setlists.push(sl);S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
+    else{const s=p.songs[0];const c=$('#impSl');if(c&&c.checked&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id}
+    toast('追加しました')},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
   audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
@@ -699,9 +713,8 @@ const ACT={
   lbClose(){$('#overlay').innerHTML=''},
   cycleTheme(){const o=['auto','light','dark'];S.prefs.theme=o[(o.indexOf(S.prefs.theme||'auto')+1)%3];render()},
   async doPrint(){await Promise.all([...document.querySelectorAll('.pv img')].map(i=>i.complete&&i.src?0:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,1500)})));
-    const t=document.title;document.title=(songById(R.a)||PENDING||{title:t}).title;const pv=document.querySelector('.pv.map');
-    if(pv){pv.style.zoom='';const st=pv.style.cssText;pv.style.width='703px';pv.style.padding='0';const h=pv.getBoundingClientRect().height;pv.style.cssText=st;
-      if(h>1000)pv.style.setProperty('--fit',(1000/h).toFixed(3));else pv.style.removeProperty('--fit')}
+    const t=document.title;document.title=(songById(R.a)||(PENDING&&{title:PENDING.setlist||PENDING.songs[0].title})||{title:t}).title;document.querySelectorAll('.pv.map').forEach(pv=>{pv.style.removeProperty('--fit');const st=pv.style.cssText;pv.style.width='703px';pv.style.padding='0';const h=pv.getBoundingClientRect().height;pv.style.cssText=st;
+      if(h>1000)pv.style.setProperty('--fit',(1000/h).toFixed(3))});
     window.print();document.title=t},
   export:doExport,
   import(){const f=$('#importPick');f.value='';f.click()},
