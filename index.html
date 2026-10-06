@@ -179,7 +179,7 @@ h1{font-size:24px;margin:4px 0 6px}
   .top,.noprint,#sheet,#player{display:none!important}
   main{padding:0!important;max-width:none}
   .pv{box-shadow:none;margin:0;padding:0;max-width:none}
-  .pv.map{font-size:min(16px,calc(232mm / var(--pem,60)))}
+  .pv.map{font-size:var(--pfs,16px)}
   .pv+.pv{break-before:page;page-break-before:always}
   .strip,.strip div{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
@@ -651,11 +651,12 @@ function mapHTML(s,withNotes){let pos=1;
     <div style="margin:10px 0 12px">${strip(s,true)}</div>
     <table class="mtable">${rows}</table></div>`}
 
-// 構成表の高さを「16pxのときの em 数」で測っておき、印刷時はA4に収まる文字サイズにする(端末の画面幅に左右されない)
+// 構成表をA4の幅で並べたときの高さを測り、A4 1枚に収まる文字サイズ(px)を前もって決めておく。
+// 印刷の瞬間に計算するとiPhoneの最初のプレビューに反映されないので、表示した時点で固定値を入れておく
 function measureMaps(){document.querySelectorAll('.pv.map:not(.measure)').forEach(pv=>{const c=pv.cloneNode(true);c.classList.add('measure');
   c.style.cssText='position:absolute;left:-99999px;top:0;width:703px;padding:0;margin:0;font-size:16px;box-shadow:none';document.body.appendChild(c);
-  pv.style.setProperty('--pem',(c.getBoundingClientRect().height/16).toFixed(2));c.remove()})}
-window.addEventListener('beforeprint',measureMaps);
+  const pem=c.getBoundingClientRect().height/16;c.remove();
+  const pfs=Math.min(16,225*3.7795/pem).toFixed(2)+'px';if(pv.style.getPropertyValue('--pfs')!==pfs)pv.style.setProperty('--pfs',pfs)})}
 /* ---------- share (URL) ---------- */
 const U=v=>(v===''||v==null||(Array.isArray(v)&&!v.length))?undefined:v;
 function songData(s){const sd=meterSlots(songMeterDefault(s));
