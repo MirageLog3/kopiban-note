@@ -155,21 +155,23 @@ h1{font-size:24px;margin:4px 0 6px}
 .ptabs{display:inline-flex;margin-left:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:2px}
 .ptabs a{padding:4px 12px;border-radius:6px;color:var(--sub);font-size:13px}
 .ptabs a.on{background:var(--panel2);color:var(--text);font-weight:700}
-.map h1{font-size:28px}
-.map .strip.big{height:28px}
-.map .strip.big div{font-size:12px}
+.pv.map{font-size:16px}
+.map h1{font-size:1.75em;margin:0 0 .1em}
+.map .pmeta{font-size:.75em}
+.map .strip.big{height:1.75em}
+.map .strip.big div{font-size:.75em}
 .mtable{width:100%;border-collapse:collapse}
-.mtable td{border-bottom:1px solid #ddd;padding:13px 8px;vertical-align:middle;line-height:1.35}
-.mtable .mi{width:22px;color:#999;font-size:12px;text-align:right}
-.mtable .mc{width:8px;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.mtable .mn{font-size:20px;font-weight:700;white-space:nowrap;padding-left:10px}
-.mtable .mb{white-space:nowrap;text-align:right;width:70px}
-.mtable .mb b{font-size:22px}.mtable .mb span{font-size:11px;color:#666;margin-left:2px}
-.mtable .mx{padding-left:16px}
-.mtable .mnote{font-size:15px;font-weight:600;display:inline;margin-right:8px;vertical-align:middle}
-.mtable .mmemo{font-size:12px;color:#444;margin-top:5px;line-height:1.5}
-.mtable .ptag{display:inline-block;margin:0 4px 0 0;vertical-align:middle;font-size:11px;padding:1px 5px}
-.mtable .mp{width:64px;text-align:right;font-size:11px;color:#999;white-space:nowrap}
+.mtable td{border-bottom:1px solid #ddd;padding:.8em .5em;vertical-align:middle;line-height:1.35}
+.mtable .mi{width:1.4em;color:#999;font-size:.75em;text-align:right}
+.mtable .mc{width:.5em;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mtable .mn{font-size:1.25em;font-weight:700;white-space:nowrap;padding-left:.5em}
+.mtable .mb{white-space:nowrap;text-align:right;width:4.4em}
+.mtable .mb b{font-size:1.4em}.mtable .mb span{font-size:.7em;color:#666;margin-left:2px}
+.mtable .mx{padding-left:1em}
+.mtable .mnote{font-size:.95em;font-weight:600;display:inline;margin-right:.5em;vertical-align:middle}
+.mtable .mmemo{font-size:.75em;color:#444;margin-top:.3em;line-height:1.5}
+.mtable .ptag{display:inline-block;margin:0 .25em 0 0;vertical-align:middle;font-size:.7em;padding:.1em .35em}
+.mtable .mp{width:4em;text-align:right;font-size:.7em;color:#999;white-space:nowrap}
 
 @media print{
   @page{size:A4;margin:12mm}
@@ -177,7 +179,7 @@ h1{font-size:24px;margin:4px 0 6px}
   .top,.noprint,#sheet,#player{display:none!important}
   main{padding:0!important;max-width:none}
   .pv{box-shadow:none;margin:0;padding:0;max-width:none}
-  .pv.map{zoom:var(--fit,1)}
+  .pv.map{font-size:min(16px,calc(232mm / var(--pem,60)))}
   .pv+.pv{break-before:page;page-break-before:always}
   .strip,.strip div{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
@@ -196,16 +198,16 @@ body.has-player #sheet .sheet{bottom:54px}
 .modal{position:fixed;left:50%;top:12%;transform:translateX(-50%);width:min(640px,92vw);z-index:41;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 20px 50px var(--shadow)}
 .modal input{font-size:12px}
 .brand,.top nav a,.themebtn{white-space:nowrap}
-@media (max-width:700px){
+@media screen and (max-width:700px){
   .top{flex-wrap:wrap;gap:6px 10px;padding:8px 12px}
   .brand{font-size:14px}
   .top nav{margin-left:0}
   .top nav a{padding:4px 8px}
   main{padding:12px 12px 260px}
   .pv{padding:18px 14px;margin:10px 0}
-  .mtable .mn{font-size:16px;white-space:normal}
-  .mtable .mb{width:auto}
-  .mtable .mp,.mtable .mi{display:none}
+  .pv.map:not(.measure) .mtable .mn{font-size:1em;white-space:normal}
+  .pv.map:not(.measure) .mtable .mb{width:auto}
+  .pv.map:not(.measure) .mtable .mp,.pv.map:not(.measure) .mtable .mi{display:none}
   .pgrid{grid-template-columns:1fr}
   .meta input{width:70px}
 }
@@ -217,7 +219,7 @@ body.has-player #sheet .sheet{bottom:54px}
 .handle{touch-action:none;padding:8px 4px;font-size:16px;cursor:grab}
 .row.dragging{opacity:.5}
 @media (hover:none){.rowbtns{opacity:1}}
-@media (max-width:700px){
+@media screen and (max-width:700px){
   .brand-t,.th-t,.kbd{display:none}
   .top{flex-wrap:nowrap;gap:6px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
   .bandsel{font-size:0}.bandsel select{font-size:14px;max-width:120px;padding:4px 6px;margin:0}
@@ -347,6 +349,7 @@ function render(){
   renderSheet();
   syncPlayer();
   if(R.name==='import')fillImport();
+  measureMaps();
   document.querySelectorAll('[data-blob]').forEach(async el=>{el.src=await blobURL(el.dataset.blob)});
   save();
 }
@@ -648,6 +651,11 @@ function mapHTML(s,withNotes){let pos=1;
     <div style="margin:10px 0 12px">${strip(s,true)}</div>
     <table class="mtable">${rows}</table></div>`}
 
+// 構成表の高さを「16pxのときの em 数」で測っておき、印刷時はA4に収まる文字サイズにする(端末の画面幅に左右されない)
+function measureMaps(){document.querySelectorAll('.pv.map:not(.measure)').forEach(pv=>{const c=pv.cloneNode(true);c.classList.add('measure');
+  c.style.cssText='position:absolute;left:-99999px;top:0;width:703px;padding:0;margin:0;font-size:16px;box-shadow:none';document.body.appendChild(c);
+  pv.style.setProperty('--pem',(c.getBoundingClientRect().height/16).toFixed(2));c.remove()})}
+window.addEventListener('beforeprint',measureMaps);
 /* ---------- share (URL) ---------- */
 const U=v=>(v===''||v==null||(Array.isArray(v)&&!v.length))?undefined:v;
 function songData(s){const sd=meterSlots(songMeterDefault(s));
@@ -711,7 +719,7 @@ async function fillImport(){
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
       <span class="sub">追加先バンド: ${esc(band().name)}</span>
       ${!isSl&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
-      <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div></div>${toc}${body}`}
+      <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div></div>${toc}${body}`;measureMaps()}
   catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
 let PENDING=null;
 /* ---------- settings ---------- */
@@ -808,8 +816,7 @@ const ACT={
   lbClose(){$('#overlay').innerHTML=''},
   cycleTheme(){const o=['auto','light','dark'];S.prefs.theme=o[(o.indexOf(S.prefs.theme||'auto')+1)%3];render()},
   async doPrint(){await Promise.all([...document.querySelectorAll('.pv img')].map(i=>i.complete&&i.src?0:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,1500)})));
-    const t=document.title;document.title=(songById(R.a)||(PENDING&&{title:PENDING.setlist||PENDING.songs[0].title})||{title:t}).title;document.querySelectorAll('.pv.map').forEach(pv=>{pv.style.removeProperty('--fit');const st=pv.style.cssText;pv.style.width='703px';pv.style.padding='0';const h=pv.getBoundingClientRect().height;pv.style.cssText=st;
-      if(h>1000)pv.style.setProperty('--fit',(1000/h).toFixed(3))});
+    const t=document.title;document.title=(songById(R.a)||(PENDING&&{title:PENDING.setlist||PENDING.songs[0].title})||{title:t}).title;measureMaps();
     window.print();document.title=t},
   export:doExport,
   import(){const f=$('#importPick');f.value='';f.click()},
