@@ -212,6 +212,7 @@ body.has-player #sheet .sheet{bottom:54px}
 .stin{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .stin label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--sub)}
 .stin input{min-width:120px}
+.tsel{display:flex;align-items:center;gap:2px;color:var(--text)}.tsel select{padding:6px 4px}
 .stplace{flex:1;min-width:160px}.stplace input{width:100%}
 .handle{touch-action:none;padding:8px 4px;font-size:16px;cursor:grab}
 .row.dragging{opacity:.5}
@@ -365,6 +366,10 @@ function songMeta(s){return [s.bpm&&'♩'+esc(s.bpm),esc(s.meter),s.key&&'Key '+
 /* ---------- views ---------- */
 function daysLeft(d){if(!d)return '';const t=new Date(d+'T00:00');const n=new Date();n.setHours(0,0,0,0);const x=Math.round((t-n)/864e5);
   return x>0?`あと${x}日`:x===0?'今日':'終了'}
+function timeSel(k,v){const [h,m]=(v||'').split(':');
+  const hs=['<option value="">--</option>',...Array.from({length:24},(_,i)=>{const x=String(i).padStart(2,'0');return `<option ${x===h?'selected':''}>${x}</option>`})].join('');
+  const ms=Array.from({length:12},(_,i)=>{const x=String(i*5).padStart(2,'0');return `<option ${x===(m||'00')?'selected':''}>${x}</option>`}).join('');
+  return `<span class="tsel"><select data-change="studioTime" data-k="${k}" data-p="h">${hs}</select>:<select data-change="studioTime" data-k="${k}" data-p="m">${ms}</select></span>`}
 function studioSum(st){if(!st.date)return '<span class="sub">未設定</span>';const wd='日月火水木金土'[new Date(st.date+'T00:00').getDay()];
   return `${st.date.slice(5).replace('-','/')}(${wd}) ${esc(st.start)}${st.end?'–'+esc(st.end):''} <span class="sub" style="font-size:14px">${esc(st.place)}</span>`}
 function viewSetlist(){
@@ -384,7 +389,7 @@ function viewSetlist(){
   <div class="card studio"><div class="hstack"><span class="sub">次のスタジオ</span><span class="spacer"></span><b id="stDays">${daysLeft(st.date)}</b></div>
     <div class="big" id="stSum">${studioSum(st)}</div>
     <div class="stin"><label>日付<input type="date" value="${esc(st.date)}" data-input="studio" data-k="date"></label>
-      <label>開始<input type="time" value="${esc(st.start)}" data-input="studio" data-k="start"></label><label>終了<input type="time" value="${esc(st.end)}" data-input="studio" data-k="end"></label>
+      <label>開始${timeSel('start',st.start)}</label><label>終了${timeSel('end',st.end)}</label>
       <label class="stplace">場所<input placeholder="例 いつものスタジオ" value="${esc(st.place)}" data-input="studio" data-k="place"></label></div></div>
   <div class="sec">曲 (${songs.length})</div>
   <div class="list">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
@@ -815,6 +820,8 @@ const CHG={
 
   addExisting(t){if(t.value){curSetlist().songIds.push(t.value);render()}},
   blockType(t){curBlock().type=t.value;render()},
+  studioTime(t){const st=curSetlist().studio,k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
+    st[k]=h?h+':'+m:'';$('#stSum').innerHTML=studioSum(st)},
   songMeter(){const s=curSong();const n=meterSlots(songMeterDefault(s));
     const bars=s.blocks.filter(b=>!b.meter).flatMap(b=>b.bars.filter(x=>!x.m&&x.n!==n));
     if(!bars.length){render();return}
