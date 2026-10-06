@@ -2,7 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="コピバンノート">
+<meta name="theme-color" content="#141312">
 <title>コピバン練習ノート</title>
 <style>
 :root{
@@ -206,6 +209,59 @@ body.has-player #sheet .sheet{bottom:54px}
   .pgrid{grid-template-columns:1fr}
   .meta input{width:70px}
 }
+.stin{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.stin label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--sub)}
+.stin input{min-width:120px}
+.stplace{flex:1;min-width:160px}.stplace input{width:100%}
+.handle{touch-action:none;padding:8px 4px;font-size:16px;cursor:grab}
+.row.dragging{opacity:.5}
+@media (hover:none){.rowbtns{opacity:1}}
+@media (max-width:700px){
+  .brand-t,.th-t,.kbd{display:none}
+  .top{flex-wrap:nowrap;gap:6px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+  .bandsel{font-size:0}.bandsel select{font-size:14px;max-width:120px;padding:4px 6px;margin:0}
+  .top nav{margin-left:auto;gap:0}.top nav a{padding:6px 7px;font-size:14px}
+  .themebtn{padding:4px 6px}
+  input,select,textarea{font-size:16px}
+  h1{font-size:21px}
+  .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .meta label{min-width:0}.meta input{width:100%}
+  .meta label[style]{grid-column:1/-1}
+  .meta>a,.meta>button{align-self:stretch!important}.meta a button,.meta>button{width:100%;padding:8px 4px;font-size:13px}
+  .row{flex-wrap:wrap;gap:8px;padding:10px}
+  .row .num{width:14px}
+  .row .body{flex:1 1 60%}
+  .tbtns{flex:1 1 auto;justify-content:flex-start;padding-left:22px}
+  .rowbtns{margin-left:auto}
+  .rowbtns button{padding:5px 8px}
+  .counts{font-size:11px}
+  .adds button{padding:6px 9px;font-size:13px}
+  .blockhead .name{width:100%;font-size:18px}
+  .blockhead .cbar{display:none}
+  .tabs a{padding:8px}
+  .bar{grid-template-columns:22px 1fr;column-gap:4px;margin-bottom:4px}
+  .bn{font-size:11px}
+  .cell{font-size:11.5px;padding:7px 1px 7px 3px;overflow:hidden;text-overflow:clip}
+  .lyric{font-size:13px}
+  #sheet .sheet{padding:6px 6px calc(8px + env(safe-area-inset-bottom));max-height:52vh;overflow-y:auto}
+  .sh-head{gap:6px;margin-bottom:2px;flex-wrap:nowrap;align-items:center}
+  .sh-head>div:first-child{min-width:0}
+  #chordIn{width:112px;font-size:18px;padding:2px 6px}
+  .pos{font-size:11px}
+  .steps{flex-wrap:wrap;gap:2px;font-size:0}.steps button{font-size:11px;padding:3px 5px}
+  .keys{gap:3px;margin-top:3px}
+  .keys button{min-width:0;flex:1 0 12%;padding:7px 1px;font-size:13px;line-height:1.15}
+  .keys.roots button{min-width:0;flex:1 0 12%;font-size:15px}
+  .keys .spacer{display:none}
+  body.sheet-open #player{display:none}
+  body.sheet-open.has-player #sheet .sheet{bottom:0}
+  body.sheet-open main{padding-bottom:60vh}
+  #player{padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+  .pl-in{gap:6px}.pl-name{max-width:100%;flex-basis:100%;font-size:13px}#pa{min-width:0;width:100%;flex-basis:100%}
+  body.has-player #sheet .sheet{bottom:110px}
+  .modal{top:6%;padding:14px}
+  .memo-item input{width:100%}.memo-item{flex-wrap:wrap}
+}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:8px 16px;border-radius:20px;z-index:60}
 </style>
 </head>
@@ -230,6 +286,7 @@ const TYPES={
   X:{label:'その他',short:'他',color:'#5d5852'},
 };
 const TAGS=['キメ','拍子変化','転調'];
+const TOUCH=matchMedia('(pointer:coarse)').matches;
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=s=>document.querySelector(s);
@@ -294,10 +351,10 @@ function render(){
 }
 function topbar(tab){
   const opts=S.bands.map(b=>`<option value="${b.id}" ${b.id===band().id?'selected':''}>${esc(b.name)}</option>`).join('');
-  return `<header class="top"><div class="brand">🎸 コピバン練習ノート</div>
+  return `<header class="top"><div class="brand">🎸<span class="brand-t"> コピバン練習ノート</span></div>
   <label class="bandsel">バンド<select data-change="band">${opts}<option value="__new">＋ 新しいバンド</option></select></label>
   <nav><a href="#/" class="${tab==='setlist'?'on':''}">セトリ</a><a href="#/songs" class="${tab==='songs'?'on':''}">曲</a><a href="#/settings" class="${tab==='settings'?'on':''}">設定</a></nav>
-  <button class="ghost themebtn" data-act="cycleTheme" title="表示テーマ(自動/ライト/ダーク)">${THEMES[S.prefs.theme||'auto']}</button></header>`}
+  <button class="ghost themebtn" data-act="cycleTheme" title="表示テーマ(自動/ライト/ダーク)">${THEMES[S.prefs.theme||'auto'].replace(/ (.+)/,'<span class="th-t"> $1</span>')}</button></header>`}
 const THEMES={auto:'◐ 自動',light:'☀ ライト',dark:'☾ ダーク'};
 
 function strip(song,big){
@@ -308,6 +365,8 @@ function songMeta(s){return [s.bpm&&'♩'+esc(s.bpm),esc(s.meter),s.key&&'Key '+
 /* ---------- views ---------- */
 function daysLeft(d){if(!d)return '';const t=new Date(d+'T00:00');const n=new Date();n.setHours(0,0,0,0);const x=Math.round((t-n)/864e5);
   return x>0?`あと${x}日`:x===0?'今日':'終了'}
+function studioSum(st){if(!st.date)return '<span class="sub">未設定</span>';const wd='日月火水木金土'[new Date(st.date+'T00:00').getDay()];
+  return `${st.date.slice(5).replace('-','/')}(${wd}) ${esc(st.start)}${st.end?'–'+esc(st.end):''} <span class="sub" style="font-size:14px">${esc(st.place)}</span>`}
 function viewSetlist(){
   const sls=bandSetlists();
   let sl=sls.find(x=>x.id===R.a)||sls.find(x=>x.id===S.cur.setlist)||sls[0];
@@ -322,13 +381,13 @@ function viewSetlist(){
     <button class="ghost" data-act="renameSetlist">名前を変更</button><span class="spacer"></span><button data-act="shareSetlist">🔗 セトリを共有</button>
     <button data-act="newSetlist">＋ セトリ</button><button class="ghost" data-act="delSetlist">削除</button></div>
   <h1>${esc(sl.name)}</h1>
-  <div class="card studio"><div class="hstack"><span class="sub">次のスタジオ</span><span class="spacer"></span><b>${daysLeft(st.date)}</b></div>
-    <div class="big">${st.date?`${st.date.slice(5).replace('-','/')}(${wd}) ${esc(st.start)}${st.end?'–'+esc(st.end):''}`:'<span class="sub">未設定</span>'} <span class="sub" style="font-size:14px">${esc(st.place)}</span></div>
-    <div class="hstack" style="margin-top:8px"><input type="date" value="${esc(st.date)}" data-change="studio" data-k="date">
-      <input type="time" value="${esc(st.start)}" data-change="studio" data-k="start">〜<input type="time" value="${esc(st.end)}" data-change="studio" data-k="end">
-      <input placeholder="場所" value="${esc(st.place)}" data-change="studio" data-k="place" style="width:160px"></div></div>
+  <div class="card studio"><div class="hstack"><span class="sub">次のスタジオ</span><span class="spacer"></span><b id="stDays">${daysLeft(st.date)}</b></div>
+    <div class="big" id="stSum">${studioSum(st)}</div>
+    <div class="stin"><label>日付<input type="date" value="${esc(st.date)}" data-input="studio" data-k="date"></label>
+      <label>開始<input type="time" value="${esc(st.start)}" data-input="studio" data-k="start"></label><label>終了<input type="time" value="${esc(st.end)}" data-input="studio" data-k="end"></label>
+      <label class="stplace">場所<input placeholder="例 いつものスタジオ" value="${esc(st.place)}" data-input="studio" data-k="place"></label></div></div>
   <div class="sec">曲 (${songs.length})</div>
-  <div class="list">${songs.map((s,i)=>`<div class="row" draggable="true" data-drag="sl" data-idx="${i}">
+  <div class="list">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
       <span class="handle">⋮⋮</span><span class="num">${i+1}</span>
       <a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}${tagChips(s)}</a>
       <div class="rowbtns"><button data-act="slRemove" data-i="${i}" title="セトリから外す(曲は消えません)">外す</button></div></div>`).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
@@ -363,9 +422,9 @@ function viewSong(){
   </div>
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${s.audio?'':`<div class="card hstack" id="audioDrop"><button class="primary" data-act="audioPick">🎵 音源を入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}
-  <div class="sec">構成 <span class="sub" style="margin-left:8px;font-weight:400">ドラッグで並べ替え${s.audio?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</span></div>
+  <div class="sec">構成 <span class="sub" style="margin-left:8px;font-weight:400">⋮⋮ をつかんで並べ替え${s.audio?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</span></div>
   <div class="list">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
-    return `<div class="row" draggable="true" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
+    return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
     <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</a>
     <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
     ${s.audio?timeBtns(b):''}
@@ -464,7 +523,9 @@ function compose(p){const s=p.root?p.root+p.acc+p.q+(p.bass?'/'+p.bass+p.bassAcc
 function posLabel(bm,i){if(bm&&bm.endsWith('/4'))return `${Math.floor(i/2)+1}拍目${i%2?'ウラ':''}`;if(bm&&bm.endsWith('/8'))return `8分の${i+1}つ目`;return `${i+1}マス目`}
 function selectCell(bar,slot){const bl=curBlock();const old=P&&P.bar;
   P=Object.assign(parseChord(bl.bars[bar].cells[slot]||''),{bar,slot});
-  if(old!=null&&old!==bar)refreshBar(old);refreshBar(bar);renderSheet(true)}
+  if(old!=null&&old!==bar)refreshBar(old);refreshBar(bar);renderSheet(true);
+  setTimeout(()=>{const b=$('#bar-'+bar),sh=$('#sheet .sheet');if(!b||!sh)return;const r=b.getBoundingClientRect(),top=sh.getBoundingClientRect().top,head=$('.top').getBoundingClientRect().bottom;
+    if(r.bottom>top-8)window.scrollBy(0,r.bottom-top+16);else if(r.top<head+4)window.scrollBy(0,r.top-head-12)},40)}
 function writeCell(v){const bl=curBlock();bl.bars[P.bar].cells[P.slot]=v;save();refreshBar(P.bar)}
 function applyParts(){writeCell(compose(P));renderSheet(true)}
 function move(d){const bl=curBlock();let bar=P.bar,slot=P.slot;const st=S.prefs.step;
@@ -481,12 +542,13 @@ function prevChord(){const s=curSong(),bl=curBlock();let bi=P.bar,si=P.slot-1;
   return ''}
 function renderSheet(focus){
   const el=$('#sheet');
-  if(!P||R.name!=='block'||R.c==='memo'||!curBlock()){el.innerHTML='';return}
+  if(!P||R.name!=='block'||R.c==='memo'||!curBlock()){el.innerHTML='';document.body.classList.remove('sheet-open');return}
   const bl=curBlock();const bar=bl.bars[P.bar];const val=bar.cells[P.slot]||'';
   const roots=['C','D','E','F','G','A','B'];
   const qs=[['','M'],['m','m'],['7','7'],['M7','M7'],['m7','m7'],['6','6'],['m6','m6'],['sus4','sus4'],['7sus4','7sus4'],['add9','add9'],['9','9'],['dim','dim'],['m7-5','m7-5'],['aug','aug']];
   const steps=[[1,'8分'],[2,'1拍'],[4,'2拍'],['bar','1小節']];
   const accOn=a=>(P.last==='bass'?P.bassAcc:P.acc)===a;
+  document.body.classList.add('sheet-open');
   el.innerHTML=`<div class="sheet"><div class="sheet-in">
   <div class="sh-head"><div><div class="pos">${P.bar+1}小節目・${posLabel(barMeter(bl,bar,curSong()),P.slot)}</div>
     <input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="例 Bm7, F#m/A"></div>
@@ -501,7 +563,7 @@ function renderSheet(focus){
     <button class="${P.tie?'on':''}" data-act="pTie">⌒ タイ</button><button data-act="pDel">⌫ 消す</button>
     <span class="spacer"></span><button data-act="pMove" data-v="-1">← 前</button><button class="primary" data-act="pMove" data-v="1">次 →</button></div>
   </div></div>`;
-  if(focus){const i=$('#chordIn');i.focus();i.select()}
+  if(focus&&!TOUCH){const i=$('#chordIn');i.focus();i.select()}
 }
 
 /* ---------- memo tab ---------- */
@@ -750,7 +812,7 @@ const ACT={
 const CHG={
   band(t){if(t.value==='__new'){newBand();if(t.value==='__new')render();return}S.cur.band=t.value;S.cur.setlist=null;location.hash='#/';render()},
   pickSetlist(t){S.cur.setlist=t.value;location.hash='#/setlist/'+t.value;render()},
-  studio(t){curSetlist().studio[t.dataset.k]=t.value;render()},
+
   addExisting(t){if(t.value){curSetlist().songIds.push(t.value);render()}},
   blockType(t){curBlock().type=t.value;render()},
   songMeter(){const s=curSong();const n=meterSlots(songMeterDefault(s));
@@ -777,6 +839,7 @@ const INP={
   memoName(t){findMemo(t.dataset.id).m.name=t.value},
   memoText(t){findMemo(t.dataset.id).m.text=t.value},
   bandName(t){band().name=t.value},
+  studio(t){const st=curSetlist().studio;st[t.dataset.k]=t.value;$('#stSum').innerHTML=studioSum(st);$('#stDays').textContent=daysLeft(st.date)},
   shareBase(t){S.prefs.shareBase=t.value.trim()},
 };
 document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(t){ACT[t.dataset.act](t,e)}});
@@ -792,7 +855,20 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowRight'){e.preventDefault();const s=S.prefs.step;S.prefs.step=1;move(1);S.prefs.step=s}
     else if(e.key==='ArrowLeft'){e.preventDefault();const s=S.prefs.step;S.prefs.step=1;move(-1);S.prefs.step=s}
     else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();ACT.pDel()}}});
-// drag reorder
+// reorder by dragging the ⋮⋮ handle (mouse and touch)
+let pdrag=null;
+document.addEventListener('pointerdown',e=>{const h=e.target.closest('.handle');const row=h&&h.closest('[data-drag]');if(!row)return;
+  e.preventDefault();pdrag={k:row.dataset.drag,from:+row.dataset.idx,to:+row.dataset.idx};row.classList.add('dragging');
+  try{h.setPointerCapture(e.pointerId)}catch(_){}});
+document.addEventListener('pointermove',e=>{if(!pdrag)return;e.preventDefault();
+  const el=document.elementFromPoint(e.clientX,e.clientY);const r=el&&el.closest(`[data-drag="${pdrag.k}"]`);
+  document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'));
+  if(r){pdrag.to=+r.dataset.idx;if(pdrag.to!==pdrag.from)r.classList.add('dragover')}
+  if(e.clientY<70)window.scrollBy(0,-14);else if(e.clientY>innerHeight-70)window.scrollBy(0,14)},{passive:false});
+function endPdrag(){if(!pdrag)return;const {k,from,to}=pdrag;pdrag=null;
+  document.querySelectorAll('.dragover,.dragging').forEach(x=>x.classList.remove('dragover','dragging'));
+  if(from!==to){const arr=k==='sl'?curSetlist().songIds:curSong().blocks;const [x]=arr.splice(from,1);arr.splice(to,0,x);render()}}
+document.addEventListener('pointerup',endPdrag);document.addEventListener('pointercancel',endPdrag);
 let drag=null;
 document.addEventListener('dragstart',e=>{const t=e.target.closest&&e.target.closest('[data-drag]');if(t){drag={k:t.dataset.drag,i:+t.dataset.idx};e.dataTransfer.effectAllowed='move'}});
 document.addEventListener('dragover',e=>{const z=e.target.closest&&e.target.closest('#drop');
