@@ -582,9 +582,14 @@ function mapHTML(s,withNotes){let pos=1;
     <table class="mtable">${rows}</table></div>`}
 
 /* ---------- share (URL) ---------- */
-function songData(s){return {t:s.title,bpm:s.bpm,m:s.meter,k:s.key,u:s.url,b:s.blocks.map(b=>({ty:b.type,n:b.name,no:b.note,tg:b.tags,st:b.start,bm:b.meter||undefined,
-    bars:b.bars.map(x=>{let c=x.cells.slice();while(c.length&&!c[c.length-1])c.pop();return x.m?[x.n,c,x.lyric,x.m]:[x.n,c,x.lyric]}),
-    tx:b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text)}))}}
+const U=v=>(v===''||v==null||(Array.isArray(v)&&!v.length))?undefined:v;
+function songData(s){const sd=meterSlots(songMeterDefault(s));
+  return {t:s.title,bpm:U(s.bpm),m:U(s.meter),k:U(s.key),u:U(s.url),b:s.blocks.map(b=>{const dn=meterSlots(b.meter)||sd;
+    let bars=b.bars.map(x=>{let c=x.cells.slice();while(c.length&&!c[c.length-1])c.pop();
+      if(!c.length&&!x.lyric&&!x.m&&x.n===dn)return 0;const a=[x.n===dn&&!x.m?0:x.n,c];if(x.lyric||x.m)a.push(x.lyric||'');if(x.m)a.push(x.m);return a});
+    if(bars.every(x=>x===0))bars=bars.length;
+    return {ty:b.type,n:b.name===TYPES[b.type].label?undefined:b.name,no:U(b.note),tg:U(b.tags),st:b.start??undefined,bm:U(b.meter),bars,
+      tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text))}})}}
 async function packData(d){
   const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   const u8=new Uint8Array(await new Response(cs).arrayBuffer());let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode(...u8.subarray(i,i+8192));
@@ -597,10 +602,15 @@ async function unpackShared(code){
   if(d&&d.v===1&&Array.isArray(d.b))return {songs:[d]};
   if(d&&d.v===1&&Array.isArray(d.songs))return {setlist:d.sl||'共有セトリ',songs:d.songs};
   throw new Error('形式が違います')}
-function songFromShared(d,bandId){return {id:uid(),bandId,title:d.t||'無題',bpm:d.bpm||'',meter:d.m||'4/4',key:d.k||'',url:d.u||'',
-  blocks:d.b.map(b=>({id:uid(),type:TYPES[b.ty]?b.ty:'X',name:b.n||'',note:b.no||'',tags:b.tg||[],start:b.st??null,meter:b.bm||'',
-    bars:b.bars.map(([n,c,l,m])=>Object.assign({n,cells:Array.from({length:n},(_,i)=>c[i]||''),lyric:l||''},m?{m}:{})),
-    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()}))}))}}
+function songFromShared(d,bandId){const sd=meterSlots(songMeterDefault({meter:d.m}));return {id:uid(),bandId,title:d.t||'無題',bpm:d.bpm||'',meter:d.m||'4/4',key:d.k||'',url:d.u||'',
+  blocks:d.b.map(b=>{const ty=TYPES[b.ty]?b.ty:'X',dn=meterSlots(b.bm)||sd;const raw=typeof b.bars==='number'?Array(b.bars).fill(0):b.bars;
+   return {id:uid(),type:ty,name:b.n??TYPES[ty].label,note:b.no||'',tags:b.tg||[],start:b.st??null,meter:b.bm||'',
+    bars:raw.map(x=>{const [n0,c,l,m]=x===0?[0,[],'']:x;const n=n0||dn;return Object.assign({n,cells:Array.from({length:n},(_,i)=>c[i]||''),lyric:l||''},m?{m}:{})}),
+    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()}))}})}}
+async function isgd(url){const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),10000);
+  try{const r=await fetch('https://da.gd/s?url='+encodeURIComponent(url),{signal:ac.signal});const x=(await r.text()).trim();
+    if(!r.ok||!/^https:\/\/da\.gd\/\S+$/.test(x))throw new Error(x.slice(0,60)||('HTTP '+r.status));return x}
+  catch(e){throw new Error(e.name==='AbortError'?'時間切れ':e.message.includes('fetch')?'つながりませんでした':e.message)}finally{clearTimeout(tm)}}
 const PUBLIC_URL='https://miragelog3.github.io/kopiban-note/';
 function shareBase(){return (S.prefs.shareBase||(location.protocol==='file:'?PUBLIC_URL:location.href.split('#')[0])).trim()}
 async function openShare(kind){
@@ -612,7 +622,8 @@ async function openShare(kind){
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
-  <div class="sub">共有リンク</div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
+  <div class="sub">共有リンク <span id="shLen">(${link.length}文字)</span></div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn">✂ 短くする</button><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
+  <p class="note" id="shNote" style="margin:4px 0 0">「短くする」を押すと、短縮サービス(da.gd)で https://da.gd/xxxx のような短いリンクにします。</p>
   ${link.length>8000?`<p class="note" style="color:var(--accent)">リンクが長め(${link.length}文字)なので、アプリによっては途中で切れるかもしれません。切れたら下の共有コードを送ってください。</p>`:''}
   <div class="sub" style="margin-top:10px">共有コード(${code.length}文字)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   </div>`}
@@ -699,6 +710,12 @@ const ACT={
   pDel(){Object.assign(P,{root:'',acc:'',q:'',bass:'',bassAcc:'',lit:'',tie:false,slash:false});applyParts()},
   pMove:t=>move(+t.dataset.v),
   share:()=>openShare('song'),
+  async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
+    if(/^(file:|http:\/\/(127\.|localhost))/.test(i.value))return toast('このPCの中のアドレスは短縮できません');
+    if(i.value.length>5000)return toast('長すぎて短縮できません(5000文字まで)。共有コードを使ってください');
+    t.disabled=true;t.textContent='短縮中…';
+    try{const u=await isgd(i.value);i.value=u;$('#shLen').textContent='('+u.length+'文字)';$('#shNote').textContent='短くしました。このリンクを開くと元の共有ページに飛びます。';t.textContent='✓ 短縮済み'}
+    catch(e){t.disabled=false;t.textContent='✂ 短くする';toast('短縮できませんでした: '+e.message)}},
   shareSetlist:()=>openShare('setlist'),
   impTab(t){impTab=t.dataset.v;fillImport()},
   async copy(t){const i=$('#'+t.dataset.t);i.select();try{await navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}toast('コピーしました')},
