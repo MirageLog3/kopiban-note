@@ -353,7 +353,7 @@ function viewSong(){
   <input class="name" style="display:block;font-size:24px;font-weight:700;background:none;border-color:transparent;padding:4px 0;width:100%" value="${esc(s.title)}" data-input="songField" data-k="title">
   <div class="hstack meta">
     <label>テンポ<input value="${esc(s.bpm)}" data-input="songField" data-k="bpm" placeholder="例 84"></label>
-    <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter"></label>
+    <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
     <label>Key<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
     <label style="flex:1">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeなど"></label>
     ${s.url?`<a class="back" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px">開く ↗</a>`:''}
@@ -426,7 +426,7 @@ function viewBlock(){
     <input class="name" value="${esc(bl.name)}" data-input="blockField" data-k="name">
     <select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select>
     <label class="sub"><input type="number" min="1" max="64" value="${bl.bars.length}" data-change="barsCount" style="width:62px"> 小節</label>
-    <label class="sub">拍子 <select data-change="blockMeter"><option value="">曲と同じ(${songMeterDefault(s)})</option>${Object.keys(METERS).map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}</select></label>
+    <label class="sub">拍子 <select data-change="blockMeter"><option value="">曲と同じ(${songMeterDefault(s)})</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label>
     <input value="${esc(bl.note)}" data-input="blockField" data-k="note" placeholder="Key・メモ (例 Em / 半音上げ)" style="width:200px">
     ${TAGS.map(t=>`<button class="tagbtn ${bl.tags.includes(t)?'on':''}" data-act="toggleTag" data-t="${t}">${t}</button>`).join('')}
     ${s.audio?`<span class="spacer"></span>${timeBtns(bl)}`:''}
@@ -439,10 +439,12 @@ function viewBlock(){
 function chordTab(bl){
   return `<div class="legend">1マス = 8分 ・ 空白 = 前のコードが続く ・ ⌒ = 前の小節からタイ ・ 拍子は上の「拍子」で、1小節だけ変えるときは小節番号をクリック</div>
   <div id="grid">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
-const METERS={'4/4':8,'3/4':6,'2/4':4,'5/4':10,'6/4':12,'6/8':6,'7/8':7,'5/8':5,'9/8':9,'12/8':12};
-const songMeterDefault=s=>{const m=(s&&s.meter||'').trim();return METERS[m]?m:'4/4'};
+const COMMON_METERS=['4/4','3/4','2/4','5/4','6/4','7/4','6/8','7/8','5/8','9/8','12/8'];
+const normMeter=m=>String(m||'').trim().replace(/[／]/g,'/').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+function meterSlots(m){const x=normMeter(m).match(/^(\d{1,2})\/(2|4|8|16)$/);if(!x)return 0;const n=+x[1],d=+x[2];const v=d===2?n*4:d===4?n*2:n;return n>0&&v<=32?v:0}
+const songMeterDefault=s=>{const m=normMeter(s&&s.meter).split(/[,、\s]+/).find(meterSlots);return m||'4/4'};
 const blockMeter=(bl,s)=>bl.meter||songMeterDefault(s);
-const barMeter=(bl,bar,s)=>bar.m||(bar.n===METERS[blockMeter(bl,s)]?blockMeter(bl,s):null);
+const barMeter=(bl,bar,s)=>bar.m||(bar.n===meterSlots(blockMeter(bl,s))?blockMeter(bl,s):null);
 function resizeBar(bar,n){bar.cells=Array.from({length:n},(_,i)=>bar.cells[i]||'');bar.n=n}
 function barHTML(bl,bi){
   const bar=bl.bars[bi];let cells='';const bm=barMeter(bl,bar,curSong());const den=bm?+bm.split('/')[1]:0;
@@ -674,14 +676,14 @@ const ACT={
   delSong(t){const s=songById(t.dataset.id);if(!confirm(`曲「${s.title}」を削除しますか？(写真・録音も消えます)`))return;
     songBlobIds([s]).forEach(delBlob);S.songs=S.songs.filter(x=>x!==s);S.setlists.forEach(x=>x.songIds=x.songIds.filter(i=>i!==s.id));render()},
   addBlock(t){const s=curSong(),ty=t.dataset.type;const same=s.blocks.filter(b=>b.type===ty).length;
-    const nb=newBlock(ty,same&&ty!=='X'?`${same+1}${TYPES[ty].label}`:TYPES[ty].label);const n=METERS[songMeterDefault(s)];nb.bars.forEach(b=>resizeBar(b,n));s.blocks.push(nb);render()},
+    const nb=newBlock(ty,same&&ty!=='X'?`${same+1}${TYPES[ty].label}`:TYPES[ty].label);const n=meterSlots(songMeterDefault(s));nb.bars.forEach(b=>resizeBar(b,n));s.blocks.push(nb);render()},
   dupBlock(t){const s=curSong(),i=+t.dataset.i;const c=JSON.parse(JSON.stringify(s.blocks[i]));c.id=uid();c.memos=[];c.name+='(コピー)';s.blocks.splice(i+1,0,c);render()},
   delBlock(t){const s=curSong(),b=s.blocks[+t.dataset.i];if(!confirm(`「${b.name}」を削除しますか？`))return;memoBlobIds([b]).forEach(delBlob);s.blocks.splice(+t.dataset.i,1);render()},
   toggleTag(t){const bl=curBlock(),x=t.dataset.t;bl.tags=bl.tags.includes(x)?bl.tags.filter(y=>y!==x):[...bl.tags,x];render()},
   cell:t=>selectCell(+t.dataset.bar,+t.dataset.slot),
   barN(t){const s=curSong(),bl=curBlock(),bar=bl.bars[+t.dataset.bar];const cur=barMeter(bl,bar,s)||String(bar.n);
-    let v=prompt(`この小節だけの拍子 (例 3/4, 7/8, 6/8)\nまたはマス数 (12 = 3連符, 16 = 16分)\n\n空欄にするとブロックの拍子(${blockMeter(bl,s)})に戻ります`,cur);if(v===null)return;v=v.trim().replace('／','/');
-    let n,m;if(!v){m=null;n=METERS[blockMeter(bl,s)]}else if(METERS[v]){m=v===blockMeter(bl,s)?null:v;n=METERS[v]}else{n=parseInt(v);m=null;if(!n||n<1||n>32)return toast('「3/4」のような拍子か、数字で入れてください')}
+    let v=prompt(`この小節だけの拍子 (例 3/4, 7/8, 6/8)\nまたはマス数 (12 = 3連符, 16 = 16分)\n\n空欄にするとブロックの拍子(${blockMeter(bl,s)})に戻ります`,cur);if(v===null)return;v=normMeter(v);
+    let n,m;if(!v){m=null;n=meterSlots(blockMeter(bl,s))}else if(meterSlots(v)){m=v===blockMeter(bl,s)?null:v;n=meterSlots(v)}else{n=parseInt(v);m=null;if(!n||n<1||n>32)return toast('「3/4」のような拍子か、数字で入れてください')}
     if(bar.cells.slice(n).some(Boolean)&&!confirm('はみ出すマスのコードは消えます。よろしいですか？'))return;
     resizeBar(bar,n);if(m)bar.m=m;else delete bar.m;if(P&&P.bar===+t.dataset.bar)P=null;render()},
   pClose(){const b=P&&P.bar;P=null;renderSheet();if(b!=null)refreshBar(b)},
@@ -734,7 +736,14 @@ const CHG={
   studio(t){curSetlist().studio[t.dataset.k]=t.value;render()},
   addExisting(t){if(t.value){curSetlist().songIds.push(t.value);render()}},
   blockType(t){curBlock().type=t.value;render()},
-  blockMeter(t){const s=curSong(),bl=curBlock();const prev=bl.meter;bl.meter=t.value;const n=METERS[blockMeter(bl,s)];
+  songMeter(){const s=curSong();const n=meterSlots(songMeterDefault(s));
+    const bars=s.blocks.filter(b=>!b.meter).flatMap(b=>b.bars.filter(x=>!x.m&&x.n!==n));
+    if(!bars.length){render();return}
+    if(bars.some(x=>x.cells.slice(n).some(Boolean))&&!confirm('拍子を変えると、はみ出すマスのコードが消えます。よろしいですか？(ブロックごとに拍子を決めてあるところはそのままです)')){render();return}
+    bars.forEach(x=>resizeBar(x,n));render();toast('拍子 '+songMeterDefault(s)+' に合わせました')},
+  blockMeter(t){const s=curSong(),bl=curBlock();const prev=bl.meter;let v=t.value;
+    if(v==='__other'){v=normMeter(prompt('拍子を入力 (例 7/4, 11/8, 15/16)',bl.meter||''));if(!meterSlots(v)){if(v)toast('「7/4」のように「数/2・4・8・16」で入れてください');render();return}}
+    bl.meter=v;const n=meterSlots(blockMeter(bl,s));
     const targets=bl.bars.filter(b=>!b.m&&b.n!==n);
     if(targets.some(b=>b.cells.slice(n).some(Boolean))&&!confirm('拍子を変えると、はみ出すマスのコードが消えます。よろしいですか？')){bl.meter=prev;render();return}
     targets.forEach(b=>resizeBar(b,n));P=null;render()},
@@ -742,7 +751,7 @@ const CHG={
   theme(t){S.prefs.theme=t.value;render()},
   barsCount(t){const bl=curBlock();const n=Math.max(1,Math.min(64,parseInt(t.value)||1));
     if(n<bl.bars.length&&bl.bars.slice(n).some(b=>b.cells.some(Boolean)||b.lyric)&&!confirm(`${n+1}小節目以降のコードと歌詞が消えます。よろしいですか？`)){t.value=bl.bars.length;return}
-    while(bl.bars.length<n)bl.bars.push(newBar(METERS[blockMeter(bl,curSong())]));bl.bars.length=n;if(P&&P.bar>=n)P=null;render()},
+    while(bl.bars.length<n)bl.bars.push(newBar(meterSlots(blockMeter(bl,curSong()))));bl.bars.length=n;if(P&&P.bar>=n)P=null;render()},
 };
 const INP={
   songField(t){curSong()[t.dataset.k]=t.value},
