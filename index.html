@@ -109,6 +109,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .keys{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .keys button{min-width:52px;padding:7px 8px;font-weight:600}
 .keys.roots button{min-width:64px;font-size:17px}
+.qrow{align-items:center}.qlab{font-size:11px;color:var(--sub);width:58px;flex:0 0 auto}
 .kbd{font-size:11px;color:var(--sub);margin-left:auto}
 /* memo */
 .memobar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -523,6 +524,21 @@ function barHTML(bl,bi){
   <input class="lyric" data-input="lyric" data-bar="${bi}" value="${esc(bar.lyric)}" placeholder="歌詞・メモ"></div>`}
 function refreshBar(bi){const bl=curBlock();const el=$('#bar-'+bi);if(bl&&el&&bl.bars[bi])el.outerHTML=barHTML(bl,bi)}
 
+// コードの種類は「3度・7th・テンション」を組み合わせて作る(例 m + M7 → mM7、M7 + 9 → M7(9))
+const TENS=['♭9','9','♯9','11','♯11','♭13','13','add9','♭5','♯5'];
+const normT=x=>x.trim().replace(/^b/,'♭').replace(/^#/,'♯').replace(/^-/,'♭').replace(/^\+/,'♯');
+function parseQ(q){q=(q||'').replace(/maj7/i,'M7').replace(/^min/,'m');
+  const legacy={'m7-5':'m7(♭5)','9':'7(9)','m9':'m7(9)','M9':'M7(9)','69':'6(9)','m69':'m6(9)','11':'7(9,11)','13':'7(13)','7-5':'7(♭5)','7+5':'7(♯5)','M':''};
+  if(q in legacy)q=legacy[q];
+  const m=q.match(/^(m|dim|aug)?(M7|7|6)?(sus[24])?(add9)?(?:\(([^)]*)\))?$/);if(!m||(m[1]&&m[3]))return null;
+  const r={tri:m[3]||m[1]||'',sev:m[2]||'',ten:m[4]?['add9']:[]};
+  if(m[5])for(const x of m[5].split(/[,，、]/)){const v=normT(x);if(!TENS.includes(v))return null;r.ten.push(v)}
+  return r}
+function composeQ({tri,sev,ten}){const s=tri.startsWith('sus')?sev+tri:(tri==='m'&&sev==='M7'?'mM7':tri+sev);
+  let t=[...new Set(ten)].sort((a,b)=>TENS.indexOf(a)-TENS.indexOf(b));
+  if(!sev&&t.length===1&&t[0]==='add9')return s+'add9';
+  t=t.map(x=>x==='add9'?'9':x);t=[...new Set(t)];
+  return s+(t.length?`(${t.join(',')})`:'')}
 function parseChord(c){const p={root:'',acc:'',q:'',bass:'',bassAcc:'',tie:false,lit:'',slash:false,last:'root'};
   if(c.startsWith('⌒')){p.tie=true;c=c.slice(1)}
   const m=c.match(/^([A-G])([b#♭♯]?)(.*?)(?:\/([A-G])([b#♭♯]?))?$/);
@@ -535,6 +551,8 @@ function selectCell(bar,slot){const bl=curBlock();const old=P&&P.bar;
   setTimeout(()=>{const b=$('#bar-'+bar),sh=$('#sheet .sheet');if(!b||!sh)return;const r=b.getBoundingClientRect(),top=sh.getBoundingClientRect().top,head=$('.top').getBoundingClientRect().bottom;
     if(r.bottom>top-8)window.scrollBy(0,r.bottom-top+16);else if(r.top<head+4)window.scrollBy(0,r.top-head-12)},40)}
 function writeCell(v){const bl=curBlock();bl.bars[P.bar].cells[P.slot]=v;save();refreshBar(P.bar)}
+const curQ=()=>P.qp&&composeQ(P.qp)===P.q?P.qp:parseQ(P.q);
+function editQ(fn){if(!P.root)return toast('先にルート音(C〜B)を選んでください');const q=curQ()||{tri:'',sev:'',ten:[]};fn(q);P.qp=q;P.q=composeQ(q);P.last='root';applyParts()}
 function applyParts(){writeCell(compose(P));renderSheet(true)}
 function move(d){const bl=curBlock();let bar=P.bar,slot=P.slot;const st=S.prefs.step;
   if(st==='bar'){bar+=d;slot=0}
@@ -553,7 +571,8 @@ function renderSheet(focus){
   if(!P||R.name!=='block'||R.c==='memo'||!curBlock()){el.innerHTML='';document.body.classList.remove('sheet-open');return}
   const bl=curBlock();const bar=bl.bars[P.bar];const val=bar.cells[P.slot]||'';
   const roots=['C','D','E','F','G','A','B'];
-  const qs=[['','M'],['m','m'],['7','7'],['M7','M7'],['m7','m7'],['6','6'],['m6','m6'],['sus4','sus4'],['7sus4','7sus4'],['add9','add9'],['9','9'],['dim','dim'],['m7-5','m7-5'],['aug','aug']];
+  const qp=P.root?curQ():null;
+  const tris=[['','M'],['m','m'],['sus4','sus4'],['sus2','sus2'],['dim','dim'],['aug','aug']],sevs=[['','なし'],['6','6'],['7','7'],['M7','M7']];
   const steps=[[1,'8分'],[2,'1拍'],[4,'2拍'],['bar','1小節']];
   const accOn=a=>(P.last==='bass'?P.bassAcc:P.acc)===a;
   document.body.classList.add('sheet-open');
@@ -566,7 +585,9 @@ function renderSheet(focus){
   <div class="keys roots">${roots.map(r=>`<button class="${(P.slash?false:P.root===r&&P.last==='root')||(P.last==='bass'&&P.bass===r)?'on':''}" data-act="pRoot" data-v="${r}">${r}</button>`).join('')}
     <button class="${accOn('b')?'on':''}" data-act="pAcc" data-v="b">♭</button><button class="${accOn('')&&P.root?'':''}" data-act="pAcc" data-v="">♮</button><button class="${accOn('#')?'on':''}" data-act="pAcc" data-v="#">♯</button>
     <button class="${P.slash?'on':''}" data-act="pSlash" title="分数コード(次に押すのがベース音)">/</button></div>
-  <div class="keys">${qs.map(([v,l])=>`<button class="${P.root&&P.q===v?'on':''}" data-act="pQ" data-v="${esc(v)}">${l}</button>`).join('')}</div>
+  <div class="keys qrow"><span class="qlab">3度</span>${tris.map(([v,l])=>`<button class="${qp&&qp.tri===v?'on':''}" data-act="pTri" data-v="${v}">${l}</button>`).join('')}</div>
+  <div class="keys qrow"><span class="qlab">7th</span>${sevs.map(([v,l])=>`<button class="${qp&&qp.sev===v?'on':''}" data-act="pSev" data-v="${v}">${l}</button>`).join('')}</div>
+  <div class="keys qrow"><span class="qlab">テンション</span>${TENS.map(v=>`<button class="${qp&&qp.ten.includes(v)?'on':''}" data-act="pTen" data-v="${v}">${v}</button>`).join('')}</div>
   <div class="keys"><button data-act="pPrev">↺ 前のコード</button><button data-act="pLit" data-v="?">?</button><button data-act="pLit" data-v="N.C.">N.C.(休み)</button>
     <button class="${P.tie?'on':''}" data-act="pTie">⌒ タイ</button><button data-act="pDel">⌫ 消す</button>
     <span class="spacer"></span><button data-act="pMove" data-v="-1">← 前</button><button class="primary" data-act="pMove" data-v="1">次 →</button></div>
@@ -779,10 +800,13 @@ const ACT={
   pClose(){const b=P&&P.bar;P=null;renderSheet();if(b!=null)refreshBar(b)},
   pStep(t){S.prefs.step=t.dataset.v==='bar'?'bar':+t.dataset.v;save();renderSheet(true)},
   pRoot(t){const v=t.dataset.v;if(P.slash&&P.root){P.bass=v;P.bassAcc='';P.slash=false;P.last='bass'}
-    else{Object.assign(P,{root:v,acc:'',q:'',bass:'',bassAcc:'',lit:'',slash:false,last:'root'})}applyParts()},
+    else{Object.assign(P,{root:v,acc:'',q:'',qp:null,bass:'',bassAcc:'',lit:'',slash:false,last:'root'})}applyParts()},
   pAcc(t){if(!P.root)return;if(P.last==='bass')P.bassAcc=t.dataset.v;else P.acc=t.dataset.v;applyParts()},
   pSlash(){if(!P.root)return;P.slash=!P.slash;renderSheet(true)},
-  pQ(t){if(!P.root)return;P.q=t.dataset.v;P.last='root';applyParts()},
+  pQ(t){if(!P.root)return;P.q=t.dataset.v;P.qp=null;P.last='root';applyParts()},
+  pTri(t){editQ(q=>{q.tri=t.dataset.v})},
+  pSev(t){editQ(q=>{q.sev=t.dataset.v})},
+  pTen(t){const v=t.dataset.v;editQ(q=>{q.ten=q.ten.includes(v)?q.ten.filter(x=>x!==v):[...q.ten,v]})},
   pPrev(){const c=prevChord();if(!c)return toast('前のコードがありません');Object.assign(P,parseChord(c),{tie:false});applyParts()},
   pLit(t){Object.assign(P,{root:'',acc:'',q:'',bass:'',bassAcc:'',lit:t.dataset.v,slash:false});applyParts()},
   pTie(){P.tie=!P.tie;applyParts()},
