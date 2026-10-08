@@ -227,6 +227,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .cells{display:grid;background:var(--panel);border:1px solid var(--line);border-radius:6px;min-height:36px;overflow:hidden}
 .cell{padding:8px 4px 8px 6px;font-size:14px;font-weight:600;white-space:nowrap;overflow:visible;cursor:pointer;position:relative;min-width:0}
 .cell.beat::before{content:"";position:absolute;left:0;top:30%;bottom:30%;border-left:1px dotted var(--beat)}
+/* 拍の頭でないマスにも短い目盛りを入れて、1マス = 8分音符1つ分 が見て分かるようにする */
+.cell:not(.beat)::before{content:"";position:absolute;left:0;top:40%;bottom:40%;border-left:1px solid var(--beat)}
 .cell.start::before{top:0;bottom:0;border-left:2px solid var(--start)}
 .cell.first::before{display:none}
 .cell:hover{background:var(--hover)}
@@ -289,7 +291,7 @@ h1{font-size:24px;margin:4px 0 6px}
 @keyframes tourPulse{0%,100%{outline-width:2px;outline-offset:0}50%{outline-width:4px;outline-offset:3px}}
 .tour-ripple{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--accent);pointer-events:none;animation:tourRip .48s ease-out forwards;z-index:2}
 @keyframes tourRip{0%{transform:scale(.3);opacity:.8}100%{transform:scale(2);opacity:0}}
-.bunsetsu{overflow-wrap:anywhere;line-break:strict}.bunsetsu .nb{white-space:nowrap}
+.bunsetsu{overflow-wrap:anywhere;line-break:strict;text-wrap:pretty}
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
 .song-audio{margin-top:12px}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
 .brow.bq{display:flex;gap:10px;align-items:flex-start}.brow.bq input[type=number]{width:80px}
@@ -1532,11 +1534,13 @@ function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(
   else Object.assign(bub.style,{top:'',bottom:'12px'})}
 function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;S.prefs.tutDone=true;save();if(P)ACT.pClose();if(location.hash!=='#/'&&location.hash)location.hash='#/'}
 // 日本語の改行を文節っぽい区切りでだけ起こす: ひらがな・句読点のあと、漢字・カタカナ・英数字・かっこの前を改行してよい場所にする
-function wbrize(el){if(!el)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
+function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
   const re=/(?<=[ぁ-ゖ、。」』）)！？・])(?=[一-龠々〆ァ-ヶーｦ-ﾟA-Za-z0-9「『（(＋→←])/;
   ns.forEach(n=>{const parts=n.nodeValue.split(re);if(parts.length<2)return;const f=document.createDocumentFragment();
     // 区切りごとに「途中で改行しない」かたまりにする。かたまりの間は、ブラウザの禁則(「や。の位置)に任せて改行される
     parts.forEach(p=>{if(p.length>14){f.appendChild(document.createTextNode(p));return}const s=document.createElement('span');s.className='nb';s.textContent=p;f.appendChild(s)});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
+// 文節で区切るのはやめて、普通の日本語の改行(どこでも改行・禁則あり)に戻す。最後の行が1〜2文字だけにならないよう text-wrap:pretty だけ使う
+const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
   {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
