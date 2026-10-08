@@ -55,6 +55,10 @@ h1{font-size:24px;margin:4px 0 6px}
 .studio{border-left:4px solid var(--accent)}
 .studio .big{font-size:20px;font-weight:700}
 .studio input{font-size:13px}
+.studio.live{border-left-color:#c94fd6}.evchip{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;background:#ff6a2b22;color:var(--accent)}
+.studio.live .evchip{background:#c94fd622;color:#c94fd6}.evnext{font-size:11px;font-weight:700;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#fff}
+.studio.live .evnext{background:#c94fd6}.evdel{padding:2px 8px;margin-left:4px}.evpast .studio{opacity:.6}
+.sec.hstack{gap:6px}.sec.hstack button{font-size:13px;padding:5px 10px}
 .sec{display:flex;align-items:center;margin:22px 0 8px;font-weight:700}
 .list{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -495,7 +499,7 @@ function newBlock(type,name,bars){bars=bars??(type==='In'||type==='Out'?4:8);
 function newSong(bandId,title){return {id:uid(),bandId,title,bpm:'',meter:'4/4',key:'',url:'',
   blocks:[newBlock('In'),newBlock('A'),newBlock('B'),newBlock('S'),newBlock('Out')]}}
 function defaultState(){const b={id:uid(),name:'マイバンド'};const song=newSong(b.id,'サンプル曲');
-  const sl={id:uid(),bandId:b.id,name:'次のライブ',songIds:[song.id],studio:{date:'',start:'',end:'',place:''}};
+  const sl={id:uid(),bandId:b.id,name:'次のライブ',songIds:[song.id],events:[]};
   return {v:1,bands:[b],songs:[song],setlists:[sl],cur:{band:b.id,setlist:sl.id},prefs:{step:2}}}
 const band=()=>S.bands.find(b=>b.id===S.cur.band)||S.bands[0];
 const songById=id=>S.songs.find(s=>s.id===id);
@@ -549,16 +553,37 @@ function songMeta(s){return [s.bpm&&'♩'+esc(s.bpm),esc(s.meter),s.key&&'Key '+
 /* ---------- views ---------- */
 function daysLeft(d){if(!d)return '';const t=new Date(d+'T00:00');const n=new Date();n.setHours(0,0,0,0);const x=Math.round((t-n)/864e5);
   return x>0?`あと${x}日`:x===0?'今日':'終了'}
-function timeSel(k,v){const [h,m]=(v||'').split(':');
+/* ---------- 予定(スタジオ・本番) ----------
+   セトリごとに何個でも持てる。前の形(sl.studio 1つだけ)は開いたときに予定1件に移す */
+let CALID=null;const EV_T={studio:{l:'スタジオ',i:'🎸'},live:{l:'本番',i:'🎤'}};
+function slEvents(sl){if(!sl.events){sl.events=[];const st=sl.studio;if(st&&(st.date||st.start||st.place))sl.events.push({id:uid(),type:'studio',date:st.date||'',start:st.start||'',end:st.end||'',place:st.place||''})}
+  delete sl.studio;return sl.events}
+const todayStr=()=>{const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')};
+const evKey=e=>(e.date||'9999')+(e.start||'99');
+function evSorted(sl){return [...slEvents(sl)].sort((a,b)=>evKey(a)<evKey(b)?-1:1)}
+const evFind=id=>{for(const sl of S.setlists)for(const e of sl.events||[])if(e.id===id)return {sl,e};return {}};
+function evCard(e,isNext){const T=EV_T[e.type]||EV_T.studio;
+  return `<div class="card studio ${e.type==='live'?'live':''}"><div class="hstack"><span class="evchip">${T.i} ${T.l}</span>${isNext?'<span class="evnext">次の予定</span>':''}<span class="spacer"></span><b id="evDays-${e.id}">${daysLeft(e.date)}</b>
+    <button class="ghost evdel" data-act="evDel" data-id="${e.id}" title="この予定を削除">✕</button></div>
+    <div class="big" id="evSum-${e.id}">${studioSum(e)}</div>
+    <div class="stin"><label>日付<input type="date" value="${esc(e.date)}" data-change="evDate" data-id="${e.id}"></label>
+      <label>開始${timeSel('start',e.start,e.id)}</label><label>終了${timeSel('end',e.end,e.id)}</label>
+      <label class="stplace">場所<input placeholder="${e.type==='live'?'例 ○○ライブハウス':'例 いつものスタジオ'}" value="${esc(e.place)}" data-input="evf" data-id="${e.id}" data-k="place"></label></div>
+    <div class="hstack" style="margin-top:10px"><button data-act="calMenu" data-id="${e.id}">📅 カレンダーに追加・予定を送る</button></div></div>`}
+function evSection(sl){const all=evSorted(sl),t=todayStr(),up=all.filter(e=>!e.date||e.date>=t),past=all.filter(e=>e.date&&e.date<t).reverse();const nx=up.find(e=>e.date);
+  return `<div class="sec hstack"><span>予定</span><span class="spacer"></span><button data-act="evAdd" data-v="studio">＋ ${EV_T.studio.i} スタジオ</button><button data-act="evAdd" data-v="live">＋ ${EV_T.live.i} 本番</button></div>
+  ${up.map(e=>evCard(e,e===nx)).join('')||'<div class="empty" style="padding:14px">予定はまだありません。「＋ スタジオ」「＋ 本番」で追加できます</div>'}
+  ${past.length?`<button class="foldbtn" data-act="uiToggle" data-k="pastEv" style="margin:4px 0 8px">終わった予定 (${past.length}) ${UI('pastEv')?'▾':'▸'}</button>${UI('pastEv')?`<div class="evpast">${past.map(e=>evCard(e,false)).join('')}</div>`:''}`:''}`}
+function timeSel(k,v,id){const [h,m]=(v||'').split(':');
   const hs=['<option value="">--</option>',...Array.from({length:24},(_,i)=>{const x=String(i).padStart(2,'0');return `<option ${x===h?'selected':''}>${x}</option>`})].join('');
   const ms=Array.from({length:12},(_,i)=>{const x=String(i*5).padStart(2,'0');return `<option ${x===(m||'00')?'selected':''}>${x}</option>`}).join('');
-  return `<span class="tsel"><select data-change="studioTime" data-k="${k}" data-p="h">${hs}</select>:<select data-change="studioTime" data-k="${k}" data-p="m">${ms}</select></span>`}
+  return `<span class="tsel"><select data-change="studioTime" data-k="${k}" data-id="${id||''}" data-p="h">${hs}</select>:<select data-change="studioTime" data-k="${k}" data-id="${id||''}" data-p="m">${ms}</select></span>`}
 function studioSum(st){if(!st.date)return '<span class="sub">未設定</span>';const wd='日月火水木金土'[new Date(st.date+'T00:00').getDay()];
   return `${st.date.slice(5).replace('-','/')}(${wd}) ${esc(st.start)}${st.end?'–'+esc(st.end):''} <span class="sub" style="font-size:14px">${esc(st.place)}</span>`}
 // スタジオ予定をカレンダーへ(.ics か Googleカレンダー)。通知はカレンダー側のアラームに任せる
 const ymd=x=>x.getFullYear()+String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0');
-function studioEvent(sl){const st=sl.studio||{};if(!st.date)return null;const day=new Date(st.date+'T00:00'),d=ymd(day);
-  const title=`${band().name} スタジオ(${sl.name})`;let start,end;const allDay=!st.start;
+function studioEvent(sl,st){if(!st||!st.date)return null;const day=new Date(st.date+'T00:00'),d=ymd(day);
+  const title=`${band().name} ${(EV_T[st.type]||EV_T.studio).l}(${sl.name})`;let start,end;const allDay=!st.start;
   if(allDay){const n=new Date(day);n.setDate(n.getDate()+1);start=d;end=ymd(n)}
   else{const [h,m]=st.start.split(':').map(Number);let e=st.end;if(!e){const t=h*60+m+120;e=String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
     const n=new Date(day);if(e<=st.start)n.setDate(n.getDate()+1);start=d+'T'+st.start.replace(':','')+'00';end=ymd(n)+'T'+e.replace(':','')+'00'}
@@ -575,8 +600,7 @@ function viewSetlist(){
   let sl=sls.find(x=>x.id===R.a)||sls.find(x=>x.id===S.cur.setlist)||sls[0];
   if(!sl)return topbar('setlist')+`<main><div class="empty">このバンドにはまだセトリがありません<br><br><button class="primary" data-act="newSetlist">＋ セトリを作る</button></div></main>`;
   S.cur.setlist=sl.id;
-  const st=sl.studio||(sl.studio={date:'',start:'',end:'',place:''});
-  const wd=st.date?'日月火水木金土'[new Date(st.date+'T00:00').getDay()]:'';
+  slEvents(sl);
   const songs=sl.songIds.map(songById).filter(Boolean);
   const others=bandSongs().filter(s=>!sl.songIds.includes(s.id));
   return topbar('setlist')+`<main>
@@ -584,12 +608,7 @@ function viewSetlist(){
     <button class="ghost" data-act="renameSetlist">名前を変更</button><span class="spacer"></span><button data-act="shareSetlist">🔗 セトリを共有</button>
     <button data-act="newSetlist">＋ セトリ</button><button class="ghost" data-act="delSetlist">削除</button></div>
   <h1>${esc(sl.name)}</h1>
-  <div class="card studio"><div class="hstack"><span class="sub">次のスタジオ</span><span class="spacer"></span><b id="stDays">${daysLeft(st.date)}</b></div>
-    <div class="big" id="stSum">${studioSum(st)}</div>
-    <div class="stin"><label>日付<input type="date" value="${esc(st.date)}" data-input="studio" data-k="date"></label>
-      <label>開始${timeSel('start',st.start)}</label><label>終了${timeSel('end',st.end)}</label>
-      <label class="stplace">場所<input placeholder="例 いつものスタジオ" value="${esc(st.place)}" data-input="studio" data-k="place"></label></div>
-    <div class="hstack" style="margin-top:10px"><button data-act="calMenu">📅 カレンダーに追加・予定を送る</button></div></div>
+  ${evSection(sl)}
   <div class="sec">曲 (${songs.length})</div>
   <div class="list">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
       <span class="handle">⋮⋮</span><span class="num">${i+1}</span>
@@ -1258,9 +1277,11 @@ async function unpackShared(code){
   const ds=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   const d=JSON.parse(await new Response(ds).text());
   if(Array.isArray(d)&&d[0]===2)return {songs:[arrSong(d[1])]};
-  if(Array.isArray(d)&&d[0]===3)return {setlist:d[1]||'共有セトリ',studio:d[2]||null,songs:(d[3]||[]).map(arrSong)};
+  if(Array.isArray(d)&&d[0]===3){const x=d[2];
+    const events=!x?[]:Array.isArray(x)?x.map(a=>({type:a[0]===1?'live':'studio',date:a[1]||'',start:a[2]||'',end:a[3]||'',place:a[4]||''})):[{type:'studio',date:x.d||'',start:x.s||'',end:x.e||'',place:x.p||''}];
+    return {setlist:d[1]||'共有セトリ',events,songs:(d[3]||[]).map(arrSong)}}
   if(d&&d.v===1&&Array.isArray(d.b))return {songs:[d]};
-  if(d&&d.v===1&&Array.isArray(d.songs))return {setlist:d.sl||'共有セトリ',songs:d.songs,studio:d.st||null};
+  if(d&&d.v===1&&Array.isArray(d.songs))return {setlist:d.sl||'共有セトリ',songs:d.songs,events:d.st?[{type:'studio',date:d.st.d||'',start:d.st.s||'',end:d.st.e||'',place:d.st.p||''}]:[]};
   throw new Error('形式が違います')}
 function songFromShared(d,bandId){const sd=meterSlots(songMeterDefault({meter:d.m}));return {id:uid(),bandId,title:d.t||'無題',bpm:d.bpm||'',meter:d.m||'4/4',key:d.k||'',url:d.u||'',
   blocks:d.b.map(b=>{const ty=TYPES[b.ty]?b.ty:'X',dn=meterSlots(b.bm)||sd;const raw=typeof b.bars==='number'?Array(b.bars).fill(0):b.bars;
@@ -1277,14 +1298,15 @@ async function openShare(kind){
   let title,code,hasSt=false,withSt=false;
   if(kind==='setlist'){const sl=curSetlist();const songs=sl.songIds.map(songById).filter(Boolean);
     if(!songs.length)return toast('セトリに曲がありません');title=`セトリ「${sl.name}」(${songs.length}曲)`;
-    const st=sl.studio||{};hasSt=!!(st.date||st.start||st.place);withSt=hasSt&&S.prefs.shareStudio!==false;
-    var bytes=await packBytes(trimA([3,sl.name,withSt?{d:U(st.date),s:U(st.start),e:U(st.end),p:U(st.place)}:null,songs.map(songArr)]))}
+    // 予定は [種類(0=スタジオ 1=本番), 日付, 開始, 終了, 場所] の並びで入れる。終わった予定は送らない
+    const evs=evSorted(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));hasSt=evs.length>0;withSt=hasSt&&S.prefs.shareStudio!==false;
+    var bytes=await packBytes(trimA([3,sl.name,withSt?evs.map(e=>trimA([e.type==='live'?1:0,U(e.date),U(e.start),U(e.end),U(e.place)])):null,songs.map(songArr)]))}
   else{const s=curSong();title=`「${s.title}」`;var bytes=await packBytes([2,songArr(s)])}
   code=b64u(bytes);const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
-  ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> 次のスタジオの日時・場所も入れる <span class="sub">(${studioSum(curSetlist().studio).replace(/<[^>]+>/g,'').trim()})</span></label>`:''}
+  ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> スタジオ・本番の予定も入れる <span class="sub">(${evSorted(curSetlist()).filter(e=>!(e.date&&e.date<todayStr())&&(e.date||e.place)).length}件)</span></label>`:''}
   ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">📤 LINEなどのアプリで送る</button>`:''}
   <div hidden><span id="shCodeLen"></span><input id="shCode" readonly value="${SHARE_API?'':esc(code)}"></div>
   <div class="sub sh-lab">共有リンク <span id="shLen">(${link.length}文字)</span></div>
@@ -1308,10 +1330,10 @@ function viewImport(){
 let impTab='map';
 async function fillImport(){
   const el=$('#impBody');if(!el)return;
-  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs,studio:d.studio?{date:d.studio.d||'',start:d.studio.s||'',end:d.studio.e||'',place:d.studio.p||''}:null};
+  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs,events:(d.events||[]).map(e=>Object.assign({id:uid()},e))};
     const isSl=!!d.setlist;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
-    const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.studio?`<div style="margin-top:6px">次のスタジオ: <b>${studioSum(PENDING.studio)}</b> <span class="sub">${daysLeft(PENDING.studio.date)}</span></div>`:''}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
+    const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
     el.innerHTML=`<div class="card noprint"><b>共有された${isSl?'セトリ':'曲'}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${isSl?'セトリ':'曲'}に追加」すると、あなたの端末だけにコピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
@@ -1342,7 +1364,7 @@ function tutBody(){const [h,p]=TUT[TUTI],last=TUTI===TUT.length-1;
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-08',items:['元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有はリンクだけにしました(共有コードの欄をなくしました)','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
+  {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有はリンクだけにしました(共有コードの欄をなくしました)','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
   return `<div class="card"><b>🆕 お知らせ(不具合修正・アップデート)</b>
@@ -1388,7 +1410,7 @@ function toast(t){const e=document.createElement('div');e.className='toast';e.te
 function curSetlist(){return S.setlists.find(x=>x.id===S.cur.setlist)}
 function createSong(addToSetlist){const t=prompt('曲名');if(!t)return;const s=newSong(band().id,t);S.songs.push(s);
   if(addToSetlist&&curSetlist())curSetlist().songIds.push(s.id);location.hash='#/song/'+s.id}
-function newSetlist(){const n=prompt('セトリの名前(ライブ名など)');if(!n)return;const sl={id:uid(),bandId:band().id,name:n,songIds:[],studio:{date:'',start:'',end:'',place:''}};
+function newSetlist(){const n=prompt('セトリの名前(ライブ名など)');if(!n)return;const sl={id:uid(),bandId:band().id,name:n,songIds:[],events:[]};
   S.setlists.push(sl);S.cur.setlist=sl.id;location.hash='#/setlist/'+sl.id;render()}
 function newBand(){const n=prompt('バンド名');if(!n)return;const b={id:uid(),name:n};S.bands.push(b);S.cur.band=b.id;S.cur.setlist=null;location.hash='#/';render()}
 const ACT={
@@ -1473,19 +1495,19 @@ const ACT={
   pTie(){P.tie=!P.tie;applyParts()},
   pDel(){Object.assign(P,{root:'',acc:'',q:'',bass:'',bassAcc:'',lit:'',tie:false,slash:false});applyParts()},
   pMove:t=>move(+t.dataset.v),
-  calMenu(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');
+  calMenu(t){const {sl,e}=evFind(t.dataset.id);if(!e||!studioEvent(sl,e))return toast('先に日付を入れてください');CALID=e.id;
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal calmenu">
-    <div class="hstack"><b>スタジオの予定を追加・送る</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-    <p class="note" style="margin:4px 0 10px">${studioSum(sl.studio).replace(/<[^>]+>/g,'')}</p>
+    <div class="hstack"><b>${(EV_T[e.type]||EV_T.studio).l}の予定を追加・送る</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <p class="note" style="margin:4px 0 10px">${studioSum(e).replace(/<[^>]+>/g,'')}</p>
     <button class="calopt" data-act="calIcs"><b>📱 スマホのカレンダーに追加</b><span>iPhoneのカレンダー・Androidのカレンダーアプリなど。前日と1時間前の通知つき</span></button>
     <button class="calopt" data-act="calGoogle"><b>🗓 Googleカレンダーに追加</b><span>Googleカレンダーの登録画面が開きます</span></button>
     <button class="calopt" data-act="calText"><b>💬 予定を文章で送る・コピー</b><span>TimeTree・LINEのノートなどに貼り付ける用</span></button>
     <p class="note" style="margin-top:10px">TimeTreeを使っている場合: TimeTreeの設定で「外部カレンダー」にスマホのカレンダーを表示する設定にしておくと、上の「スマホのカレンダーに追加」で入れた予定がTimeTreeにも出ます。</p></div>`},
-  async calText(){const sl=curSetlist(),st=sl.studio,songs=sl.songIds.map(songById).filter(Boolean);
-    const txt=`【スタジオ】${band().name}(${sl.name})\n${studioSum(st).replace(/<[^>]+>/g,'').trim()}${songs.length?'\nセトリ\n'+songs.map((s,i)=>`${i+1}. ${s.title}`).join('\n'):''}`;
+  async calText(){const {sl,e:st}=evFind(CALID);if(!st)return;const songs=sl.songIds.map(songById).filter(Boolean);
+    const txt=`【${(EV_T[st.type]||EV_T.studio).l}】${band().name}(${sl.name})\n${studioSum(st).replace(/<[^>]+>/g,'').trim()}${songs.length?'\nセトリ\n'+songs.map((s,i)=>`${i+1}. ${s.title}`).join('\n'):''}`;
     if(navigator.share){try{await navigator.share({text:txt});return}catch(e){if(e.name==='AbortError')return}}
     try{await navigator.clipboard.writeText(txt);toast('予定の文章をコピーしました')}catch(e){prompt('この文章をコピーしてください',txt)}},
-  async calIcs(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');const ics=buildIcs(ev,sl.id+'-'+ev.start);
+  async calIcs(){const {sl,e}=evFind(CALID);const ev=sl&&studioEvent(sl,e);if(!ev)return toast('先に日付を入れてください');const ics=buildIcs(ev,e.id+'-'+ev.start);
     const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
     // Android など: .ics ファイルを共有メニューで渡すと、入っているカレンダーアプリを選べる
     if(TOUCH&&!isIOS){const f=new File([ics],'studio.ics',{type:'text/calendar'});
@@ -1493,8 +1515,10 @@ const ACT={
     // スマホは、置き場(Cloudflare)から「カレンダーの予定」として配信してもらうと、そのまま「カレンダーに追加」の画面が出る
     if(TOUCH&&SHARE_API){if(/ Line\//i.test(navigator.userAgent))toast('LINEの中のブラウザでは追加できないことがあります。Safariで開いてください');
       location.href=SHARE_API+'ics?b='+b64u(new TextEncoder().encode(ics));return}
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download=`スタジオ_${ev.start.slice(0,8)}.ics`;a.click();toast('カレンダー用のファイルを保存しました。開くと予定に追加されます')},
-  calGoogle(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download=`${(EV_T[e.type]||EV_T.studio).l}_${ev.start.slice(0,8)}.ics`;a.click();toast('カレンダー用のファイルを保存しました。開くと予定に追加されます')},
+  evAdd(t){const sl=curSetlist();slEvents(sl).push({id:uid(),type:t.dataset.v,date:'',start:'',end:'',place:''});render()},
+  evDel(t){const {sl,e}=evFind(t.dataset.id);if(!e||((e.date||e.place)&&!confirm(`この${(EV_T[e.type]||EV_T.studio).l}の予定を削除しますか？`)))return;sl.events=sl.events.filter(x=>x!==e);render()},
+  calGoogle(){const {sl,e}=evFind(CALID);const ev=sl&&studioEvent(sl,e);if(!ev)return toast('先に日付を入れてください');
     const q=new URLSearchParams({action:'TEMPLATE',text:ev.title,dates:ev.start+'/'+ev.end,details:ev.desc,location:ev.place,ctz:'Asia/Tokyo'});
     window.open('https://calendar.google.com/calendar/render?'+q.toString(),'_blank','noopener')},
   mPlay(){const s=curSong();const i=+($('#mFrom')||{value:0}).value;if(s.mSync&&songMedia(s))return syncPlayFrom(s,i);mStart(s,s.blocks.slice(i))},
@@ -1520,7 +1544,7 @@ const ACT={
   impTab(t){impTab=t.dataset.v;fillImport()},
   async copy(t){const i=$('#'+t.dataset.t);i.select();try{await navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}toast('コピーしました')},
   doImportSong(){const p=PENDING;if(!p)return;S.songs.push(...p.songs);ensureMarkers(p.songs.flatMap(s=>s.blocks.flatMap(b=>b.tags)));PENDING=null;
-    if(p.setlist){const sl={id:uid(),bandId:band().id,name:p.setlist,songIds:p.songs.map(s=>s.id),studio:p.studio||{date:'',start:'',end:'',place:''}};S.setlists.push(sl);S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
+    if(p.setlist){const sl={id:uid(),bandId:band().id,name:p.setlist,songIds:p.songs.map(s=>s.id),events:p.events||[]};S.setlists.push(sl);S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
     else{const s=p.songs[0];const c=$('#impSl');if(c&&c.checked&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id}
     toast('追加しました')},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
@@ -1564,8 +1588,9 @@ const CHG={
     if(S.markers.some(x=>x.name===n)){toast('同じ名前があります');render();return}
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.map(x=>x===m.name?n:x)));m.name=n;render()},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
-  studioTime(t){const st=curSetlist().studio,k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
-    st[k]=h?h+':'+m:'';$('#stSum').innerHTML=studioSum(st)},
+  studioTime(t){const {e:st}=evFind(t.dataset.id);if(!st)return;const k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
+    st[k]=h?h+':'+m:'';const s=$('#evSum-'+st.id);if(s)s.innerHTML=studioSum(st);save()},
+  evDate(t){const {e}=evFind(t.dataset.id);if(!e)return;e.date=t.value;render()},
   songMeter(){const s=curSong();const n=meterSlots(songMeterDefault(s));
     const bars=s.blocks.filter(b=>!b.meter).flatMap(b=>b.bars.filter(x=>!x.m&&x.n!==n));
     if(!bars.length){render();return}
@@ -1586,6 +1611,7 @@ const CHG={
     while(bl.bars.length<n)bl.bars.push(newBar(meterSlots(blockMeter(bl,curSong()))));bl.bars.length=n;if(P&&P.bar>=n)P=null;render()},
 };
 const INP={
+  evf(t){const {e}=evFind(t.dataset.id);if(!e)return;e[t.dataset.k]=t.value;const s=$('#evSum-'+e.id);if(s)s.innerHTML=studioSum(e)},
   songField(t){curSong()[t.dataset.k]=t.value},
   blockField(t){curBlock()[t.dataset.k]=t.value},
   lyric(t){curBlock().bars[+t.dataset.bar].lyric=t.value},
