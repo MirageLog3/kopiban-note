@@ -134,6 +134,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .cp-sec{margin-top:12px}.cp-h{font-size:12px;color:var(--sub);margin-bottom:6px}.cp-btn{width:100%;margin-bottom:8px;padding:10px}
 .cp-range{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}.cp-range select{min-width:64px}.cp-all{width:100%}
 .cp-now{margin-bottom:8px;font-size:14px;overflow-wrap:anywhere}.cp-note{margin:0;font-size:12px}
+.impcode{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--panel2)}.impcode b{font-size:14px}
+.impcode .hstack{flex-wrap:nowrap}.impcode input{min-width:0;font-size:16px;font-weight:700;letter-spacing:1px}.impcode button{flex:none}
 .cj-mode{display:flex;gap:6px;margin-top:10px}.cj-mode button{flex:1;padding:8px 0}.cj-mode button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .cj-kbw{overflow-x:auto;margin:10px 0 8px;-webkit-overflow-scrolling:touch}
 .cj-kb{position:relative;height:130px;display:flex;min-width:max(100%,630px);user-select:none;-webkit-user-select:none;touch-action:pan-x}
@@ -1310,10 +1312,11 @@ async function openShare(kind){
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> スタジオ・本番の予定も入れる <span class="sub">(${evSorted(curSetlist()).filter(e=>!(e.date&&e.date<todayStr())&&(e.date||e.place)).length}件)</span></label>`:''}
   ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">📤 LINEなどのアプリで送る</button>`:''}
-  <div hidden><span id="shCodeLen"></span><input id="shCode" readonly value="${SHARE_API?'':esc(code)}"></div>
+  <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
+  <div class="hstack sh-row"><input id="shCode" readonly value="${SHARE_API?'':esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   <div class="sub sh-lab">共有リンク <span id="shLen">(${link.length}文字)</span></div>
   <div class="hstack sh-row"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>✂</button><button data-act="copy" data-t="shLink">コピー</button></div>
-  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くだけで見られます。ホーム画面に追加したアプリに取り込みたいときは、リンクをコピーして、アプリの「設定 → 共有」に貼り付けます。</p>
+  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くだけで見られます。ホーム画面に追加したアプリで使っている人は、アプリの「設定 → 共有」に共有コードを入れると取り込めます。</p>
   </div>`;
   SHARE_LONG=code;if(SHARE_API)makeShort(code)}
 let SHARE_LONG='';
@@ -1341,7 +1344,10 @@ async function fillImport(){
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
       <span class="sub">追加先バンド: ${esc(band().name)}</span>
       ${!isSl&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
-      <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div></div>${toc}${body}`;measureMaps()}
+      <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div>
+    ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'':`<div class="impcode"><b>📱 ホーム画面に追加したアプリで使っている人へ</b>
+      <p class="note" style="margin:2px 0 6px">リンクはブラウザで開くので、アプリには入りません。このコードをコピーして、アプリの「設定 → 共有」に貼り付けてください。</p>
+      <div class="hstack"><input id="impShow" readonly value="${esc(R.name==='s'?R.a:location.href)}" style="flex:1"><button data-act="copy" data-t="impShow">コピー</button></div></div>`}</div>${toc}${body}`;measureMaps()}
   catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
 let PENDING=null;
 /* ---------- settings ---------- */
@@ -1366,7 +1372,7 @@ function tutBody(){const [h,p]=TUT[TUTI],last=TUTI===TUT.length-1;
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有はリンクだけにしました(共有コードの欄をなくしました)','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
+  {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
   return `<div class="card"><b>🆕 お知らせ(不具合修正・アップデート)</b>
@@ -1389,8 +1395,8 @@ function viewSettings(){if(newsUnseen()){S.prefs.newsSeen=NEWS[0].d;save()}
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>
   <div class="card"><b>表示</b><div class="hstack" style="margin-top:8px"><select data-change="theme">${Object.entries(THEMES).map(([k,l])=>`<option value="${k}" ${(S.prefs.theme||'auto')===k?'selected':''}>${l}${k==='auto'?'(PCの設定に合わせる)':''}</option>`).join('')}</select></div></div>
-  <div class="card"><b>共有</b><p class="note">友達から届いた共有リンクを貼ると、その曲やセトリを取り込めます。</p>
-    <div class="hstack"><input id="impCode" placeholder="共有リンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
+  <div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を入れると、その曲やセトリを取り込めます。</p>
+    <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     <p class="note" style="margin-top:12px">アプリをネット上に置いた場合は、そのURLをここに入れると共有リンクがそこを指すようになります。</p>
     <input value="${esc(S.prefs.shareBase||'')}" data-input="shareBase" placeholder="空欄なら https://miragelog3.github.io/kopiban-note/" style="width:100%"></div>
   <div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
@@ -1534,7 +1540,7 @@ const ACT={
   pmPlay(){ensureCtx();M.paused()?M.play():M.pause()},
   pmMore(){$('#player').classList.toggle('more')},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
-    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
+    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「設定 → 共有」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
   share:()=>openShare('song'),
   async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
     if(/^(file:|http:\/\/(127\.|localhost))/.test(i.value))return toast('このPCの中のアドレスは短縮できません');
