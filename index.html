@@ -90,7 +90,12 @@ h1{font-size:24px;margin:4px 0 6px}
 .metro.closed{display:flex;align-items:center;gap:10px;padding:8px 12px}.metro.closed .mstat{margin:0}
 .panel.metro-b{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .shortbox{background:var(--panel2);border-radius:10px;padding:10px 12px;margin-bottom:12px}
-.shortcode{flex:1;font-size:26px!important;font-weight:800;letter-spacing:4px;text-align:center;font-family:ui-monospace,Consolas,monospace}
+.shortcode{flex:1;min-width:0;width:100%;font-size:26px!important;font-weight:800;letter-spacing:4px;text-align:center;font-family:ui-monospace,Consolas,monospace}
+.pl-mini{display:none;align-items:center;gap:8px;flex:1;min-width:0}
+.pm-play{width:44px;height:44px;border-radius:50%;padding:0;font-size:18px;background:var(--accent);border-color:var(--accent);color:#fff;flex:0 0 auto}
+#pmSeek{flex:1;min-width:0;accent-color:var(--accent);height:28px}
+.pm-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pm-more{font-size:20px;padding:4px 8px}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
 #ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
@@ -300,10 +305,26 @@ body.has-player #sheet .sheet{bottom:54px}
   body.sheet-open #player{display:none}
   body.sheet-open.has-player #sheet .sheet{bottom:0}
   body.sheet-open main{padding-bottom:60vh}
-  #player{padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
-  .pl-in{gap:6px}.pl-name{max-width:100%;flex-basis:100%;font-size:13px}#pa{min-width:0;width:100%;flex-basis:100%}
-  body.has-player #sheet .sheet{bottom:110px}
-  .modal{top:6%;padding:14px}
+  /* 縦長のスマホ画面(例 iPhone 13 = 390×844)向け: 再生バーは1行、画面下に固定 */
+  #player{padding:6px 10px calc(6px + env(safe-area-inset-bottom))}
+  .pl-in{gap:8px;flex-wrap:wrap;align-items:center}
+  .pl-name,#pa,#plLoop:empty,#plPick,#plRemove{display:none!important}
+  .pl-mini{display:flex}
+  .pl-rate-t{display:none}.pl-rate select{font-size:13px;padding:4px 2px}
+  #ytWrap iframe{width:96px!important;height:54px!important}
+  #player.more .pl-name{display:block!important;flex-basis:100%;font-size:12px;order:-1}
+  #player.more #plPick,#player.more #plRemove{display:inline-block!important}
+  body.has-player main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+  body.has-player #sheet .sheet{bottom:0}
+  body.sheet-open main,body.sheet-open.has-player main{padding-bottom:60vh}
+  main{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+  .top{min-height:48px}
+  /* ダイアログは画面下からのシートにする */
+  .modal{top:auto;bottom:0;left:0;right:0;transform:none;width:100%;max-height:88dvh;overflow-y:auto;border-radius:16px 16px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom))}
+  .modal .hstack{flex-wrap:nowrap}.modal input{min-width:0}
+  .shortcode{font-size:24px!important;letter-spacing:3px}
+  .chips{margin-left:0}
+  .btitle .name{font-size:19px}
   .memo-item input{width:100%}.memo-item{flex-wrap:wrap}
 }
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:8px 16px;border-radius:20px;z-index:60}
@@ -586,7 +607,8 @@ function mPaint(e,stopped){const s=songById(MT.songId);const st=$('#metroStat');
 
 /* ---------- song audio player ---------- */
 const PL={songId:null,blobId:null,loop:null};
-const fmtT=t=>t==null?'':`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
+const fmtT=t=>t==null?'':t<0?'-'+fmtT(-t):`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
+const fmtS=t=>!isFinite(t)||t<0?'0:00':`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 function timeBtns(b){const s=curSong()||playerSong();const t=blockTime(s,b),sync=syncOn(s);
   return `<span class="tbtns"><span class="tstamp" title="${sync?'メトロノームの拍の並びから計算した位置':'⏱で登録した位置'}">${t!=null?fmtT(t):'--:--'}</span>
   <button data-act="bPlay" data-id="${b.id}" title="このブロックの頭から再生" ${t==null?'disabled':''}>▶</button>
@@ -594,12 +616,21 @@ function timeBtns(b){const s=curSong()||playerSong();const t=blockTime(s,b),sync
   ${sync?'':`<button data-act="bMark" data-id="${b.id}" title="今の再生位置をこのブロックの頭にする">⏱</button>`}</span>`}
 function initPlayer(){
   $('#player').innerHTML=`<div class="pl-in"><span id="plName" class="pl-name"></span><div id="ytWrap" style="display:none"><div id="yt"></div></div><audio id="pa" controls preload="metadata"></audio>
-  <label class="sub">速さ <select id="plRate">${[100,90,80,75,70,60,50].map(v=>`<option value="${v/100}">${v}%</option>`).join('')}</select></label>
+  <div class="pl-mini"><button class="pm-play" id="pmPlay" data-act="pmPlay" aria-label="再生/一時停止">▶</button>
+    <input type="range" id="pmSeek" min="0" max="1000" value="0" aria-label="再生位置"><span class="pm-time" id="pmTime">0:00</span>
+    <button class="ghost pm-more" data-act="pmMore" aria-label="その他">⋯</button></div>
+  <label class="sub pl-rate"><span class="pl-rate-t">速さ </span><select id="plRate">${[100,90,80,75,70,60,50].map(v=>`<option value="${v/100}">${v}%</option>`).join('')}</select></label>
   <span id="plLoop" class="sub"></span>
   <button class="ghost" data-act="audioPick" id="plPick" title="音源ファイルを入れる・差し替える">差し替え</button><button class="ghost" data-act="audioRemove" id="plRemove" title="この曲から音源を外す">外す</button></div>`;
   const a=$('#pa');a.preservesPitch=true;
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
   setInterval(()=>{if(M.kind==='yt'&&$('#player').style.display!=='none')onTime()},250);
+  // スマホ用のコンパクトな再生バー(1行): 再生ボタン・シークバー・時間
+  const sk=$('#pmSeek');let dragging=false;
+  sk.addEventListener('input',()=>{dragging=true;const d=M.dur();if(d)$('#pmTime').textContent=fmtS(sk.value/1000*d)});
+  sk.addEventListener('change',()=>{const d=M.dur();if(d)M.seek(sk.value/1000*d);dragging=false});
+  setInterval(()=>{if(!M.kind||$('#player').style.display==='none')return;const d=M.dur(),t=M.time();
+    $('#pmPlay').textContent=M.paused()?'▶':'⏸';if(!dragging){$('#pmTime').textContent=fmtS(t)+' / '+fmtS(d);if(d)sk.value=Math.round(t/d*1000)}},250);
   a.addEventListener('loadedmetadata',()=>{a.playbackRate=+$('#plRate').value});
   a.addEventListener('timeupdate',onTime);
 }
@@ -941,7 +972,7 @@ async function isgd(url){const ac=new AbortController();const tm=setTimeout(()=>
     if(!r.ok||!/^https:\/\/da\.gd\/\S+$/.test(x))throw new Error(x.slice(0,60)||('HTTP '+r.status));return x}
   catch(e){throw new Error(e.name==='AbortError'?'時間切れ':e.message.includes('fetch')?'つながりませんでした':e.message)}finally{clearTimeout(tm)}}
 const PUBLIC_URL='https://miragelog3.github.io/kopiban-note/';
-function shareBase(){return (S.prefs.shareBase||(location.protocol==='file:'?PUBLIC_URL:location.href.split('#')[0])).trim()}
+function shareBase(){return (S.prefs.shareBase||(location.protocol==='file:'?PUBLIC_URL:location.origin+location.pathname)).trim()}
 async function openShare(kind){
   let title,code,hasSt=false,withSt=false;
   if(kind==='setlist'){const sl=curSetlist();const songs=sl.songIds.map(songById).filter(Boolean);
@@ -967,7 +998,7 @@ async function makeShort(code){const box=$('#shShortBox');
   try{const r=await fetch(SHARE_API,{method:'POST',headers:{'Content-Type':'text/plain'},body:code});if(!r.ok)throw new Error('HTTP '+r.status);
     const {id}=await r.json();if(!$('#shShortBox'))return;const link=shareBase()+'#/s/'+id;
     box.innerHTML=`<div class="sub">短いコード(友達はアプリの「設定 → 共有コードを読み込む」に入れるだけ)</div><div class="hstack"><input id="shShort" readonly value="${id}" class="shortcode"><button class="primary" data-act="copy" data-t="shShort">コピー</button></div>`;
-    $('#shLink').value=link;$('#shLen').textContent='('+link.length+'文字)';$('#shCode').value=id;$('#shCodeLen').textContent='('+id.length+'文字)'}
+    $('#shLink').value=link;$('#shLen').textContent='('+link.length+'文字)';$('#shCode').value=id;const cr=$('#shCode').closest('.hstack');cr.style.display='none';cr.previousElementSibling.style.display='none'}
   catch(e){if(box)box.innerHTML=`<span class="sub">短いコードを作れませんでした(${esc(e.message)})。下の長いリンク・コードはそのまま使えます</span>`;const b=$('#shBtn');if(b)b.style.display=''}}
 async function fetchShort(id){if(!SHARE_API)throw new Error('短いコードの置き場が設定されていません');const r=await fetch(SHARE_API.replace(/\/$/,'')+'/'+id);
   if(r.status===404)throw new Error('このコードは見つかりませんでした');if(!r.ok)throw new Error('HTTP '+r.status);return (await r.text()).trim()}
@@ -1084,6 +1115,8 @@ const ACT={
   mStop(){mStop();const s=curSong();if(s&&s.mSync&&M.kind)M.pause()},
   mOff(t){const s=curSong();s.mOffset=Math.round(((+s.mOffset||0)+ +t.dataset.v)*100)/100;const i=$('#mOffIn');if(i)i.value=s.mOffset.toFixed(2);MS.last=null;save()},
   bZoom(t){const v=+t.dataset.v;setBZ(v===0?1:BZ*(v>0?1.25:0.8))},
+  pmPlay(){ensureCtx();M.paused()?M.play():M.pause()},
+  pmMore(){$('#player').classList.toggle('more')},
   share:()=>openShare('song'),
   async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
     if(/^(file:|http:\/\/(127\.|localhost))/.test(i.value))return toast('このPCの中のアドレスは短縮できません');
