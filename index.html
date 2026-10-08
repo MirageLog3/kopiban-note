@@ -947,7 +947,7 @@ async function openShare(kind){
     const st=sl.studio||{};hasSt=!!(st.date||st.start||st.place);withSt=hasSt&&S.prefs.shareStudio!==false;
     var bytes=await packBytes(trimA([3,sl.name,withSt?{d:U(st.date),s:U(st.start),e:U(st.end),p:U(st.place)}:null,songs.map(songArr)]))}
   else{const s=curSong();title=`「${s.title}」`;var bytes=await packBytes([2,songArr(s)])}
-  code=toKanji(bytes);const link=shareBase()+'#/import/'+b64u(bytes);
+  code=b64u(bytes);const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
@@ -955,7 +955,7 @@ async function openShare(kind){
   <div class="sub">共有リンク <span id="shLen">(${link.length}文字)</span></div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn">✂ 短くする</button><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
   <p class="note" id="shNote" style="margin:4px 0 0">「短くする」を押すと、短縮サービス(da.gd)で https://da.gd/xxxx のような短いリンクにします。</p>
   ${link.length>8000?`<p class="note" style="color:var(--accent)">リンクが長め(${link.length}文字)なので、アプリによっては途中で切れるかもしれません。切れたら下の共有コードを送ってください。</p>`:''}
-  <div class="sub" style="margin-top:10px">共有コード(${code.length}文字・漢字の羅列ですが、そのままコピーして送ればOK)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
+  <div class="sub" style="margin-top:10px">共有コード(${code.length}文字)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   </div>`}
 function viewImport(){
   return topbar('')+`<main><div id="impBody"><div class="card"><span class="sub">読み込み中…</span></div></div></main>`}
