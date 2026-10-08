@@ -304,7 +304,8 @@ h1{font-size:24px;margin:4px 0 6px}
 /* 使い方ガイド・お知らせ */
 .tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut .tut-p{margin:0 0 4px;line-height:1.7;overflow-y:auto}
 .tut .tut-p.help{font-size:14px;color:var(--sub)}.tut .tut-p.help b{color:var(--text)}
-.tut-helprow{height:34px;display:flex;align-items:center}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
+.tut-helprow{height:34px;display:flex;align-items:center}.tut-play{padding:4px 10px;font-size:12px;white-space:nowrap}
+.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
 .tut-help .qm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--sub);font-weight:700;font-size:12px;flex:none}
 .tut-dots{display:flex;gap:5px;justify-content:center;margin:10px 0}.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.tut-dots i.on{background:var(--accent)}
 .news-v{margin-top:10px}.news-v b{font-size:13px}.news-v ul{margin:4px 0 0;padding-left:1.2em;line-height:1.7;font-size:14px}
@@ -1445,11 +1446,11 @@ function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelect
   h.innerHTML=TG()[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
-function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>`).join('')}</div>
-  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="実際の画面を開きながら案内します">▶ 画面で案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
+function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<div class="trow"><button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>${tgCan(i)?`<button class="tplay" data-act="tutTour" data-v="${i}" title="画面で見る">▶</button>`:''}</div>`).join('')}</div>
+  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
-  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}</div>
+  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:''}</div>
   <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack"><button class="ghost" data-act="tutGo" data-v="-1">≡ 目次</button><span class="spacer"></span>${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':''}
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ →'}</button></div>`}
@@ -1497,7 +1498,10 @@ const TOUR_MORE=['音源','メトロノーム','コード入力キーボード',
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
 const tGrp=(s,i)=>s.grp||(i<2?'はじめに':s.r===tSong?'曲の画面':s.r===tBlk?'ブロックの画面':'セトリ画面');
 const TG=()=>TOUR.filter(s=>!s.noguide).map((s,i)=>[s.h,s.g||s.t,s.help,tGrp(s,i)]);
-let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false;
+// THINT: 「使い方を見る」から1つの項目だけを画面で見ているとき(TBACK: 戻る先の項目)
+let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false,TBACK=-1;
+const TGS=()=>TOUR.filter(s=>!s.noguide);
+const tgCan=i=>{const st=TGS()[i];return st&&st.sel&&(!st.need||st.need())};
 // 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
 function tourStart(){ACT.lbClose();THINT=false;TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
@@ -1521,11 +1525,11 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   const el=tourEl(st);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
   const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
   bub.classList.remove('in');
-  bub.innerHTML=`<div class="tut-step">${THINT?'💡 ヒント':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
+  bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
-    ${THINT?'<div class="hstack" style="margin-top:8px"><span class="spacer"></span><button class="primary" data-act="tourEnd">OK</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
+    ${THINT?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button class="primary" data-act="tourBack">← 使い方に戻る</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
@@ -1558,7 +1562,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1674,6 +1678,9 @@ const ACT={
   tourStart(){tourStart()},
   tutGo(t){TUTI=+t.dataset.v;TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tourGuide(t){tourEnd();ACT.tutOpen(TG().findIndex(x=>x[0]===t.dataset.h))},
+  // 使い方の1項目を、実際の画面を開いて光らせて見せる。終わったら使い方のその項目に戻る
+  tutTour(t){const i=+t.dataset.v,st=TGS()[i];if(!tgCan(i))return;TBACK=i;ACT.lbClose();THINT=true;TSTEPS=[{...st,t:st.g||st.t,tap:null}];TI=0;TH=false;tourGo()},
+  tourBack(){const i=TBACK;tourEnd();ACT.tutOpen(i)},
   tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
