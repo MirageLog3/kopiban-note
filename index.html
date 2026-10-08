@@ -1465,11 +1465,11 @@ const TOUR=[
   {r:()=> '#/',sel:'main .list .row',h:'曲を開く',t:'セトリに入っている曲です。光っている曲をタップして、曲の画面を開いてみましょう。',tap:'main .list .row a.body',need:tourSong},
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
-  {r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかんで並べ替え、タップするとブロックの中に入れます。',need:tourSong},
-  {r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
   {r:tSong,sel:'#songInfo',h:'① 曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {r:tSong,sel:'#songAudio',h:'② 音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
   {r:tSong,sel:'.metro',h:'③ メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
+  {r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。',need:tourSong},
+  {r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
   // ブロックの画面
   {r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'ブロックをタップすると、その中に入ってコードなどを書き込めます。光っているブロックをタップしてみましょう。',tap:'main .list .row a.body',need:tourBlock},
   {r:tBlk,sel:'#bquick',h:'④ ブロックの画面',t:'小節数・メモ・マーカー(キメ・テンポ注意などの目印)は、ここですぐに変えられます。',need:tourBlock,before:tNoCell},
