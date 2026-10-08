@@ -293,6 +293,8 @@ h1{font-size:24px;margin:4px 0 6px}
 @keyframes tourRip{0%{transform:scale(.3);opacity:.8}100%{transform:scale(2);opacity:0}}
 .bunsetsu{overflow-wrap:anywhere;line-break:strict}/*nowrap-pretty-off*/
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
+.tour-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tour-more button{padding:5px 10px;font-size:13px;border-radius:999px}
+.tut-tocfoot{flex-wrap:nowrap}.tut-tocfoot button{white-space:nowrap;padding-left:10px;padding-right:10px}.tut-toc{max-height:52vh;overflow-y:auto;margin:4px 0 10px}.tut-toc h4{margin:10px 0 4px;font-size:12px;color:var(--sub);font-weight:600}.tut-toc button{display:block;width:100%;text-align:left;padding:8px 12px;margin:4px 0}
 .song-audio{margin-top:12px}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
 .brow.bq{display:flex;gap:10px;align-items:flex-start}.brow.bq input[type=number]{width:80px}
 .nm-eg{margin:0 0 10px;padding-left:1.2em;font-size:13px;color:var(--sub);line-height:1.7}
@@ -1438,16 +1440,19 @@ const TUT=[
     ['データの扱い','・曲やセトリは、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、ときどき「☰ メニュー → バックアップ」で保存しておくと安心です。']]];
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
-function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');let mh=0,mp=0;const cur=p.innerHTML;
+function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');if(!p)return;let mh=0,mp=0;const cur=p.innerHTML;
   TG().forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;wbrize(p);h.style.minHeight='';p.style.height='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
   h.innerHTML=TG()[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
-function tutBody(){const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
+// 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
+function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>`).join('')}</div>
+  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="実際の画面を開きながら案内します">▶ 画面で案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
+function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
   <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}</div>
   <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
-  <div class="hstack">${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':'<button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="実際の画面を開きながら案内します">▶ 画面で案内</button>'}<span class="spacer"></span>
-  <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
+  <div class="hstack"><button class="ghost" data-act="tutGo" data-v="-1">≡ 目次</button><span class="spacer"></span>${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':''}
+  <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ →'}</button></div>`}
 /* ---------- 画面を見ながらの案内(ツアー) ----------
    初めて開いたときに、実際の画面を順に開いて、説明する場所だけを明るく見せる。
    メニューの「使い方を見る」は文章だけ(上の TUT)を読む */
@@ -1457,8 +1462,8 @@ const tSong=()=> '#/song/'+tourSong().id, tBlk=()=> `#/block/${tourSong().id}/${
 const tCell=()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}};
 const tNoCell=()=>{if(P)ACT.pClose()};
 const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone,IS_PHONE=()=>matchMedia('(pointer:coarse)').matches;
-// core: 初めて開いたときの案内(曲を開いてコードを1つ入れるまで)  on: その画面に初めて来たときに1回だけ出す案内  kb: キーボードが開いているとき
-// g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない
+// core: 初めて開いたときの案内(曲を開いてコードを1つ入れるまで)。それ以外は「使い方を見る」だけに出る
+// g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない  grp: 目次での見出し(なければ画面から決める)
 const TOUR=[
   {core:1,r:()=> '#/',sel:null,h:'ようこそ！',t:'コピバン練習ノートは、バンドでコピーする曲の「構成・コード・メモ」をまとめるツールです。<br>まずは曲を1つ開いて、コードを入れてみましょう。最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。'},
   {core:1,r:()=> '#/',sel:null,h:'先にホーム画面に追加',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。',
@@ -1484,30 +1489,18 @@ const TOUR=[
   {core:1,r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
-  {on:'setlist',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。'},
-  {on:'setlist',r:()=> '#/',sel:'.menubtn',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
-  {core:1,noguide:1,r:tBlk,sel:null,h:'これで準備OK',t:'「はじめる」を押したら、開いているキーボードでコードを入れてみましょう。あとは同じように、曲の構成とコードを書いていきます。<br>音源・メトロノーム・共有などは、初めてその画面を開いたときに短い案内が出ます。全部の説明は「☰ メニュー → 使い方を見る」でいつでも見られます。',need:tourBlock}];
+  {on:'setlist',grp:'共有',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。'},
+  {on:'setlist',grp:'共有',r:()=> '#/',sel:'.menubtn',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
+  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'「はじめる」を押したら、開いているキーボードでコードを入れてみましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。',more:1,need:tourBlock,before:tCell}];
+// 最後のステップに並べる「使い方を見る」の見出し
+const TOUR_MORE=['音源','メトロノーム','コード判定','詳しい設定','共有・印刷','スタジオ・本番の予定','セトリごと共有'];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
-const TG=()=>TOUR.filter(s=>!s.noguide).map(s=>[s.h,s.g||s.t,s.help]);
+const tGrp=(s,i)=>s.grp||(i<2?'はじめに':s.r===tSong?'曲の画面':s.r===tBlk?'ブロックの画面':'セトリ画面');
+const TG=()=>TOUR.filter(s=>!s.noguide).map((s,i)=>[s.h,s.g||s.t,s.help,tGrp(s,i)]);
 let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false;
 // 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
 function tourStart(){ACT.lbClose();THINT=false;TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
-// 初めて来た画面・初めて開いた機能に、短い案内を1回だけ出す。1つの画面で出すのは1つまで。操作中や入力中は出さない
-let HINT_AT='',HINT_IDLE=0;
-addEventListener('pointerdown',()=>HINT_IDLE=Date.now(),true);addEventListener('keydown',()=>HINT_IDLE=Date.now(),true);
-function hintInView(sel){const el=sel&&document.querySelector(sel);if(!el)return false;const r=el.getBoundingClientRect();
-  const hb=($('header.top')||{getBoundingClientRect:()=>({bottom:0})}).getBoundingClientRect().bottom;
-  return r.width>0&&r.height>0&&r.top>=hb&&r.bottom<=innerHeight-40}
-function hintCheck(){try{if(!S||!S.prefs.tutDone||TI>=0||$('#tour')||document.hidden)return;
-  if($('#overlay')&&$('#overlay').innerHTML.trim())return;
-  const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
-  if(Date.now()-HINT_IDLE<1500)return;
-  const at=location.hash+(P?'#kb':'');if(at===HINT_AT)return;
-  const seen=S.prefs.hints||(S.prefs.hints={});
-  const st=TOUR.find(s=>s.on===R.name&&!seen[s.h]&&!!s.kb===!!P&&(!s.need||s.need())&&hintInView(s.sel));if(!st)return;
-  HINT_AT=at;seen[st.h]=1;save();THINT=true;TSTEPS=[st];TI=0;TH=false;tourShow()}catch(_){}}
-setInterval(hintCheck,1000);
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
@@ -1530,6 +1523,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   bub.classList.remove('in');
   bub.innerHTML=`<div class="tut-step">${THINT?'💡 ヒント':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
+    ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     ${THINT?'<div class="hstack" style="margin-top:8px"><span class="spacer"></span><button class="primary" data-act="tourEnd">OK</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
@@ -1551,9 +1545,9 @@ function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(
   if(Hh-bot>=bh+12)Object.assign(bub.style,{top:bot+10+'px',bottom:''});
   else if(top>=bh+12)Object.assign(bub.style,{top:top-bh-10+'px',bottom:''});
   else Object.assign(bub.style,{top:'',bottom:'12px'})}
-function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;HINT_AT=location.hash+(P?'#kb':'');HINT_IDLE=Date.now();
+function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;
   // 最初の案内は、終わった画面のまま続けて書き込めるようにする(セトリ画面に戻さない)
-  if(!THINT){S.prefs.tutDone=true;S.prefs.hints=S.prefs.hints||{};save()}THINT=false}
+  if(!THINT){S.prefs.tutDone=true;save()}THINT=false}
 // 日本語の改行を文節っぽい区切りでだけ起こす: ひらがな・句読点のあと、漢字・カタカナ・英数字・かっこの前を改行してよい場所にする
 function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
   const re=/(?<=[ぁ-ゖ、。」』）)！？・])(?=[一-龠々〆ァ-ヶーｦ-ﾟA-Za-z0-9「『（(＋→←])/;
@@ -1564,7 +1558,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['最初の案内を短く(曲を開いてコードを1つ入れるまで)。ほかの機能は、初めてその画面を開いたときに💡ヒントで1回だけ案内','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['最初の案内を短く(曲を開いてコードを1つ入れるまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1678,7 +1672,9 @@ const ACT={
   tourTap(){tourTap()},
   tourEnd(){tourEnd()},
   tourStart(){tourStart()},
-  tutOpen(){TUTI=0;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
+  tutGo(t){TUTI=+t.dataset.v;TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
+  tourGuide(t){tourEnd();ACT.tutOpen(TG().findIndex(x=>x[0]===t.dataset.h))},
+  tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutEnd(){S.prefs.tutDone=true;save();ACT.lbClose()},
@@ -1910,8 +1906,6 @@ window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';rend
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(v=>{STORE_OK=v}).catch(()=>{});
   render();gcBlobs();
   if(!S.prefs.tutDone&&!/^#\/(s|import)\//.test(location.hash))setTimeout(tourStart,400);
-  // 前の長い案内を見終わっている人には、画面ごとの案内は出さない
-  else if(S.prefs.tutDone&&!S.prefs.hints){S.prefs.hints={};TOUR.forEach(s=>{if(s.on)S.prefs.hints[s.h]=1})}
 })();
 </script>
 </body>
