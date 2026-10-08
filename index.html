@@ -1446,7 +1446,7 @@ function tourBlock(){const s=tourSong();return s&&s.blocks[0]}
 const TOUR=[
   {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
   {r:()=> '#/',sel:null,h:'データについて',t:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は<b>ホーム画面に追加</b>しておくのがおすすめです。',help:TUT[5][2]},
-  {r:()=> '#/',sel:'main h1',h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。上の「セトリ」でいつでもここに戻れます。'},
+  {r:()=> '#/',sel:'main',whole:true,h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。上の「セトリ」でいつでもここに戻れます。'},
   {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'コピバンならコピーするバンドの名前、イベントならライブ企画の名前でセトリを作りましょう。'},
   {r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
   {r:()=> '#/',sel:'main .list .row',h:'曲',t:'セトリに入っている曲です。タップすると曲の画面が開きます。',need:tourSong},
@@ -1470,7 +1470,7 @@ function tourBox(){let box=$('#tour');if(box)return box;box=document.createEleme
   box.innerHTML=`<div class="tour-spot" id="tourSpot" style="left:0;top:0;width:${innerWidth}px;height:${innerHeight}px;border-radius:0"></div><div class="tour-bub" id="tourBub"></div>`;
   document.body.appendChild(box);addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true);return box}
 function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ;
-  const el=st.sel&&document.querySelector(st.sel);if(el)el.scrollIntoView({block:'center'});
+  const el=st.sel&&document.querySelector(st.sel);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
   const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
   bub.classList.remove('in');
   bub.innerHTML=`<div class="tut-step">${TI+1} / ${TSTEPS.length}</div><b class="tour-h">${st.h}</b>
@@ -1480,13 +1480,16 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`;
   wbrize(bub.querySelector('.tour-t'));
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
-  if(el){const r=el.getBoundingClientRect(),bh=bub.offsetHeight,H=innerHeight;
+  if(el&&!st.whole){const r=el.getBoundingClientRect(),bh=bub.offsetHeight,H=innerHeight;
     if(r.bottom+bh+24>H&&r.top-bh-24<0&&getComputedStyle(el).position!=='fixed'&&!el.closest('.sheet,header,#sheet'))window.scrollBy(0,r.top-70)}
   tourPlace();setTimeout(()=>{if(seq!==TSEQ)return;tourPlace();bub.classList.add('in')},330)}
 function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(!st||!sp||!bub)return;
   const el=st.sel&&document.querySelector(st.sel);const W=innerWidth,Hh=innerHeight,m=6,bh=bub.offsetHeight;
   if(!el){Object.assign(sp.style,{left:W/2+'px',top:Hh/2+'px',width:'0px',height:'0px',borderRadius:'10px'});
     Object.assign(bub.style,{top:Math.max(12,(Hh-bh)/2)+'px',bottom:''});return}
+  // 画面全体を見せたいステップは、上のバーより下を全部明るくして、吹き出しは一番下に出す
+  if(st.whole){const hb=($('header.top')||{getBoundingClientRect:()=>({bottom:0})}).getBoundingClientRect().bottom;
+    Object.assign(sp.style,{left:'4px',top:hb+4+'px',width:W-8+'px',height:Hh-hb-8+'px',borderRadius:'10px'});Object.assign(bub.style,{top:'',bottom:'12px'});return}
   const r=el.getBoundingClientRect();const top=Math.max(4,r.top-m),bot=Math.min(Hh-4,r.bottom+m);
   Object.assign(sp.style,{left:Math.max(4,r.left-m)+'px',top:top+'px',width:Math.min(W-8,r.width+m*2)+'px',height:Math.max(0,bot-top)+'px',borderRadius:'10px'});
   if(Hh-bot>=bh+12)Object.assign(bub.style,{top:bot+10+'px',bottom:''});
