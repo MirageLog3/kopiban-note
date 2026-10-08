@@ -107,6 +107,17 @@ h1{font-size:24px;margin:4px 0 6px}
 .cs-lab{font-size:12px;color:var(--sub);margin:8px 0 2px}.cs-lab .hl{color:var(--accent)}
 .keys.presets.dim{opacity:.45}
 .keys .acc{min-width:46px}
+/* Musician Keyboard 風キーボード */
+.kb{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.kr{display:grid;gap:5px}.kr.r10{grid-template-columns:repeat(10,1fr)}.kr.r9{grid-template-columns:repeat(7,1fr) 1fr 1fr}
+.kr.r9:nth-child(4){grid-template-columns:repeat(9,1fr)}
+.kr.kfoot{grid-template-columns:1.3fr 1fr 1fr 1.3fr}
+.kk{min-width:0;padding:10px 0;font-size:16px;font-weight:600;border-radius:7px;background:var(--panel);box-shadow:0 1px 0 var(--line)}
+.kk.kroot{font-size:18px}.kk.kacc{font-size:18px;background:var(--panel2)}.kk.kq{color:var(--accent)}
+.kk.ksym{font-size:14px}.kk.kfn{background:var(--panel2);font-size:14px}
+.kk.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.kk.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media screen and (max-width:420px){.kk{padding:9px 0;font-size:14px}.kk.kroot,.kk.kacc{font-size:16px}.kr.r10 .kk{font-size:13px;letter-spacing:-.3px}.kk.ksym{font-size:12px}}
 .cs-more{width:100%;margin-top:8px;font-size:13px;text-align:left;background:none;border-style:dashed}
 .cs-foot{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .cs-foot #chordIn{width:200px;font-size:16px;padding:6px 8px}
@@ -793,6 +804,8 @@ function selectCell(bar,slot){const bl=curBlock();const old=P&&P.bar;
   if(old!=null&&old!==bar)refreshBar(old);refreshBar(bar);renderSheet(true);
   setTimeout(()=>{const b=$('#bar-'+bar),sh=$('#sheet .sheet');if(!b||!sh)return;const r=b.getBoundingClientRect(),top=sh.getBoundingClientRect().top,head=$('.top').getBoundingClientRect().bottom;
     if(r.bottom>top-8)window.scrollBy(0,r.bottom-top+16);else if(r.top<head+4)window.scrollBy(0,r.top-head-12)},40)}
+const curCell=()=>(curBlock().bars[P.bar].cells[P.slot]||'');
+function setCell(c){writeCell(c);P=Object.assign(parseChord(c),{bar:P.bar,slot:P.slot});renderSheet(false)}
 function writeCell(v){const bl=curBlock();bl.bars[P.bar].cells[P.slot]=v;save();refreshBar(P.bar)}
 const curQ=()=>P.qp&&composeQ(P.qp)===P.q?P.qp:parseQ(P.q);
 function editQ(fn){if(!P.root)return toast('先にルート音(C〜B)を選んでください');const q=curQ()||{tri:'',sev:'',ten:[]};fn(q);P.qp=q;P.q=composeQ(q);P.last='root';applyParts()}
@@ -835,26 +848,30 @@ function renderSheet(focus){
   const tonic=keyTonic(blockKey(bl,curSong()));const deg=tonic!=null&&val?toDegree(val,tonic):'';
   const curQs=P.root?composeQ(qp||{tri:'',sev:'',ten:[]}):null;
   const bassMode=P.slash||P.last==='bass';
+  // Musician Keyboard 風: 押した順に文字が並ぶキーボード
+  const K=(v,l,cls='')=>`<button class="kk ${cls}" data-act="kIns" data-v="${esc(v)}">${l||esc(v)}</button>`;
+  const lastRoot=(()=>{const m=val.replace(/^⌒/,'').match(/^([A-G])/);return m?m[1]:''})();
+  const afterSlash=/\/$/.test(val);
   el.innerHTML=`<div class="sheet"><div class="sheet-in">
   <div class="cs-head">
     <div class="cs-now"><div class="pos">${P.bar+1}小節目・${posLabel(barMeter(bl,bar,curSong()),P.slot)}</div>
       <div class="cs-name" id="csName">${val?esc(val):'<span class="cs-empty">空き(前のコードが続く)</span>'}</div>
-      <div class="cs-desc" id="csDesc">${esc(chordDesc(P))}${deg?` ・ <b>${esc(deg)}</b>`:''}</div></div>
+      <div class="cs-desc" id="csDesc">${afterSlash?'<b>ベース音を選んでください</b>':esc(chordDesc(P))}${deg?` ・ <b>${esc(deg)}</b>`:''}</div></div>
     <div class="cs-nav"><button data-act="pMove" data-v="-1" title="前のマス">←</button><button class="primary" data-act="pMove" data-v="1">次 →</button><button class="ghost" data-act="pClose" title="閉じる">✕</button></div>
   </div>
-  <div class="cs-lab">${bassMode?'<b class="hl">ベース音</b>を選ぶ(分数コードの「／」の下の音)':'① ルート音'}</div>
-  <div class="keys roots">${roots.map(r=>`<button class="${(!bassMode&&P.root===r)||(bassMode&&P.bass===r&&!P.slash)?'on':''}" data-act="pRoot" data-v="${r}">${r}</button>`).join('')}
-    <button class="acc ${accOn('b')?'on':''}" data-act="pAcc" data-v="b" title="フラット(もう一度押すと戻る)">♭</button><button class="acc ${accOn('#')?'on':''}" data-act="pAcc" data-v="#" title="シャープ(もう一度押すと戻る)">♯</button></div>
-  <div class="cs-lab">② 種類 <span class="sub">よく使うものから選ぶ</span></div>
-  <div class="keys presets ${P.root?'':'dim'}">${PRESETS.map(([v,l])=>`<button class="${P.root&&curQs===composeQ(parseQ(v)||{tri:'',sev:'',ten:[]})?'on':''}" data-act="pPreset" data-v="${esc(v)}" title="${esc(presetName(v))}">${l}</button>`).join('')}</div>
-  <button class="cs-more" data-act="uiToggle" data-k="qadv">③ 細かく組み立てる(3度・7th・テンション)${UI('qadv')?' ▾':' ▸'}</button>
-  ${UI('qadv')?`<div class="keys qrow"><span class="qlab">3度</span>${tris.map(([v,l])=>`<button class="${qp&&qp.tri===v?'on':''}" data-act="pTri" data-v="${v}">${l}</button>`).join('')}</div>
-  <div class="keys qrow"><span class="qlab">7th</span>${sevs.map(([v,l])=>`<button class="${qp&&qp.sev===v?'on':''}" data-act="pSev" data-v="${v}">${l}</button>`).join('')}</div>
-  <div class="keys qrow"><span class="qlab">テンション</span>${TENS.map(v=>`<button class="${qp&&qp.ten.includes(v)?'on':''}" data-act="pTen" data-v="${v}">${v}</button>`).join('')}</div>`:''}
-  <div class="cs-lab">その他</div>
-  <div class="keys tools"><button class="${P.slash?'on':''}" data-act="pSlash" title="分数コード: 次に押すルート音がベース音になります">／ベース音</button><button data-act="pPrev">↺ 前と同じ</button>
-    <button class="${P.tie?'on':''}" data-act="pTie" title="前の小節から音を伸ばす">⌒ タイ</button><button data-act="pLit" data-v="N.C." title="休み(ノーコード)">N.C. 休み</button>
-    <button data-act="pLit" data-v="?" title="分からない">? 不明</button><button data-act="pLit" data-v="★" title="仮置き(あとで確認)">★ 仮</button><button data-act="pLit" data-v="－" title="メロディ的な動き">－ 動き</button><button data-act="pDel">⌫ 消す</button></div>
+  <div class="kb">
+    <div class="kr r10">${['1','2','3','4','5','6','7','8','9','0'].map(d=>K(d)).join('')}</div>
+    <div class="kr r10">${K('alt')}${K('omit')}${K('add')}${K('sus')}${K('m7(♭5)','ø','kq')}${K('dim')}${K('aug')}${K('m','m','kq')}${K('M','M','kq')}${K('/','/ ','kq')}</div>
+    <div class="kr r9">${['C','D','E','F','G','A','B'].map(r=>`<button class="kk kroot ${(!afterSlash&&lastRoot===r)?'on':''}" data-act="kRoot" data-v="${r}">${r}</button>`).join('')}
+      <button class="kk kacc" data-act="kAcc" data-v="♭">♭</button><button class="kk kacc" data-act="kAcc" data-v="♯">♯</button></div>
+    <div class="kr r9">${K('(')}${K(')')}${K(',')}
+      <button class="kk ksym ${P.tie?'on':''}" data-act="pTie" title="前の小節から音を伸ばす">⌒</button>
+      <button class="kk ksym" data-act="pLit" data-v="?" title="分からない">?</button><button class="kk ksym" data-act="pLit" data-v="★" title="仮置き">★</button>
+      <button class="kk ksym" data-act="pLit" data-v="－" title="メロディ的な動き">－</button><button class="kk ksym" data-act="pLit" data-v="N.C." title="休み">N.C.</button>
+      <button class="kk kfn" data-act="kBack" title="1文字消す">⌫</button></div>
+    <div class="kr kfoot"><button class="kk kfn" data-act="pPrev">↺ 前と同じ</button><button class="kk kfn" data-act="pDel">消す</button>
+      <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn primary" data-act="pMove" data-v="1">次 →</button></div>
+  </div>
   <div class="cs-foot"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
     <div class="steps"><span>「次」で進む</span>${steps.map(([v,l])=>`<button class="${S.prefs.step===v?'on':''}" data-act="pStep" data-v="${v}">${l}</button>`).join('')}</div></div>
   </div></div>`;
@@ -1146,6 +1163,12 @@ const ACT={
   pRoot(t){const v=t.dataset.v;if(P.slash&&P.root){P.bass=v;P.bassAcc='';P.slash=false;P.last='bass'}
     else{Object.assign(P,{root:v,acc:'',q:'',qp:null,bass:'',bassAcc:'',lit:'',slash:false,last:'root'})}applyParts()},
   pAcc(t){if(!P.root)return;const v=t.dataset.v;if(P.last==='bass'){P.bassAcc=P.bassAcc===v?'':v}else{P.acc=P.acc===v?'':v}applyParts()},
+  kRoot(t){const c=curCell();const tie=c.startsWith('⌒')?'⌒':'';setCell(/\/$/.test(c)?c+t.dataset.v:tie+t.dataset.v)},
+  kIns(t){const c=curCell(),v=t.dataset.v;if(!c.replace(/^⌒/,'')&&!/^[0-9(]/.test(v))return toast('先にルート音(C〜B)を押してください');
+    if(v==='/'&&/\/$/.test(c))return;setCell(c+v)},
+  kAcc(t){const c=curCell(),v=t.dataset.v;if(!c.replace(/^⌒/,''))return toast('先にルート音(C〜B)を押してください');
+    const last=c.slice(-1);setCell(last===v?c.slice(0,-1):/[♭♯b#]$/.test(c)?c.slice(0,-1)+v:c+v)},
+  kBack(){const c=curCell();const m=c.match(/(omit|add|sus|dim|aug|alt|N\.C\.|m7\(♭5\))$/);setCell(m?c.slice(0,-m[1].length):c.slice(0,-1))},
   pPreset(t){if(!P.root)return toast('先にルート音(C〜B)を選んでください');P.q=t.dataset.v;P.qp=null;P.last='root';P.slash=false;applyParts()},
   pSlash(){if(!P.root)return;P.slash=!P.slash;renderSheet(true)},
   pQ(t){if(!P.root)return;P.q=t.dataset.v;P.qp=null;P.last='root';applyParts()},
