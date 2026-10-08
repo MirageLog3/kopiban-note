@@ -602,7 +602,7 @@ const THEMES={auto:'◐ 自動',light:'☀ ライト',dark:'☾ ダーク'};
 function strip(song,big){
   return `<div class="strip ${big?'big':''}">${song.blocks.map(b=>`<div style="flex:${b.bars.length};background:${TYPES[b.type].color}" ${big?`data-act="goBlock" data-id="${b.id}" title="${esc(b.name)}"`:''}>${big?esc(TYPES[b.type].short):''}</div>`).join('')}</div>`}
 function tagChips(song){const c=tagCounts(song);return S.markers.filter(m=>c[m.name]).map(m=>`<span class="tag" style="border-color:${m.color};color:${m.color}">${esc(m.name)} ${c[m.name]}</span>`).join('')}
-function songMeta(s){return [s.bpm&&'♩'+esc(s.bpm),esc(s.meter),s.key&&'Key '+esc(s.key),totalBars(s)+'小節'].filter(Boolean).join(' ・ ')}
+function songMeta(s){return [s.bpm&&'♩'+esc(s.bpm),esc(s.meter),s.key&&'キー '+esc(s.key),totalBars(s)+'小節'].filter(Boolean).join(' ・ ')}
 
 /* ---------- views ---------- */
 function daysLeft(d){if(!d)return '';const t=new Date(d+'T00:00');const n=new Date();n.setHours(0,0,0,0);const x=Math.round((t-n)/864e5);
@@ -690,7 +690,7 @@ function viewSong(){
   <div class="hstack meta" id="songInfo">
     <label>テンポ<input value="${esc(s.bpm)}" data-input="songField" data-k="bpm" placeholder="例 84"></label>
     <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
-    <label>Key<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
+    <label>キー(調)<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
   </div>
   <div class="card song-audio" id="songAudio"><b>🎵 音源</b>
     <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeなど"></label>
@@ -703,7 +703,7 @@ function viewSong(){
   <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
   <div class="list">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
-    <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ Key '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
+    <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
     <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
     ${songMedia(s)?timeBtns(b):''}
     <div class="rowbtns"><button data-act="dupBlock" data-i="${i}" title="複製">複製</button><button data-act="delBlock" data-i="${i}">削除</button></div></div>`}).join('')||'<div class="empty">ブロックを追加してください</div>'}</div>
@@ -888,7 +888,7 @@ function viewBlock(){
   <div class="btitle"><span class="cbar" style="background:${TYPES[bl.type].color}"></span>
     <input class="name" value="${esc(bl.name)}" data-input="blockField" data-k="name">
     <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">⚙ 詳しい設定 ${UI('bset')?'▾':'▸'}</button></div>
-  <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),blockKey(bl,s)&&'Key '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
+  <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),blockKey(bl,s)&&'キー '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
   <div class="blockhead panel" id="bquick">
     <div class="brow bq"><label class="frow"><span>小節数</span><input type="number" min="1" max="64" inputmode="numeric" value="${bl.bars.length}" data-change="barsCount"></label>
       <label class="frow" style="flex:1"><span>メモ</span><textarea rows="2" class="memo-ta" data-input="blockField" data-k="note" placeholder="例 半音上げ転調・リズムに注意">${esc(bl.note)}</textarea></label></div>
@@ -900,7 +900,7 @@ function viewBlock(){
     <div class="brow b2"><label class="frow"><span>種類</span><select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select></label>
     <label class="frow"><span>拍子</span><select data-change="blockMeter"><option value="">${songMeterDefault(s)}(曲)</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label></div>
     <div class="brow b2"><label class="frow"><span>テンポ</span><input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="${esc(s.bpm||'120')}" data-input="blockField" data-k="bpm"></label>
-    <label class="frow"><span>Key</span><input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key"></label></div>
+    <label class="frow"><span>キー(調)</span><input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key"></label></div>
   </div>
   <div class="toolrow">
     <button class="foldbtn ${UI('metro')?'on':''}" data-act="uiToggle" data-k="metro">🥁 メトロノーム ${UI('metro')?'▾':'▸'}</button>
@@ -918,7 +918,7 @@ function viewBlock(){
 /* ---------- chord grid ---------- */
 function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
-  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
+  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのキー(調)を入れると度数になります</span>':''}
     <span class="spacer"></span><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
   ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
@@ -1179,7 +1179,7 @@ function renderSheet(focus){
       <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn knext" data-act="pMove" data-v="1">次 →</button></div>
   </div>
   <div class="cs-foot"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
-    <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー</button>
+    <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="キー(調)から見た度数で表示">ディグリー</button>
     <button class="foldbtn ${S.prefs.doremi?'on':''}" data-act="toggleDoremi" title="C D E… を ド レ ミ… で表示">ドレミ</button>
     <button class="foldbtn" data-act="cjOpen" title="鍵盤で押した音からコード名を探す">🎹 コード判定</button>
     <button class="foldbtn" data-act="cpOpen" title="マスや小節をコピー・貼り付け">📋 コピペ</button>
@@ -1275,7 +1275,7 @@ function chordSheetHTML(s,withNotes,withPhotos,showBand){
     const texts=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>`<div class="pnotes">📝 ${esc(m.text)}</div>`).join(''):'';
     const photos=withPhotos?b.memos.filter(m=>m.kind==='photo'):[];
     return `<div class="pblk"><div class="pblk-h"><span class="pc" style="background:${TYPES[b.type].color}"></span>${esc(b.name)}
-      <span class="ps">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ Key '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</span>${b.tags.map(t=>tagHTML(t,'ptag')).join('')}</div>
+      <span class="ps">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</span>${b.tags.map(t=>tagHTML(t,'ptag')).join('')}</div>
       <div class="pgrid">${bars}</div>${texts}
       ${photos.length?`<div class="pphotos">${photos.map(m=>`<img data-blob="${m.blobId}" alt="">`).join('')}</div>`:''}</div>`}).join('');
   return `<div class="pv"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}${showBand&&band()?' ・ '+esc(band().name):''}</div>
@@ -1295,7 +1295,7 @@ function mapHTML(s,withNotes){let pos=1;
     const memo=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>esc(m.text)).join(' / '):'';
     return `<tr><td class="mi">${i+1}</td><td class="mc" style="background:${TYPES[b.type].color}"></td>
       <td class="mn">${esc(b.name)}</td><td class="mb"><b>${b.bars.length}</b><span>小節</span></td>
-      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'Key '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
+      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
       <td class="mp">${from}–${pos-1}</td></tr>`}).join('');
   return `<div class="pv map"><div class="mhead"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}</div></div>
     <div style="margin:10px 0 12px">${strip(s,true)}</div>
@@ -1461,13 +1461,13 @@ const TOUR=[
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかんで並べ替え、タップするとブロックの中に入れます。',need:tourSong},
   {r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
-  {r:tSong,sel:'#songInfo',h:'① 曲の基本情報',t:'テンポ・拍子・Keyを入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
+  {r:tSong,sel:'#songInfo',h:'① 曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {r:tSong,sel:'#songAudio',h:'② 音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、下のプレーヤーで再生できます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
   {r:tSong,sel:'.metro',h:'③ メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
   // ブロックの画面
   {r:tBlk,sel:'#bquick',h:'④ ブロックの画面',t:'小節数・メモ・マーカー(キメ・テンポ注意などの目印)は、ここですぐに変えられます。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
-  {r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・Keyを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
+  {r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・キーを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'.kb',h:'⑤ コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],need:tourBlock,before:tCell},
   {r:tBlk,sel:'[data-act=cjOpen]',h:'⑥ コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。',need:tourBlock,before:tNoCell},
@@ -1521,7 +1521,7 @@ function wbrize(el){if(!el)return;try{const w=document.createTreeWalker(el,NodeF
     parts.forEach(p=>{if(p.length>14){f.appendChild(document.createTextNode(p));return}const s=document.createElement('span');s.className='nb';s.textContent=p;f.appendChild(s)});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1553,7 +1553,7 @@ function settingCards(){return {news:newsCard(),
     </div>`,
   backup:`<div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">バックアップを書き出す</button><button data-act="import">バックアップから復元</button></div></div>`,
-  tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたセトリが開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやKeyは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
+  tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたセトリが開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
 function b64(blob){return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob)})}
 async function doExport(){const blobs={};for(const id of songBlobIds(S.songs)){const b=await getBlob(id);if(b)blobs[id]=await b64(b)}
   const data=JSON.stringify({app:'kopiban',exported:new Date().toISOString(),state:S,blobs});
