@@ -118,6 +118,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .kk.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .kk.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media screen and (max-width:420px){.kk{padding:9px 0;font-size:14px}.kk.kroot,.kk.kacc{font-size:16px}.kr.r10 .kk{font-size:13px;letter-spacing:-.3px}.kk.ksym{font-size:12px}}
+.symlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;font-size:13px}
+.symlist div{display:flex;gap:8px;align-items:baseline}.symlist b{white-space:nowrap;min-width:4.5em;color:var(--text)}.symlist span{color:var(--sub)}
 .cs-more{width:100%;margin-top:8px;font-size:13px;text-align:left;background:none;border-style:dashed}
 .cs-foot{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .cs-foot #chordIn{width:200px;font-size:16px;padding:6px 8px}
@@ -759,7 +761,8 @@ function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
   return `<div class="legend hstack"><button class="tagbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
     <span class="spacer"></span><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
-  ${UI('help')?'<div class="legend panel">1マス = 8分 ・ 空白 = 前のコードが続く ・ ⌒ = 前の小節からタイ ・ ★ = 仮置き ・ － = メロディ的な動き ・ ? = 分からない ・ 1小節だけ拍子を変えるときは小節番号をクリック</div>':''}
+  ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
+    <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
   <div id="grid">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
 const COMMON_METERS=['4/4','3/4','2/4','5/4','6/4','7/4','6/8','7/8','5/8','9/8','12/8'];
 const normMeter=m=>String(m||'').trim().replace(/[／]/g,'/').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
@@ -822,12 +825,15 @@ function prevChord(){const s=curSong(),bl=curBlock();let bi=P.bar,si=P.slot-1;
   for(const b of blocks){if(b!==bl){bi=b.bars.length-1;si=b.bars[bi].n-1}
     for(;bi>=0;bi--){for(;si>=0;si--){const c=(b.bars[bi].cells[si]||'').replace(/^⌒/,'');if(c)return c}if(bi>0)si=b.bars[bi-1].n-1}}
   return ''}
+// 「記号の意味」に出す一覧
+const SYMBOLS=[['1マス','8分音符1つぶん'],['空白','前のコードがそのまま続く'],['/','分数コード。右側がベース音(例 D/F♯)'],['⌒','前の小節から音を伸ばす(タイ)'],
+  ['－','決まったコードがない部分(メロディだけ・ユニゾンなど)'],['?','分からない。あとで確認する'],['★','仮置き。たぶんこれ'],['N.C.','全員休み(ノーコード)']];
 // よく使うコードの種類(ボタン一覧)。値は3度・7th・テンションの組み立てと同じ書き方
 const PRESETS=[['','M'],['m','m'],['7','7'],['M7','M7'],['m7','m7'],['6','6'],['m6','m6'],['sus4','sus4'],['7sus4','7sus4'],['add9','add9'],['m7(♭5)','m7♭5'],['dim','dim'],['dim7','dim7'],['aug','aug'],['mM7','mM7'],['7(9)','9']];
 function presetName(v){const r=chordDesc({root:'C',acc:'',q:v,bass:'',tie:false});return r.replace(/^C /,'')}
 // いま選んでいるコードの読み方(例: Cm7 → C マイナー・セブンス)
 function chordDesc(p){
-  if(!p.root)return ({'?':'分からないところ','★':'仮置き(あとで確認)','－':'メロディ的な動き','N.C.':'休み(ノーコード)'})[p.lit]||(p.lit?'':'ルート音を選んでください');
+  if(!p.root)return ({'?':'「?」分からない(あとで確認)','★':'「★」仮置き(たぶんこれ)','－':'「－」決まったコードがない部分','N.C.':'「N.C.」全員休み(ノーコード)'})[p.lit]||(p.lit?'':'ルート音を選んでください');
   const q=parseQ(p.q);const acc=a=>a==='b'||a==='♭'?'♭':a==='#'||a==='♯'?'♯':'';let d='';
   if(q){const T={'':'メジャー',m:'マイナー',sus4:'サスフォー',sus2:'サスツー',dim:'ディミニッシュ',aug:'オーギュメント'}[q.tri];
     const V={'':'','6':'シックス','7':'セブンス','M7':'メジャーセブンス'}[q.sev];
@@ -866,8 +872,8 @@ function renderSheet(focus){
       <button class="kk kacc" data-act="kAcc" data-v="♭">♭</button><button class="kk kacc" data-act="kAcc" data-v="♯">♯</button></div>
     <div class="kr r9">${K('(')}${K(')')}${K(',')}
       <button class="kk ksym ${P.tie?'on':''}" data-act="pTie" title="前の小節から音を伸ばす">⌒</button>
-      <button class="kk ksym" data-act="pLit" data-v="?" title="分からない">?</button><button class="kk ksym" data-act="pLit" data-v="★" title="仮置き">★</button>
-      <button class="kk ksym" data-act="pLit" data-v="－" title="メロディ的な動き">－</button><button class="kk ksym" data-act="pLit" data-v="N.C." title="休み">N.C.</button>
+      <button class="kk ksym" data-act="pLit" data-v="?" title="分からない(あとで確認)">?</button><button class="kk ksym" data-act="pLit" data-v="★" title="仮置き(たぶんこれ)">★</button>
+      <button class="kk ksym" data-act="pLit" data-v="－" title="決まったコードがない部分">－</button><button class="kk ksym" data-act="pLit" data-v="N.C." title="全員休み(ノーコード)">N.C.</button>
       <button class="kk kfn" data-act="kBack" title="1文字消す">⌫</button></div>
     <div class="kr kfoot"><button class="kk kfn" data-act="pPrev">↺ 前と同じ</button><button class="kk kfn" data-act="pDel">消す</button>
       <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn primary" data-act="pMove" data-v="1">次 →</button></div>
