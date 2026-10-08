@@ -427,7 +427,10 @@ function toDegree(c,tonic){if(tonic==null||!c)return c;let tie='';if(c.startsWit
   const m=c.match(/^([A-G])([b#♭♯]?)(.*?)(?:\/([A-G])([b#♭♯]?))?$/);if(!m)return tie+c;
   const d=(r,a)=>ROMAN[(PCN[r]+(ACC[a]||0)-tonic+24)%12];return tie+d(m[1],m[2])+m[3]+(m[4]?'/'+d(m[4],m[5]):'')}
 const blockKey=(bl,s)=>(bl&&bl.key)||(s&&s.key)||'';
-const showC=(c,bl)=>S.prefs.degree?toDegree(c,keyTonic(blockKey(bl,curSong()))):c;
+// ドレミ表示: 表示だけルート音とベース音をカタカナにする(保存するデータはアルファベットのまま)
+const DRM={C:'ド',D:'レ',E:'ミ',F:'ファ',G:'ソ',A:'ラ',B:'シ'};
+const drm=s=>!S.prefs.doremi||!s?s:String(s).replace(/^(⌒?)([A-G])/,(m,t,r)=>t+DRM[r]).replace(/\/([A-G])/g,(m,r)=>'/'+DRM[r]);
+const showC=(c,bl)=>S.prefs.degree?toDegree(c,keyTonic(blockKey(bl,curSong()))):drm(c);
 const TOUCH=matchMedia('(pointer:coarse)').matches;
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -799,7 +802,7 @@ function viewBlock(){
 /* ---------- chord grid ---------- */
 function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
-  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
+  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
     <span class="spacer"></span><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
   ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
@@ -881,15 +884,15 @@ function cjKeyboard(){const on=CJ.on,bass=on.length?Math.min(...on):null,NW=CJ_O
     Object.entries(B).forEach(([pc,wi])=>{const m=CJ_LO+o*12+ +pc;b+=`<button class="cj-b ${on.includes(m)?'on':''}" data-act="cjKey" data-m="${m}" style="left:calc(100% / ${NW} * ${o*7+wi+1} - 100% / ${NW} * 0.31);width:calc(100% / ${NW} * 0.62)">${m===bass?'<b class="cj-bass">●</b>':''}</button>`})}
   return `<div class="cj-kbw" id="cjKbw"><div class="cj-kb">${w}${b}</div></div>`}
 function cjSeqPad(){const N=cjNames();
-  return `<div class="cj-seq">${CJ.seq.length?CJ.seq.map((pc,i)=>`<span class="cj-chip ${i?'':'bass'}">${N[pc]}</span>`).join('<span class="cj-arr">→</span>'):'<span class="sub">いちばん低い音(ベース)から順に押してください</span>'}
+  return `<div class="cj-seq">${CJ.seq.length?CJ.seq.map((pc,i)=>`<span class="cj-chip ${i?'':'bass'}">${drm(N[pc])}</span>`).join('<span class="cj-arr">→</span>'):'<span class="sub">いちばん低い音(ベース)から順に押してください</span>'}
     <span class="spacer"></span><button class="ghost" data-act="cjSeqBack" ${CJ.seq.length?'':'disabled'}>⌫</button></div>
-  <div class="cj-pcs">${N.map((n,pc)=>`<button class="${n.length>1?'acc':''}" data-act="cjSeqAdd" data-pc="${pc}">${n}</button>`).join('')}</div>`}
+  <div class="cj-pcs">${N.map((n,pc)=>`<button class="${n.length>1?'acc':''}" data-act="cjSeqAdd" data-pc="${pc}">${drm(n)}</button>`).join('')}</div>`}
 function cjBody(){const N=cjNames(),on=cjNotes(),bass=on.length?Math.min(...on):null;const cands=cjJudge(on),seq=cjSeqMode();
   return `<div class="seg cj-mode"><button class="${seq?'':'on'}" data-act="cjMode" data-v="kb">鍵盤</button><button class="${seq?'on':''}" data-act="cjMode" data-v="seq">低い音から順に</button></div>
   ${seq?cjSeqPad():cjKeyboard()}
-  <div class="hstack cj-tools"><span class="sub">${seq?'':`押した音: ${on.length?[...new Set([...on].sort((x,y)=>x-y).map(m=>N[m%12]))].join(' ')+` <span style="white-space:nowrap">(●ベース ${N[bass%12]})</span>`:'(鍵盤を押してください。横にスクロールできます)'}`}</span><span class="spacer"></span>
+  <div class="hstack cj-tools"><span class="sub">${seq?'':`押した音: ${on.length?[...new Set([...on].sort((x,y)=>x-y).map(m=>drm(N[m%12])))].join(' ')+` <span style="white-space:nowrap">(●ベース ${drm(N[bass%12])})</span>`:'(鍵盤を押してください。横にスクロールできます)'}`}</span><span class="spacer"></span>
     <button data-act="cjPlay" ${on.length?'':'disabled'}>▶ 鳴らす</button><button data-act="cjClear">クリア</button></div>
-  <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(c.name)}${c.sub?`<small>${esc(c.sub)}</small>`:''}</button>`).join('')
+  <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(drm(c.name))}${c.sub?`<small>${esc(c.sub)}</small>`:''}</button>`).join('')
     :'<span class="sub">当てはまるコードが見つかりませんでした。音を減らしてみてください</span>':'<span class="sub">いちばん低い音がベース音になります。候補を押すとマスに入ります</span>'}</div>`}
 // 描き直しても鍵盤の横スクロール位置は保つ。最初に開いたときは真ん中(C3あたり)を見せる
 function cjRender(first){const e=$('#cjBody');if(!e)return;const k=$('#cjKbw'),x=k?k.scrollLeft:null;e.innerHTML=cjBody();const k2=$('#cjKbw');
@@ -1004,7 +1007,7 @@ function chordDesc(p){
     d=q.tri==='m'&&q.sev==='M7'?'マイナー・メジャーセブンス':q.tri===''?(V||'メジャー'):q.tri==='dim'&&q.sev==='7'?'ディミニッシュセブンス':T+(V?'・'+V:'');
     if(q.ten.includes('add9'))d+='・アドナインス';const ten=q.ten.filter(x=>x!=='add9');if(ten.length)d+=`(テンション ${ten.join(',')})`}
   else if(p.q)d=p.q;
-  return `${p.root}${acc(p.acc)} ${d}${p.bass?` / ベース ${p.bass}${acc(p.bassAcc)}`:''}${p.tie?'・前の小節からタイ':''}`}
+  return `${drm(p.root)}${acc(p.acc)} ${d}${p.bass?` / ベース ${drm(p.bass)}${acc(p.bassAcc)}`:''}${p.tie?'・前の小節からタイ':''}`}
 function renderSheet(focus){
   const el=$('#sheet');
   if(!P||R.name!=='block'||R.c==='memo'||!curBlock()){el.innerHTML='';document.body.classList.remove('sheet-open');return}
@@ -1025,12 +1028,12 @@ function renderSheet(focus){
   el.innerHTML=`<div class="sheet"><div class="sheet-in">
   <div class="cs-head">
     <div class="cs-now"><div class="pos">${P.bar+1}小節目・${posLabel(barMeter(bl,bar,curSong()),P.slot)}</div>
-      <div class="cs-name" id="csName">${val?esc(val):'<span class="cs-empty">空き(前のコードが続く)</span>'}</div>
+      <div class="cs-name" id="csName">${val?esc(drm(val)):'<span class="cs-empty">空き(前のコードが続く)</span>'}</div>
       <div class="cs-desc" id="csDesc">${afterSlash?'<b>ベース音を選んでください</b>':esc(chordDesc(P))}${deg?` ・ <b>${esc(deg)}</b>`:''}</div></div>
     <div class="cs-nav"><button data-act="pMove" data-v="-1" title="前のマス">←</button><button class="primary" data-act="pMove" data-v="1">次 →</button><button class="ghost" data-act="pClose" title="閉じる">✕</button></div>
   </div>
   <div class="kb">
-    <div class="kr r9">${['C','D','E','F','G','A','B'].map(r=>`<button class="kk kroot ${(!afterSlash&&lastRoot===r)?'on':''}" data-act="kRoot" data-v="${r}">${r}</button>`).join('')}
+    <div class="kr r9">${['C','D','E','F','G','A','B'].map(r=>`<button class="kk kroot ${(!afterSlash&&lastRoot===r)?'on':''}" data-act="kRoot" data-v="${r}">${S.prefs.doremi?DRM[r]:r}</button>`).join('')}
       <button class="kk kacc" data-act="kAcc" data-v="♭">♭</button><button class="kk kacc" data-act="kAcc" data-v="♯">♯</button></div>
     <div class="kr r10">${K('alt')}${K('omit')}${K('add')}${K('sus')}${K('m7(♭5)','ø','kq')}${K('dim')}${K('aug')}${K('m','m','kq')}${K('M','M','kq')}${K('/','/ ','kq')}</div>
     <div class="kr r10">${['1','2','3','4','5','6','7','8','9','0'].map(d=>K(d)).join('')}</div>
@@ -1047,6 +1050,7 @@ function renderSheet(focus){
   </div>
   <div class="cs-foot ${UI('kbd')?'kbd-on':''}"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
     <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>
+    <button class="foldbtn ${S.prefs.doremi?'on':''}" data-act="toggleDoremi" title="C D E… を ド レ ミ… で表示">ドレミ</button>
     <button class="foldbtn" data-act="cjOpen" title="鍵盤で押した音からコード名を探す">🎹 コード判定</button>
     <button class="foldbtn" data-act="cpOpen" title="マスや小節をコピー・貼り付け">📋 コピー</button>
     <div class="steps"><span>「次」で進む</span>${steps.map(([v,l])=>`<button class="${S.prefs.step===v?'on':''}" data-act="pStep" data-v="${v}">${l}</button>`).join('')}</div></div>
@@ -1136,7 +1140,7 @@ function chordSheetHTML(s,withNotes,withPhotos,showBand){
   const blocks=s.blocks.map(b=>{
     const hasLyr=b.bars.some(x=>x.lyric);
     const bars=b.bars.map((bar,bi)=>`<div class="pbar"><span class="pn">${bi+1}</span>
-      <div class="pcells" style="grid-template-columns:repeat(${bar.n},1fr)">${bar.cells.map((c,i)=>`<div class="pcell ${c?'start':''} ${i===0?'first':''}">${esc(c)}</div>`).join('')}</div>
+      <div class="pcells" style="grid-template-columns:repeat(${bar.n},1fr)">${bar.cells.map((c,i)=>`<div class="pcell ${c?'start':''} ${i===0?'first':''}">${esc(drm(c))}</div>`).join('')}</div>
       ${hasLyr?`<div class="plyr">${esc(bar.lyric)}</div>`:''}</div>`).join('');
     const texts=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>`<div class="pnotes">📝 ${esc(m.text)}</div>`).join(''):'';
     const photos=withPhotos?b.memos.filter(m=>m.kind==='photo'):[];
@@ -1322,6 +1326,7 @@ const ACT={
   dupBlock(t){const s=curSong(),i=+t.dataset.i;const c=JSON.parse(JSON.stringify(s.blocks[i]));c.id=uid();c.memos=[];c.name+='(コピー)';s.blocks.splice(i+1,0,c);render()},
   delBlock(t){const s=curSong(),b=s.blocks[+t.dataset.i];if(!confirm(`「${b.name}」を削除しますか？`))return;memoBlobIds([b]).forEach(delBlob);s.blocks.splice(+t.dataset.i,1);render()},
   toggleDegree(){S.prefs.degree=!S.prefs.degree;render()},
+  toggleDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render()},
   mkAdd(){const n=(prompt('マーカーの名前 (例 コーラスあり)')||'').trim();if(!n)return;if(S.markers.some(m=>m.name===n))return toast('同じ名前があります');
     const pal=['#ff6a2b','#2fa58c','#7c7fd6','#e0b13a','#4a8fd6','#d64a8f','#8fd64a'];S.markers.push({name:n,color:pal[S.markers.length%pal.length]});render()},
   mkDel(t){const m=S.markers[+t.dataset.i];const used=S.songs.reduce((a,s)=>a+s.blocks.filter(b=>b.tags.includes(m.name)).length,0);
@@ -1505,7 +1510,7 @@ const INP={
 document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(t){ACT[t.dataset.act](t,e)}});
 document.addEventListener('change',e=>{const t=e.target.closest('[data-change]');if(t)CHG[t.dataset.change](t,e)});
 document.addEventListener('input',e=>{const t=e.target;
-  if(t.id==='chordIn'&&P){let v=t.value.replace(/^(⌒?)([a-g])/,(m,a,b)=>a+b.toUpperCase()).replace(/\/([a-g])/,(m,b)=>'/'+b.toUpperCase());const keep=Object.assign(parseChord(v),{bar:P.bar,slot:P.slot});P=keep;writeCell(v);const cn=$('#csName'),cd=$('#csDesc');if(cn)cn.textContent=v;if(cd){const tn=keyTonic(blockKey(curBlock(),curSong()));cd.textContent=chordDesc(P)+(tn!=null&&v?' ・ '+toDegree(v,tn):'')}return}
+  if(t.id==='chordIn'&&P){let v=t.value.replace(/^(⌒?)([a-g])/,(m,a,b)=>a+b.toUpperCase()).replace(/\/([a-g])/,(m,b)=>'/'+b.toUpperCase());const keep=Object.assign(parseChord(v),{bar:P.bar,slot:P.slot});P=keep;writeCell(v);const cn=$('#csName'),cd=$('#csDesc');if(cn)cn.textContent=drm(v);if(cd){const tn=keyTonic(blockKey(curBlock(),curSong()));cd.textContent=chordDesc(P)+(tn!=null&&v?' ・ '+toDegree(v,tn):'')}return}
   if(t.dataset.input){INP[t.dataset.input](t);save()}});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if($('#overlay').innerHTML){ACT.lbClose();return}if(P){ACT.pClose();return}}
