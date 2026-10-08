@@ -131,7 +131,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .cj-kb{position:relative;height:130px;display:flex;min-width:max(100%,630px);user-select:none;-webkit-user-select:none;touch-action:pan-x}
 .cj-seq{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-height:44px;margin:10px 0 6px}
 .cj-chip{padding:4px 10px;border-radius:999px;background:var(--panel2);font-weight:700}.cj-chip.bass{background:var(--accent);color:#fff}.cj-arr{color:var(--sub);font-size:12px}
-.cj-pcs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}.cj-pcs button{padding:12px 0;font-size:16px;font-weight:700;min-width:0}.cj-pcs button.acc{background:var(--panel2)}
+.cj-hint{margin:-4px 0 8px;font-size:11px}
+.cj-pcs{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:10px}.cj-pcs button{padding:12px 0;font-size:16px;font-weight:700;min-width:0}.cj-pcs button.acc{background:var(--panel2)}
 .cj-kb button{min-width:0;margin:0;-webkit-tap-highlight-color:transparent}
 .cj-w{flex:1;height:100%;padding:0 0 6px;background:#f6f4ef;color:#888;border:1px solid #bbb;border-radius:0 0 6px 6px;font-size:10px;display:flex;align-items:flex-end;justify-content:center}
 .cj-b{position:absolute;top:0;height:60%;width:calc(100% / 14 * 0.62);padding:0 0 4px;background:#222;color:#fff;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;font-size:9px;display:flex;align-items:flex-end;justify-content:center}
@@ -205,6 +206,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .cell.first::before{display:none}
 .cell:hover{background:var(--hover)}
 .cell.sel{background:var(--accent);color:#fff}
+.cell .ct{position:absolute;left:var(--cpl,6px);top:0;bottom:0;display:flex;align-items:center;width:calc(var(--sp,1) * 100% - var(--cpl,6px) - 2px);overflow:hidden;white-space:nowrap;pointer-events:none;z-index:2}
+.cell{min-height:36px}
 .lyric{grid-column:2;margin-top:3px;background:none;border:none;border-bottom:1px dashed transparent;border-radius:0;padding:2px 4px;font-size:13px;color:var(--sub)}
 .lyric:hover,.lyric:focus{border-bottom-color:var(--line)}
 /* sheet */
@@ -355,7 +358,7 @@ body.has-player #sheet .sheet{bottom:54px}
   .tabs a{padding:8px}
   .bar{grid-template-columns:22px 1fr;column-gap:4px;margin-bottom:4px}
   .bn{font-size:11px}
-  .cell{font-size:11.5px;padding:7px 1px 7px 3px;overflow:hidden;text-overflow:clip}
+  .cell{font-size:11.5px;padding:7px 1px 7px 3px;overflow:visible;text-overflow:clip;--cpl:3px}
   .lyric{font-size:13px}
   #sheet .sheet{padding:6px 6px calc(8px + env(safe-area-inset-bottom));max-height:52vh;overflow-y:auto}
   .sh-head{gap:6px;margin-bottom:2px;flex-wrap:nowrap;align-items:center}
@@ -848,10 +851,10 @@ function cjGen(){if(CJ_GEN_)return CJ_GEN_;const map={},byQ={};
 const CJ_IVN=['R','♭9','9','m3','3','11','♭5','5','♯5','13','♭7','M7'];
 // 足りないときのコスト: 5度は抜けがち(安い)、ルート・3度は重い
 const CJ_MISS={0:4,7:1,3:3,4:3};
-function cjJudge(notes){if(!notes.length)return [];const N=cjNames(),G=cjGen();const bass=Math.min(...notes)%12;const all=[...new Set(notes.map(n=>n%12))];const out=[];
+function cjJudge(notes){if(!notes.length)return [];const SP=cjSpell(),N=cjNames().map((n,pc)=>SP[pc]||n),G=cjGen();const bass=Math.min(...notes)%12;const all=[...new Set(notes.map(n=>n%12))];const out=[];
   if(all.length===1){const r=all[0];return [{name:N[r],sc:0,sub:'単音'},{name:N[r]+'5',sc:1,sub:'5なし'},{name:N[r]+'m',sc:2,sub:'m3・5なし'}]}
   const rest=all.filter(p=>p!==bass);
-  for(let r=0;r<12;r++){const NB=N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N;const bi=(bass-r+12)%12;const nm=q=>N[r]+q+(bi?'/'+NB[bass]:'');
+  for(let r=0;r<12;r++){const NB=(N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N).map((n,pc)=>SP[pc]||n);const bi=(bass-r+12)%12;const nm=q=>N[r]+q+(bi?'/'+NB[bass]:'');
     // 1) 辞書でぴったり(ベース込み / ベースを除いてオンコード)
     const exact=(pcs,pen)=>{if(!pcs.includes(r))return;const L=G.map[pcs.map(p=>(p-r+12)%12).sort((a,b)=>a-b).join(',')];
       if(L)for(const e of L)out.push({name:nm(e.q),sc:e.cost+pen+(bi?3:0),sub:e.o5?'5なし':''})};
@@ -871,7 +874,11 @@ function cjJudge(notes){if(!notes.length)return [];const N=cjNames(),G=cjGen();c
 const CJ={on:[],seq:[]};const CJ_LO=36,CJ_OCT=3;
 const cjSeqMode=()=>UI('cjSeq');
 // 順に入れた音名を、前の音より高くなるように並べてMIDI番号にする(最初の音がベース)
-function cjSeqNotes(){let prev=CJ_LO-1;return CJ.seq.map(pc=>{let m=CJ_LO+pc;while(m<=prev)m+=12;prev=m;return m})}
+// seq は {l:'E', a:'♭'} の並び。入れたとおりの書き方(D♯ か E♭ か)を候補の名前にも使う
+const cjPc=x=>(PCN[x.l]+(ACC[x.a]||0)+12)%12;
+const cjToSeq=midis=>{const N=cjNames();return [...midis].sort((a,b)=>a-b).map(m=>{const n=N[m%12];return {l:n[0],a:n.slice(1)}})};
+function cjSpell(){const sp={};if(cjSeqMode())CJ.seq.forEach(x=>{sp[cjPc(x)]=x.l+x.a});return sp}
+function cjSeqNotes(){let prev=CJ_LO-1;return CJ.seq.map(x=>{let m=CJ_LO+cjPc(x);while(m<=prev)m+=12;prev=m;return m})}
 const cjNotes=()=>cjSeqMode()?cjSeqNotes():CJ.on;
 function cjFromCell(c){const p=parseChord(c||'');if(!p.root)return [];const r=(PCN[p.root]+(ACC[p.acc]||0)+12)%12;
   const pq=parseQ(p.q),q2=pq?composeQ(pq):p.q,G=cjGen();const ivs=G.byQ[p.q]||G.byQ[q2]||(CJ_T.find(x=>x[0]===p.q)||[])[1];if(!ivs)return [];
@@ -883,10 +890,12 @@ function cjKeyboard(){const on=CJ.on,bass=on.length?Math.min(...on):null,NW=CJ_O
   for(let o=0;o<CJ_OCT;o++){W.forEach(pc=>{const m=CJ_LO+o*12+pc;w+=`<button class="cj-w ${on.includes(m)?'on':''}" data-act="cjKey" data-m="${m}">${m===bass?'<b class="cj-bass">●</b>':pc===0?'C'+(o+2):''}</button>`});
     Object.entries(B).forEach(([pc,wi])=>{const m=CJ_LO+o*12+ +pc;b+=`<button class="cj-b ${on.includes(m)?'on':''}" data-act="cjKey" data-m="${m}" style="left:calc(100% / ${NW} * ${o*7+wi+1} - 100% / ${NW} * 0.31);width:calc(100% / ${NW} * 0.62)">${m===bass?'<b class="cj-bass">●</b>':''}</button>`})}
   return `<div class="cj-kbw" id="cjKbw"><div class="cj-kb">${w}${b}</div></div>`}
-function cjSeqPad(){const N=cjNames();
-  return `<div class="cj-seq">${CJ.seq.length?CJ.seq.map((pc,i)=>`<span class="cj-chip ${i?'':'bass'}">${drm(N[pc])}</span>`).join('<span class="cj-arr">→</span>'):'<span class="sub">いちばん低い音(ベース)から順に押してください</span>'}
+function cjSeqPad(){
+  return `<div class="cj-seq">${CJ.seq.length?CJ.seq.map((x,i)=>`<span class="cj-chip ${i?'':'bass'}">${drm(x.l+x.a)}</span>`).join('<span class="cj-arr">→</span>'):'<span class="sub">いちばん低い音(ベース)から順に押してください</span>'}
     <span class="spacer"></span><button class="ghost" data-act="cjSeqBack" ${CJ.seq.length?'':'disabled'}>⌫</button></div>
-  <div class="cj-pcs">${N.map((n,pc)=>`<button class="${n.length>1?'acc':''}" data-act="cjSeqAdd" data-pc="${pc}">${drm(n)}</button>`).join('')}</div>`}
+  <div class="cj-pcs">${['C','D','E','F','G','A','B'].map(l=>`<button data-act="cjSeqAdd" data-l="${l}">${drm(l)}</button>`).join('')}
+    <button class="acc" data-act="cjSeqAcc" data-v="♭">♭</button><button class="acc" data-act="cjSeqAcc" data-v="♯">♯</button></div>
+  <p class="sub cj-hint">♭・♯ は直前に押した音に付きます(もう一度押すと外れます)</p>`}
 function cjBody(){const N=cjNames(),on=cjNotes(),bass=on.length?Math.min(...on):null;const cands=cjJudge(on),seq=cjSeqMode();
   return `<div class="seg cj-mode"><button class="${seq?'':'on'}" data-act="cjMode" data-v="kb">鍵盤</button><button class="${seq?'on':''}" data-act="cjMode" data-v="seq">低い音から順に</button></div>
   ${seq?cjSeqPad():cjKeyboard()}
@@ -940,10 +949,16 @@ function barHTML(bl,bi){
   const bar=bl.bars[bi];let cells='';const bm=barMeter(bl,bar,curSong());const den=bm?+bm.split('/')[1]:0;
   for(let i=0;i<bar.n;i++){const c=bar.cells[i]||'';const sel=P&&P.bar===bi&&P.slot===i;
     const beat=den===4?i%2===0:den===8?true:(bar.n%2===0&&bar.n<=8?i%2===0:true);
-    cells+=`<div class="cell ${c?'start':''} ${beat?'beat':''} ${i===0?'first':''} ${sel?'sel':''}" data-act="cell" data-bar="${bi}" data-slot="${i}">${esc(showC(c,bl))}</div>`}
+    // 長いコード名は後ろの空きマスまではみ出して表示(--sp = 使えるマス数)。それでも入らなければ fitCells で文字を小さくする
+    let sp=1;if(c)while(i+sp<bar.n&&!bar.cells[i+sp])sp++;
+    cells+=`<div class="cell ${c?'start':''} ${beat?'beat':''} ${i===0?'first':''} ${sel?'sel':''}" data-act="cell" data-bar="${bi}" data-slot="${i}">${c?`<span class="ct" style="--sp:${sp}">${esc(showC(c,bl))}</span>`:''}</div>`}
   return `<div class="bar" id="bar-${bi}"><button class="bn" data-act="barN" data-bar="${bi}" title="この小節だけ拍子・マス数を変える">${bi+1}${bm!==blockMeter(bl,curSong())?`<small>${bm||bar.n+'マス'}</small>`:''}</button>
   <div class="cells" style="grid-template-columns:repeat(${bar.n},1fr)">${cells}</div>
   <input class="lyric" data-input="lyric" data-bar="${bi}" value="${esc(bar.lyric)}" placeholder="歌詞・メモ"></div>`}
+function fitCells(){document.querySelectorAll('#grid .ct').forEach(el=>{el.style.fontSize='';if(!el.clientWidth||el.scrollWidth<=el.clientWidth+1)return;
+  let fs=parseFloat(getComputedStyle(el).fontSize);while(fs>8&&el.scrollWidth>el.clientWidth+1){fs-=0.5;el.style.fontSize=fs+'px'}})}
+let fitT=0;const fitSoon=()=>{clearTimeout(fitT);fitT=setTimeout(fitCells,30)};
+new MutationObserver(fitSoon).observe(document.documentElement,{childList:true,subtree:true});addEventListener('resize',fitSoon);
 function refreshBar(bi){const bl=curBlock();const el=$('#bar-'+bi);if(bl&&el&&bl.bars[bi])el.outerHTML=barHTML(bl,bi)}
 
 // コードの種類は「3度・7th・テンション」を組み合わせて作る(例 m + M7 → mM7、M7 + 9 → M7(9))
@@ -1341,14 +1356,16 @@ const ACT={
       resizeBar(bar,n);if(m)bar.m=m;else delete bar.m;if(P&&P.bar===bi)P=null;render()})},
   mpOk(){const v=$('#mpN').value+'/'+$('#mpD').value;if(!meterSlots(v))return toast('1小節32マスまでです。数を減らすか分母を大きくしてください');const f=MPF;ACT.lbClose();f&&f(v)},
   mpReset(){const f=MPF;ACT.lbClose();f&&f(null)},
-  cjOpen(){CJ.on=P?cjFromCell(curCell().replace(/^⌒/,'')):[];CJ.seq=[...CJ.on].sort((a,b)=>a-b).map(m=>m%12);
+  cjOpen(){CJ.on=P?cjFromCell(curCell().replace(/^⌒/,'')):[];CJ.seq=cjToSeq(CJ.on);
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cjm">
     <div class="hstack"><b style="white-space:nowrap">🎹 コード判定</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
     <div id="cjBody"></div></div>`;cjRender(true)},
   cjMode(t){S.prefs.ui=S.prefs.ui||{};const seq=t.dataset.v==='seq';if(seq===cjSeqMode())return;
-    if(seq)CJ.seq=[...CJ.on].sort((a,b)=>a-b).map(m=>m%12);else CJ.on=cjSeqNotes().map(m=>m>71?m-12*Math.ceil((m-71)/12):m);
+    if(seq)CJ.seq=cjToSeq(CJ.on);else CJ.on=cjSeqNotes().map(m=>m>71?m-12*Math.ceil((m-71)/12):m);
     S.prefs.ui.cjSeq=seq;save();cjRender(true)},
-  cjSeqAdd(t){const pc=+t.dataset.pc;CJ.seq.push(pc);const n=cjSeqNotes();cjTone(n[n.length-1]);cjRender()},
+  cjSeqAdd(t){CJ.seq.push({l:t.dataset.l,a:''});const n=cjSeqNotes();cjTone(n[n.length-1]);cjRender()},
+  cjSeqAcc(t){const x=CJ.seq[CJ.seq.length-1];if(!x)return toast('先に音(C〜B)を押してください');x.a=x.a===t.dataset.v?'':t.dataset.v;
+    const n=cjSeqNotes();cjTone(n[n.length-1]);cjRender()},
   cjSeqBack(){CJ.seq.pop();cjRender()},
   cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
     <div class="hstack"><b>📋 コピー・貼り付け</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div><div id="cpBody">${cpBody()}</div></div>`},
