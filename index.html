@@ -123,6 +123,9 @@ h1{font-size:24px;margin:4px 0 6px}
 .kk.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media screen and (max-width:420px){.kk{padding:9px 0;font-size:14px}.kk.kroot,.kk.kacc{font-size:16px}.kr.r10 .kk{font-size:13px;letter-spacing:-.3px}.kk.ksym{font-size:12px}}
 .symlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;font-size:13px}
+.cp-sec{margin-top:12px}.cp-h{font-size:12px;color:var(--sub);margin-bottom:6px}.cp-btn{width:100%;margin-bottom:8px;padding:10px}
+.cp-range{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}.cp-range select{min-width:64px}.cp-all{width:100%}
+.cp-now{margin-bottom:8px;font-size:14px;overflow-wrap:anywhere}.cp-note{margin:0;font-size:12px}
 .cj-kb{position:relative;height:130px;display:flex;margin:10px 0 8px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .cj-kb button{min-width:0;margin:0;-webkit-tap-highlight-color:transparent}
 .cj-w{flex:1;height:100%;padding:0 0 6px;background:#f6f4ef;color:#888;border:1px solid #bbb;border-radius:0 0 6px 6px;font-size:10px;display:flex;align-items:flex-end;justify-content:center}
@@ -831,6 +834,29 @@ function cjBody(){const N=cjNames(),on=CJ.on,bass=on.length?Math.min(...on):null
   <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(c.name)}</button>`).join('')
     :'<span class="sub">当てはまるコードが見つかりませんでした。音を減らしてみてください</span>':'<span class="sub">いちばん低い音がベース音になります。候補を押すとマスに入ります</span>'}</div>`}
 function cjRender(){const e=$('#cjBody');if(e)e.innerHTML=cjBody()}
+/* ---------- コードのコピー・貼り付け ----------
+   小節は「何マス目か」の位置どおりに貼る。貼り先の小節数・拍子・マス数は変えず、入りきらない分は貼らない */
+let CB=null;try{CB=JSON.parse(localStorage.getItem('kopiban-cb')||'null')}catch(_){}
+function cbSet(x){CB=x;try{localStorage.setItem('kopiban-cb',JSON.stringify(x))}catch(_){}}
+function cbLabel(){if(!CB)return 'まだ何もコピーしていません';if(CB.type==='cell')return `「${esc(CB.v)}」(1マス)`;
+  return `${esc(CB.from||'')} ${CB.bars.length}小節ぶん <span class="sub">(${esc(CB.bars.map(b=>b.filter(Boolean)[0]||'－').slice(0,4).join(' | '))}${CB.bars.length>4?' …':''})</span>`}
+function cpBody(){const bl=curBlock(),c=curCell(),nb=bl.bars.length,sel=(id,v)=>`<select id="${id}">${bl.bars.map((_,i)=>`<option value="${i}" ${i===v?'selected':''}>${i+1}</option>`).join('')}</select>`;
+  return `<div class="cp-sec"><div class="cp-h">コピー</div>
+    <button class="cp-btn" data-act="cpCell" ${c?'':'disabled'}>このマス${c?`「${esc(c)}」`:'(空)'}をコピー</button>
+    <div class="cp-range">${sel('cpFrom',P.bar)}<span>〜</span>${sel('cpTo',P.bar)}<span>小節目を</span><button data-act="cpBars">まとめてコピー</button></div>
+    <button class="ghost cp-all" data-act="cpAll">このブロック全部(${nb}小節)をコピー</button></div>
+  <div class="cp-sec"><div class="cp-h">貼り付け</div><div class="cp-now">コピー中: ${cbLabel()}</div>
+    ${!CB?'':CB.type==='cell'?`<button class="cp-btn primary" data-act="cpPaste">このマスに貼り付け</button>`
+      :`<button class="cp-btn primary" data-act="cpPaste">${P.bar+1}小節目から貼り付け</button>
+      <p class="sub cp-note">マスの位置どおりに貼ります。こっちの小節数・拍子はそのままで、入りきらない分は貼りません</p>`}</div>`}
+function cpPasteBars(){const bl=curBlock(),start=P.bar;let over=0,drop=0,used=0;const plan=[];
+  CB.bars.forEach((src,k)=>{const tb=bl.bars[start+k];if(!tb){drop+=src.filter(Boolean).length;return}used++;
+    for(let i=0;i<tb.n;i++){const v=src[i]||'',old=tb.cells[i]||'';if(old&&old!==v)over++;plan.push([tb,i,v])}
+    drop+=src.slice(tb.n).filter(Boolean).length});
+  if(!used)return toast('ここから先に小節がありません');
+  if(over&&!confirm(`${over}個のコードが上書きされます。貼り付けますか？`))return;
+  plan.forEach(([tb,i,v])=>{tb.cells[i]=v});save();ACT.lbClose();P=Object.assign(parseChord(curCell()),{bar:P.bar,slot:P.slot});render();
+  toast(`${used}小節に貼り付けました${drop?`(入りきらないコード${drop}個は省きました)`:''}`)}
 // 拍子えらび: 「数 / 分母」をそれぞれ選ぶだけ(打ち間違いで「8」だけ入る、などを防ぐ)
 let MPF=null;
 function meterModal(title,cur,resetLabel,onOk){MPF=onOk;const x=normMeter(cur||'').match(/^(\d+)\/(\d+)$/)||[0,'4','4'];
@@ -961,6 +987,7 @@ function renderSheet(focus){
   <div class="cs-foot ${UI('kbd')?'kbd-on':''}"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
     <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>
     <button class="foldbtn" data-act="cjOpen" title="鍵盤で押した音からコード名を探す">🎹 コード判定</button>
+    <button class="foldbtn" data-act="cpOpen" title="マスや小節をコピー・貼り付け">📋 コピー</button>
     <div class="steps"><span>「次」で進む</span>${steps.map(([v,l])=>`<button class="${S.prefs.step===v?'on':''}" data-act="pStep" data-v="${v}">${l}</button>`).join('')}</div></div>
   </div></div>`;
   if(focus&&!TOUCH){const i=$('#chordIn');i.focus();i.select()}
@@ -1252,6 +1279,13 @@ const ACT={
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cjm">
     <div class="hstack"><b style="white-space:nowrap">🎹 コード判定</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
     <div id="cjBody">${cjBody()}</div></div>`},
+  cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
+    <div class="hstack"><b>📋 コピー・貼り付け</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div><div id="cpBody">${cpBody()}</div></div>`},
+  cpCell(){cbSet({type:'cell',v:curCell()});toast('コピーしました');ACT.lbClose()},
+  cpBars(){let a=+$('#cpFrom').value,b=+$('#cpTo').value;if(a>b)[a,b]=[b,a];const bl=curBlock();
+    cbSet({type:'bars',from:`${bl.name} ${a+1}〜${b+1}小節目`,bars:bl.bars.slice(a,b+1).map(x=>x.cells.slice(0,x.n))});toast(`${b-a+1}小節コピーしました`);ACT.lbClose()},
+  cpAll(){const bl=curBlock();cbSet({type:'bars',from:`${bl.name} 全部`,bars:bl.bars.map(x=>x.cells.slice(0,x.n))});toast(`${bl.bars.length}小節コピーしました`);ACT.lbClose()},
+  cpPaste(){if(!CB)return;if(CB.type==='cell'){const c=curCell();if(c&&c!==CB.v&&!confirm(`「${c}」を「${CB.v}」で上書きしますか？`))return;ACT.lbClose();setCell(CB.v);return}cpPasteBars()},
   cjKey(t){const m=+t.dataset.m;const i=CJ.on.indexOf(m);if(i<0){CJ.on.push(m);cjTone(m)}else CJ.on.splice(i,1);cjRender()},
   cjPlay(){[...CJ.on].sort((a,b)=>a-b).forEach((m,i)=>setTimeout(()=>cjTone(m),i*40))},
   cjClear(){CJ.on=[];cjRender()},
