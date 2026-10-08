@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="コピバンノート">
 <meta name="theme-color" content="#141312">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>コピバン練習ノート</title>
 <style>
 :root{
@@ -962,6 +965,11 @@ function viewSettings(){
   return topbar('settings')+`<main><h1>設定</h1>
   <div class="card"><b>バンド</b><div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
     <button data-act="newBand">＋ バンドを追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">このバンドを削除</button>':''}</div></div>
+  <div class="card"><b>📱 スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ いまホーム画面のアプリとして開いています。':''}
+    ホーム画面に追加すると、アイコンから全画面で開けて、電波がないスタジオでも使えます。<br>
+    ・iPhone: Safariで開いて、下の共有ボタン → 「ホーム画面に追加」<br>
+    ・Android: Chromeのメニュー(︙) → 「ホーム画面に追加」<br>
+    ※ホーム画面のアプリとブラウザでは、保存されるデータが別々になります。どちらか一方で使うか、「バックアップを書き出す」で移してください。</p></div>
   <div class="card"><b>マーカー</b><p class="note">ブロックに付ける目印です(キメ・テンポ注意など)。名前と色は自由に変えられて、曲の一覧で危険な箇所がひと目で分かります。</p>
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>
@@ -1183,6 +1191,7 @@ window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';rend
 
 (async()=>{
   initPlayer();
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
   DB=await openDB();
   S=await idb('kv','readonly',s=>s.get('state'))||defaultState();
   S.prefs=S.prefs||{step:2};
