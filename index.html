@@ -305,7 +305,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut .tut-p{margin:0 0 4px;line-height:1.7;overflow-y:auto}
 .tut .tut-p.help{font-size:14px;color:var(--sub)}.tut .tut-p.help b{color:var(--text)}
 .tut-helprow{height:34px;display:flex;align-items:center}.tut-play{padding:4px 10px;font-size:12px;white-space:nowrap}
-.tut-toc .tut-last{border-color:var(--accent)}.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
+.tut-toc .tut-last{border-color:var(--accent)}.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay[disabled]{opacity:.35}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
 .tut-help .qm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--sub);font-weight:700;font-size:12px;flex:none}
 .tut-dots{display:flex;gap:5px;justify-content:center;margin:10px 0}.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.tut-dots i.on{background:var(--accent)}
 .news-v{margin-top:10px}.news-v b{font-size:13px}.news-v ul{margin:4px 0 0;padding-left:1.2em;line-height:1.7;font-size:14px}
@@ -1446,11 +1446,11 @@ function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelect
   h.innerHTML=TG()[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
-function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<div class="trow"><button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>${tgCan(i)?`<button class="tplay" data-act="tutTour" data-v="${i}" title="画面で見る">▶</button>`:''}</div>`).join('')}</div>
+function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<div class="trow"><button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>${tgCan(i)?`<button class="tplay" data-act="tutTour" data-v="${i}" title="画面で見る">▶</button>`:TGS()[i].sel?`<button class="tplay" disabled title="${tgWhy(i)}">▶</button>`:''}</div>`).join('')}</div>
   <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
-  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:''}</div>
+  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:TGS()[TUTI].sel?`<span class="sub" style="font-size:11px">${tgWhy(TUTI)}</span>`:''}</div>
   <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack"><button class="ghost" data-act="tutGo" data-v="-1">≡ 目次</button><span class="spacer"></span>${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':''}
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ →'}</button></div>`}
@@ -1460,6 +1460,8 @@ function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TU
 function tourSong(){const sl=curSetlist();const id=sl&&sl.songIds.find(songById);return songById(id)||bandSongs()[0]}
 function tourBlock(){const s=tourSong();return s&&s.blocks[0]}
 const tSong=()=> '#/song/'+tourSong().id, tBlk=()=> `#/block/${tourSong().id}/${tourBlock().id}`;
+// セトリや曲を全部消しているときは、その場所が画面にないので「画面で見る」を出さない
+const hasSl=()=>!!curSetlist(),slHasSong=()=>{const sl=curSetlist();return !!(sl&&sl.songIds.some(songById))};
 const tCell=()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}};
 const tNoCell=()=>{if(P)ACT.pClose()};
 const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone,IS_PHONE=()=>matchMedia('(pointer:coarse)').matches;
@@ -1471,8 +1473,8 @@ const TOUR=[
     g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
   {r:()=> '#/',sel:'main',whole:true,h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。ほかの画面からは、いちばん上のバーにある「セトリ」の文字を押すとここに戻ってこられます。'},
   {on:'setlist',r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'ライブ企画の名前などをつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、バンドごとに分けて作ると分かりやすいです。'},
-  {on:'setlist',r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
-  {core:1,r:()=> '#/',sel:'main .list .row',h:'曲を開く',t:'セトリに入っている曲です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'セトリに入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body',need:tourSong},
+  {on:'setlist',r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。',need:hasSl},
+  {core:1,r:()=> '#/',sel:'main .list .row',h:'曲を開く',t:'セトリに入っている曲です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'セトリに入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body',need:slHasSong},
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songInfo',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
@@ -1490,7 +1492,7 @@ const TOUR=[
   {r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
-  {on:'setlist',grp:'共有',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。'},
+  {on:'setlist',grp:'共有',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。',need:hasSl},
   {on:'setlist',grp:'共有',r:()=> '#/',sel:'.menubtn',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
@@ -1502,6 +1504,7 @@ const TG=()=>TOUR.filter(s=>!s.noguide).map((s,i)=>[s.h,s.g||s.t,s.help,tGrp(s,i
 let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false,TBACK=-1;
 const TGS=()=>TOUR.filter(s=>!s.noguide);
 const tgCan=i=>{const st=TGS()[i];return st&&st.sel&&(!st.need||st.need())};
+const tgWhy=i=>{const st=TGS()[i];return st.need===slHasSong?'セトリに曲を入れると画面で見られます':st.r===tBlk&&bandSongs().length?'ブロックがある曲を作ると画面で見られます':st.r===tSong||st.r===tBlk||st.tap?'曲を作ると画面で見られます':'セトリを作ると画面で見られます'};
 const tgNext=i=>{for(let j=i+1;j<TGS().length;j++)if(tgCan(j))return j;return -1};
 // 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
@@ -1528,6 +1531,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   bub.classList.remove('in');
   bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
+    ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目 →</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
