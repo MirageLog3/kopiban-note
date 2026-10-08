@@ -112,6 +112,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .kr{display:grid;gap:5px}.kr.r10{grid-template-columns:repeat(10,1fr)}.kr.r9{grid-template-columns:repeat(7,1fr) 1fr 1fr}
 .kr.r9:nth-child(4){grid-template-columns:repeat(9,1fr)}
 .kr.kfoot{grid-template-columns:repeat(4,1fr)}
+/* 「次 →」は選択中(塗りつぶし)と見分けがつくよう、枠と文字だけオレンジにする */
+.kk.knext{background:var(--panel2);color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .kr.r9.ksyms{grid-template-columns:repeat(7,1fr)}
 .kr.r8{grid-template-columns:repeat(8,1fr)}
 .kk.kmark{font-size:18px;background:var(--panel2)}
@@ -1068,7 +1070,7 @@ function renderSheet(focus){
       <button class="kk kfn" data-act="kBack" title="1文字消す">⌫</button></div>
     ${UI('marks')?`<div class="kr r8 kmarks">${MARKS.map(m=>`<button class="kk kmark" data-act="kMark" data-v="${m}">${m}</button>`).join('')}</div>`:''}
     <div class="kr kfoot"><button class="kk ksym ${UI('marks')?'on':''}" data-act="uiToggle" data-k="marks" title="★※〇■などのマーク">★…</button><button class="kk kfn" data-act="pDel">消す</button>
-      <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn primary" data-act="pMove" data-v="1">次 →</button></div>
+      <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn knext" data-act="pMove" data-v="1">次 →</button></div>
   </div>
   <div class="cs-foot"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
     <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー</button>
