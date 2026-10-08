@@ -903,15 +903,29 @@ function songData(s){const sd=meterSlots(songMeterDefault(s));
     if(bars.every(x=>x===0))bars=bars.length;
     return {ty:b.type,n:b.name===TYPES[b.type].label?undefined:b.name,no:U(b.note),tg:U(b.tags),st:b.start??undefined,bm:U(b.meter),bb:U(b.bpm),bk:U(b.key),bars,
       tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text))}})}}
-async function packData(d){
-  const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-  const u8=new Uint8Array(await new Response(cs).arrayBuffer());let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode(...u8.subarray(i,i+8192));
-  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-const packSong=s=>packData(Object.assign({v:1},songData(s)));
+// 共有データ v2: 項目名を省いた配列にしてから圧縮する。リンクは英数字(1文字6bit)、共有コードは漢字(1文字14bit)で書く
+const trimA=a=>{a=a.map(x=>x===undefined?null:x);while(a.length&&a[a.length-1]==null)a.pop();return a};
+function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx]))])}
+function arrSong(a){return {t:a[0],bpm:a[1]||undefined,m:a[2]||undefined,k:a[3]||undefined,u:a[4]||undefined,
+  b:(a[5]||[]).map(b=>({ty:b[0],n:b[1]??undefined,no:b[2]||undefined,tg:b[3]||undefined,st:b[4]??undefined,bm:b[5]||undefined,bb:b[6]||undefined,bk:b[7]||undefined,bars:b[8]??0,tx:b[9]||undefined}))}}
+async function packBytes(d){const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(cs).arrayBuffer())}
+function b64u(u8){let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode(...u8.subarray(i,i+8192));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+const KB=0x4E00;
+function toKanji(u8){let out=String.fromCharCode(KB+(u8.length>>14),KB+(u8.length&16383)),acc=0,bits=0;
+  for(const b of u8){acc=(acc<<8)|b;bits+=8;while(bits>=14){bits-=14;out+=String.fromCharCode(KB+((acc>>bits)&16383))}acc&=(1<<bits)-1}
+  if(bits)out+=String.fromCharCode(KB+((acc<<(14-bits))&16383));return out}
+function fromKanji(s){const len=((s.charCodeAt(0)-KB)<<14)|(s.charCodeAt(1)-KB),out=new Uint8Array(len);let acc=0,bits=0,j=0;
+  for(let i=2;i<s.length&&j<len;i++){acc=(acc<<14)|(s.charCodeAt(i)-KB);bits+=14;while(bits>=8&&j<len){bits-=8;out[j++]=(acc>>bits)&255}acc&=(1<<bits)-1}return out}
+async function packData(d){return b64u(await packBytes(d))}
+const packSong=s=>packData([2,songArr(s)]);
 async function unpackShared(code){
-  code=code.trim().replace(/^.*#\/import\//,'');const bin=atob(code.replace(/-/g,'+').replace(/_/g,'/'));
-  const ds=new Blob([Uint8Array.from(bin,c=>c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  code=code.trim().replace(/^.*#\/import\//,'');try{code=decodeURIComponent(code)}catch(_){}code=code.replace(/\s+/g,'');
+  const bytes=code.charCodeAt(0)>=KB?fromKanji(code):Uint8Array.from(atob(code.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+  const ds=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   const d=JSON.parse(await new Response(ds).text());
+  if(Array.isArray(d)&&d[0]===2)return {songs:[arrSong(d[1])]};
+  if(Array.isArray(d)&&d[0]===3)return {setlist:d[1]||'共有セトリ',studio:d[2]||null,songs:(d[3]||[]).map(arrSong)};
   if(d&&d.v===1&&Array.isArray(d.b))return {songs:[d]};
   if(d&&d.v===1&&Array.isArray(d.songs))return {setlist:d.sl||'共有セトリ',songs:d.songs,studio:d.st||null};
   throw new Error('形式が違います')}
@@ -931,9 +945,9 @@ async function openShare(kind){
   if(kind==='setlist'){const sl=curSetlist();const songs=sl.songIds.map(songById).filter(Boolean);
     if(!songs.length)return toast('セトリに曲がありません');title=`セトリ「${sl.name}」(${songs.length}曲)`;
     const st=sl.studio||{};hasSt=!!(st.date||st.start||st.place);withSt=hasSt&&S.prefs.shareStudio!==false;
-    code=await packData({v:1,sl:sl.name,st:withSt?{d:U(st.date),s:U(st.start),e:U(st.end),p:U(st.place)}:undefined,songs:songs.map(songData)})}
-  else{const s=curSong();title=`「${s.title}」`;code=await packSong(s)}
-  const link=shareBase()+'#/import/'+code;
+    var bytes=await packBytes(trimA([3,sl.name,withSt?{d:U(st.date),s:U(st.start),e:U(st.end),p:U(st.place)}:null,songs.map(songArr)]))}
+  else{const s=curSong();title=`「${s.title}」`;var bytes=await packBytes([2,songArr(s)])}
+  code=toKanji(bytes);const link=shareBase()+'#/import/'+b64u(bytes);
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
@@ -941,7 +955,7 @@ async function openShare(kind){
   <div class="sub">共有リンク <span id="shLen">(${link.length}文字)</span></div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn">✂ 短くする</button><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
   <p class="note" id="shNote" style="margin:4px 0 0">「短くする」を押すと、短縮サービス(da.gd)で https://da.gd/xxxx のような短いリンクにします。</p>
   ${link.length>8000?`<p class="note" style="color:var(--accent)">リンクが長め(${link.length}文字)なので、アプリによっては途中で切れるかもしれません。切れたら下の共有コードを送ってください。</p>`:''}
-  <div class="sub" style="margin-top:10px">共有コード(${code.length}文字)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
+  <div class="sub" style="margin-top:10px">共有コード(${code.length}文字・漢字の羅列ですが、そのままコピーして送ればOK)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   </div>`}
 function viewImport(){
   return topbar('')+`<main><div id="impBody"><div class="card"><span class="sub">読み込み中…</span></div></div></main>`}
