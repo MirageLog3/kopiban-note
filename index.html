@@ -1502,6 +1502,7 @@ const TG=()=>TOUR.filter(s=>!s.noguide).map((s,i)=>[s.h,s.g||s.t,s.help,tGrp(s,i
 let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false,TBACK=-1;
 const TGS=()=>TOUR.filter(s=>!s.noguide);
 const tgCan=i=>{const st=TGS()[i];return st&&st.sel&&(!st.need||st.need())};
+const tgNext=i=>{for(let j=i+1;j<TGS().length;j++)if(tgCan(j))return j;return -1};
 // 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
 function tourStart(){ACT.lbClose();THINT=false;TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
@@ -1529,7 +1530,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
-    ${THINT?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button class="primary" data-act="tourBack">← 使い方の一覧へ</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
+    ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目 →</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
@@ -1680,6 +1681,7 @@ const ACT={
   tourGuide(t){tourEnd();ACT.tutOpen(TG().findIndex(x=>x[0]===t.dataset.h))},
   // 使い方の1項目を、実際の画面を開いて光らせて見せる。終わったら使い方の一覧(目次)に戻り、見ていた項目に印をつける
   tutTour(t){const i=+t.dataset.v,st=TGS()[i];if(!tgCan(i))return;TBACK=i;ACT.lbClose();THINT=true;TSTEPS=[{...st,t:st.g||st.t,tap:null}];TI=0;TH=false;tourGo()},
+  tourNextTopic(){const j=tgNext(TBACK);if(j<0)return ACT.tourBack();ACT.tutTour({dataset:{v:j}})},
   tourBack(){const i=TBACK;tourEnd();ACT.tutOpen(-1);const b=document.querySelector(`.tut-toc [data-act=tutGo][data-v="${i}"]`);if(b){b.scrollIntoView({block:'center'});b.classList.add('tut-last')}},
   tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
