@@ -291,7 +291,7 @@ h1{font-size:24px;margin:4px 0 6px}
 @keyframes tourPulse{0%,100%{outline-width:2px;outline-offset:0}50%{outline-width:4px;outline-offset:3px}}
 .tour-ripple{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--accent);pointer-events:none;animation:tourRip .48s ease-out forwards;z-index:2}
 @keyframes tourRip{0%{transform:scale(.3);opacity:.8}100%{transform:scale(2);opacity:0}}
-.bunsetsu{overflow-wrap:anywhere;line-break:strict;text-wrap:pretty}
+.bunsetsu{overflow-wrap:anywhere;line-break:strict}/*nowrap-pretty-off*/
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
 .song-audio{margin-top:12px}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
 .brow.bq{display:flex;gap:10px;align-items:flex-start}.brow.bq input[type=number]{width:80px}
@@ -1539,7 +1539,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
   ns.forEach(n=>{const parts=n.nodeValue.split(re);if(parts.length<2)return;const f=document.createDocumentFragment();
     // 区切りごとに「途中で改行しない」かたまりにする。かたまりの間は、ブラウザの禁則(「や。の位置)に任せて改行される
     parts.forEach(p=>{if(p.length>14){f.appendChild(document.createTextNode(p));return}const s=document.createElement('span');s.className='nb';s.textContent=p;f.appendChild(s)});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
-// 文節で区切るのはやめて、普通の日本語の改行(どこでも改行・禁則あり)に戻す。最後の行が1〜2文字だけにならないよう text-wrap:pretty だけ使う
+// 文節で区切るのはやめて、普通の日本語の改行(どこでも改行・禁則あり)に戻す。text-wrap:pretty はiPhoneのSafariで右側が大きく空くので使わない
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
