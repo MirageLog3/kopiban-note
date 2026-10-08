@@ -280,8 +280,12 @@ h1{font-size:24px;margin:4px 0 6px}
 .mlist{display:flex;flex-direction:column}.mrow{display:flex;align-items:center;gap:10px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);border-radius:0;background:none!important;box-shadow:none!important;text-align:left;font-size:15px;color:var(--text)}
 .mrow:last-child{border-bottom:none}.mi{width:1.6em;text-align:center}
 #tour{position:fixed;inset:0;z-index:70}
-.tour-spot{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px #000a;outline:2px solid var(--accent);transition:all .2s;pointer-events:none}
-.tour-bub{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px var(--shadow);max-width:520px;margin:0 auto}
+.tour-spot{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px #000a;outline:2px solid var(--accent);pointer-events:none;
+  transition:left .3s cubic-bezier(.2,.8,.2,1),top .3s cubic-bezier(.2,.8,.2,1),width .3s cubic-bezier(.2,.8,.2,1),height .3s cubic-bezier(.2,.8,.2,1),border-radius .3s}
+.tour-bub{position:fixed;left:12px;right:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px var(--shadow);max-width:520px;margin:0 auto;
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .22s ease-out,transform .22s ease-out}
+.tour-bub.in{opacity:1;transform:none;pointer-events:auto}
+.bunsetsu{word-break:keep-all;overflow-wrap:anywhere;line-break:strict}
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
 .nm-eg{margin:0 0 10px;padding-left:1.2em;font-size:13px;color:var(--sub);line-height:1.7}
 .backlink{display:inline-block;color:var(--accent);margin:4px 0 2px;font-size:14px}
@@ -1425,8 +1429,8 @@ const TUT=[
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
 function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');let mh=0,mp=0;const cur=p.innerHTML;
-  TUT.forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;h.style.minHeight='';p.style.height='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
-  h.innerHTML=TUT[TUTI][0];p.innerHTML=cur;h.style.minHeight=mh+'px';p.style.height=mp+'px'}
+  TUT.forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;wbrize(p);h.style.minHeight='';p.style.height='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
+  h.innerHTML=TUT[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TUT.length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
@@ -1440,6 +1444,8 @@ function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUT
 function tourSong(){const sl=curSetlist();const id=sl&&sl.songIds.find(songById);return songById(id)||bandSongs()[0]}
 function tourBlock(){const s=tourSong();return s&&s.blocks[0]}
 const TOUR=[
+  {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「次のライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
+  {r:()=> '#/',sel:null,h:'データについて',t:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は<b>ホーム画面に追加</b>しておくのがおすすめです。',help:TUT[5][2]},
   {r:()=> '#/',sel:'main h1',h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。上の「セトリ」でいつでもここに戻れます。'},
   {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'コピバンならコピーするバンドの名前、イベントならライブ企画の名前でセトリを作りましょう。'},
   {r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
@@ -1452,38 +1458,49 @@ const TOUR=[
     before:()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}}},
   {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,
     before:()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}}},
-  {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'.histbtns',h:'元に戻す・やり直す',t:'間違えて消したときは、ここで元に戻せます。',need:tourBlock,before:()=>{if(P)ACT.pClose()}},
-  {r:()=> location.hash||'#/',sel:'.menubtn',h:'メニュー',t:'テーマやドレミ表示の切り替え、共有コードの読み込み、バックアップなどはここにまとまっています。この説明は「使い方を見る」から文章でいつでも読み返せます。',before:()=>{if(P)ACT.pClose()}},
-  {r:()=> location.hash||'#/',sel:null,h:'データについて',t:TUT[5][1],help:TUT[5][2]}];
-let TI=-1,TH=false,TSTEPS=[];
+  {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。',need:tourBlock,before:()=>{if(P)ACT.pClose()}},
+  {r:()=> location.hash||'#/',sel:'.menubtn',h:'メニュー',t:'画面の明るさ(テーマ)やコードの表示方法の切り替え、共有コードの読み込み、バックアップなどはここにまとまっています。この説明は「使い方を見る」から文章でいつでも読み返せます。',before:()=>{if(P)ACT.pClose()}}];
+let TI=-1,TH=false,TSTEPS=[],TSEQ=0;
 function tourStart(){ACT.lbClose();TSTEPS=TOUR.filter(s=>!s.need||s.need());TI=0;TH=false;tourGo()}
-function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();
-  const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?260:60)};
+function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
+  const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
-function tourShow(){const st=TSTEPS[TI];if(!st)return;let box=$('#tour');
-  if(!box){box=document.createElement('div');box.id='tour';document.body.appendChild(box);addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true)}
+// 案内用の重ね板。明るく見せる枠(spot)と吹き出し(bub)は作り直さずに使い回して、枠が動くアニメーションを出す
+function tourBox(){let box=$('#tour');if(box)return box;box=document.createElement('div');box.id='tour';
+  box.innerHTML=`<div class="tour-spot" id="tourSpot" style="left:0;top:0;width:${innerWidth}px;height:${innerHeight}px;border-radius:0"></div><div class="tour-bub" id="tourBub"></div>`;
+  document.body.appendChild(box);addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true);return box}
+function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ;
   const el=st.sel&&document.querySelector(st.sel);if(el)el.scrollIntoView({block:'center'});
-  const last=TI===TSTEPS.length-1,showH=TH&&st.help;
-  box.innerHTML=`<div class="tour-spot" id="tourSpot"></div><div class="tour-bub" id="tourBub">
-    <div class="tut-step">${TI+1} / ${TSTEPS.length}</div><b class="tour-h">${st.h}</b>
+  const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
+  bub.classList.remove('in');
+  bub.innerHTML=`<div class="tut-step">${TI+1} / ${TSTEPS.length}</div><b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     <div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
-    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div></div>`;
-  setTimeout(tourPlace,el?250:0);setTimeout(tourPlace,700)}
+    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`;
+  wbrize(bub.querySelector('.tour-t'));
+  // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
+  if(el){const r=el.getBoundingClientRect(),bh=bub.offsetHeight,H=innerHeight;
+    if(r.bottom+bh+24>H&&r.top-bh-24<0&&getComputedStyle(el).position!=='fixed'&&!el.closest('.sheet,header,#sheet'))window.scrollBy(0,r.top-70)}
+  tourPlace();setTimeout(()=>{if(seq!==TSEQ)return;tourPlace();bub.classList.add('in')},330)}
 function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(!st||!sp||!bub)return;
-  const el=st.sel&&document.querySelector(st.sel);const W=innerWidth,Hh=innerHeight,m=6;
-  if(!el){sp.style.cssText='left:50%;top:40%;width:0;height:0';bub.style.cssText=`left:12px;right:12px;top:50%;transform:translateY(-50%)`;return}
+  const el=st.sel&&document.querySelector(st.sel);const W=innerWidth,Hh=innerHeight,m=6,bh=bub.offsetHeight;
+  if(!el){Object.assign(sp.style,{left:W/2+'px',top:Hh/2+'px',width:'0px',height:'0px',borderRadius:'10px'});
+    Object.assign(bub.style,{top:Math.max(12,(Hh-bh)/2)+'px',bottom:''});return}
   const r=el.getBoundingClientRect();const top=Math.max(4,r.top-m),bot=Math.min(Hh-4,r.bottom+m);
-  sp.style.cssText=`left:${Math.max(4,r.left-m)}px;top:${top}px;width:${Math.min(W-8,r.width+m*2)}px;height:${Math.max(0,bot-top)}px`;
-  const bh=bub.offsetHeight,below=Hh-bot,above=top;
-  if(below>=bh+12)bub.style.cssText=`left:12px;right:12px;top:${bot+10}px`;
-  else if(above>=bh+12)bub.style.cssText=`left:12px;right:12px;top:${top-bh-10}px`;
-  else bub.style.cssText=`left:12px;right:12px;bottom:12px`}
+  Object.assign(sp.style,{left:Math.max(4,r.left-m)+'px',top:top+'px',width:Math.min(W-8,r.width+m*2)+'px',height:Math.max(0,bot-top)+'px',borderRadius:'10px'});
+  if(Hh-bot>=bh+12)Object.assign(bub.style,{top:bot+10+'px',bottom:''});
+  else if(top>=bh+12)Object.assign(bub.style,{top:top-bh-10+'px',bottom:''});
+  else Object.assign(bub.style,{top:'',bottom:'12px'})}
 function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;S.prefs.tutDone=true;save();if(P)ACT.pClose();if(location.hash!=='#/'&&location.hash)location.hash='#/'}
+// 日本語の改行を文節っぽい区切りでだけ起こす: ひらがな・句読点のあと、漢字・カタカナ・英数字・かっこの前を改行してよい場所にする
+function wbrize(el){if(!el)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
+  const re=/(?<=[ぁ-ゖ、。」』）)！？・])(?=[一-龠々〆ァ-ヶーｦ-ﾟA-Za-z0-9「『（(＋→←])/;
+  ns.forEach(n=>{const parts=n.nodeValue.split(re);if(parts.length<2)return;const f=document.createDocumentFragment();
+    parts.forEach((p,i)=>{if(i)f.appendChild(document.createElement('wbr'));f.appendChild(document.createTextNode(p))});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
