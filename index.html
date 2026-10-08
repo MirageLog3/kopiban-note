@@ -111,7 +111,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .kb{display:flex;flex-direction:column;gap:5px;margin-top:6px}
 .kr{display:grid;gap:5px}.kr.r10{grid-template-columns:repeat(10,1fr)}.kr.r9{grid-template-columns:repeat(7,1fr) 1fr 1fr}
 .kr.r9:nth-child(4){grid-template-columns:repeat(9,1fr)}
-.kr.kfoot{grid-template-columns:1.3fr 1fr 1fr 1.3fr}
+.kr.kfoot{grid-template-columns:1fr 1fr 1.4fr}
 .kr.ksyms{grid-template-columns:repeat(9,1fr)}
 .kr.r8{grid-template-columns:repeat(8,1fr)}
 .kk.kmark{font-size:18px;background:var(--panel2)}
@@ -1054,7 +1054,7 @@ function renderSheet(focus){
     <div class="cs-now"><div class="pos">${P.bar+1}小節目・${posLabel(barMeter(bl,bar,curSong()),P.slot)}</div>
       <div class="cs-name" id="csName">${val?esc(drm(val)):'<span class="cs-empty">空き(前のコードが続く)</span>'}</div>
       <div class="cs-desc" id="csDesc">${afterSlash?'<b>ベース音を選んでください</b>':esc(chordDesc(P))}${deg?` ・ <b>${esc(deg)}</b>`:''}</div></div>
-    <div class="cs-nav"><button data-act="pMove" data-v="-1" title="前のマス">←</button><button class="primary" data-act="pMove" data-v="1">次 →</button><button class="ghost" data-act="pClose" title="閉じる">✕</button></div>
+    <div class="cs-nav"><button class="ghost" data-act="pClose" title="閉じる">✕</button></div>
   </div>
   <div class="kb">
     <div class="kr r9">${['C','D','E','F','G','A','B'].map(r=>`<button class="kk kroot ${(!afterSlash&&lastRoot===r)?'on':''}" data-act="kRoot" data-v="${r}">${S.prefs.doremi?DRM[r]:r}</button>`).join('')}
@@ -1069,14 +1069,14 @@ function renderSheet(focus){
       <button class="kk ksym ${UI('kbd')?'on':''}" data-act="kKbd" title="スマホのキーボードで入力(絵文字なども)">⌨</button>
       <button class="kk kfn" data-act="kBack" title="1文字消す">⌫</button></div>
     ${UI('marks')?`<div class="kr r8 kmarks">${MARKS.map(m=>`<button class="kk kmark" data-act="kMark" data-v="${m}">${m}</button>`).join('')}</div>`:''}
-    <div class="kr kfoot"><button class="kk kfn" data-act="pPrev">↺ 前と同じ</button><button class="kk kfn" data-act="pDel">消す</button>
+    <div class="kr kfoot"><button class="kk kfn" data-act="pDel">消す</button>
       <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn primary" data-act="pMove" data-v="1">次 →</button></div>
   </div>
   <div class="cs-foot ${UI('kbd')?'kbd-on':''}"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
-    <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>
+    <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー</button>
     <button class="foldbtn ${S.prefs.doremi?'on':''}" data-act="toggleDoremi" title="C D E… を ド レ ミ… で表示">ドレミ</button>
     <button class="foldbtn" data-act="cjOpen" title="鍵盤で押した音からコード名を探す">🎹 コード判定</button>
-    <button class="foldbtn" data-act="cpOpen" title="マスや小節をコピー・貼り付け">📋 コピー</button>
+    <button class="foldbtn" data-act="cpOpen" title="マスや小節をコピー・貼り付け">📋 コピペ</button>
     <div class="steps"><span>「次」で進む</span>${steps.map(([v,l])=>`<button class="${S.prefs.step===v?'on':''}" data-act="pStep" data-v="${v}">${l}</button>`).join('')}</div></div>
   </div></div>`;
   if(focus&&!TOUCH){const i=$('#chordIn');i.focus();i.select()}
