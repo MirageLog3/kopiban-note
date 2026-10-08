@@ -1447,7 +1447,7 @@ const TOUR=[
   {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
   {r:()=> '#/',sel:null,h:'データについて',t:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は<b>ホーム画面に追加</b>しておくのがおすすめです。',help:TUT[5][2]},
   {r:()=> '#/',sel:'main',whole:true,h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。上の「セトリ」でいつでもここに戻れます。'},
-  {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'コピバンならコピーするバンドの名前、イベントならライブ企画の名前でセトリを作りましょう。'},
+  {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'ライブ企画の名前などをつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、バンドごとに分けて作ると分かりやすいです。'},
   {r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
   {r:()=> '#/',sel:'main .list .row',h:'曲',t:'セトリに入っている曲です。タップすると曲の画面が開きます。',need:tourSong},
   {r:()=> '#/song/'+tourSong().id,sel:'main .adds',h:'曲の構成',t:'「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。',need:tourSong},
@@ -1562,8 +1562,8 @@ function nameModal(title,hint,eg,value,onOk){NMF=onOk;
   <input id="nmIn" value="${esc(value||'')}" placeholder="名前を入力" style="width:100%" enterkeyhint="done">
   <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="nmOk">${value?'変更する':'作る'}</button></div></div>`;
   const i=$('#nmIn');i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ACT.nmOk()}})}
-const SL_HINT=['セトリの名前','何のためのセトリか分かる名前にしましょう。<b>コピバンならコピーするバンドの名前</b>、<b>イベントならライブ企画の名前</b>がおすすめです。',
-  ['コピバン: 「○○(コピーするバンド名)」「○○コピー」','ライブ: 「11月定期ライブ」「新歓ライブ」']];
+const SL_HINT=['セトリの名前','<b>ライブ企画の名前など</b>をつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、コピーするバンドの名前を足して分けると分かりやすいです。',
+  ['「11月定例ライブ」「新歓ライブ」','掛け持ちなら「11月定例ライブ ○○コピー」']];
 function newSetlist(){nameModal('新しいセトリ',SL_HINT[1],SL_HINT[2],'',n=>{const sl={id:uid(),bandId:band().id,name:n,songIds:[],events:[]};
   S.setlists.push(sl);S.cur.setlist=sl.id;location.hash='#/setlist/'+sl.id;render()})}
 function newBand(){nameModal('新しいバンド・サークル','<b>サークルでコピバンを組む人はサークル名</b>、<b>オリジナルバンドやサポートの人はそのバンド名</b>を入れてください。セトリや曲はこの中に作ります。',
