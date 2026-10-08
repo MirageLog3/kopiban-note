@@ -91,6 +91,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .frow.mkrow{grid-column:1/-1;align-items:start}.frow.mkrow>span{padding-top:5px}
 .mkbtns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .sendbtn{width:100%;padding:12px;font-size:16px;margin:4px 0 12px}
+.calopt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:12px 14px;margin-top:8px;font-size:15px}
+.calopt span{font-size:12px;color:var(--sub)}
 .sh-lab{margin-top:8px}.sh-row{flex-wrap:nowrap}.sh-row input{min-width:0}
 .toolrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 .toolrow .mstat{margin:0}
@@ -492,7 +494,7 @@ function viewSetlist(){
     <div class="stin"><label>日付<input type="date" value="${esc(st.date)}" data-input="studio" data-k="date"></label>
       <label>開始${timeSel('start',st.start)}</label><label>終了${timeSel('end',st.end)}</label>
       <label class="stplace">場所<input placeholder="例 いつものスタジオ" value="${esc(st.place)}" data-input="studio" data-k="place"></label></div>
-    <div class="hstack" style="margin-top:10px"><button data-act="calIcs">📅 カレンダーに追加</button><button data-act="calGoogle">Googleカレンダー</button><span class="sub">前日と1時間前の通知つき</span></div></div>
+    <div class="hstack" style="margin-top:10px"><button data-act="calMenu">📅 カレンダーに追加・予定を送る</button></div></div>
   <div class="sec">曲 (${songs.length})</div>
   <div class="list">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
       <span class="handle">⋮⋮</span><span class="num">${i+1}</span>
@@ -1110,7 +1112,23 @@ const ACT={
   pTie(){P.tie=!P.tie;applyParts()},
   pDel(){Object.assign(P,{root:'',acc:'',q:'',bass:'',bassAcc:'',lit:'',tie:false,slash:false});applyParts()},
   pMove:t=>move(+t.dataset.v),
-  calIcs(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');const ics=buildIcs(ev,sl.id+'-'+ev.start);
+  calMenu(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');
+    $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal calmenu">
+    <div class="hstack"><b>スタジオの予定を追加・送る</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <p class="note" style="margin:4px 0 10px">${studioSum(sl.studio).replace(/<[^>]+>/g,'')}</p>
+    <button class="calopt" data-act="calIcs"><b>📱 スマホのカレンダーに追加</b><span>iPhoneのカレンダー・Androidのカレンダーアプリなど。前日と1時間前の通知つき</span></button>
+    <button class="calopt" data-act="calGoogle"><b>🗓 Googleカレンダーに追加</b><span>Googleカレンダーの登録画面が開きます</span></button>
+    <button class="calopt" data-act="calText"><b>💬 予定を文章で送る・コピー</b><span>TimeTree・LINEのノートなどに貼り付ける用</span></button>
+    <p class="note" style="margin-top:10px">TimeTreeを使っている場合: TimeTreeの設定で「外部カレンダー」にスマホのカレンダーを表示する設定にしておくと、上の「スマホのカレンダーに追加」で入れた予定がTimeTreeにも出ます。</p></div>`},
+  async calText(){const sl=curSetlist(),st=sl.studio,songs=sl.songIds.map(songById).filter(Boolean);
+    const txt=`【スタジオ】${band().name}(${sl.name})\n${studioSum(st).replace(/<[^>]+>/g,'').trim()}${songs.length?'\nセトリ\n'+songs.map((s,i)=>`${i+1}. ${s.title}`).join('\n'):''}`;
+    if(navigator.share){try{await navigator.share({text:txt});return}catch(e){if(e.name==='AbortError')return}}
+    try{await navigator.clipboard.writeText(txt);toast('予定の文章をコピーしました')}catch(e){prompt('この文章をコピーしてください',txt)}},
+  async calIcs(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');const ics=buildIcs(ev,sl.id+'-'+ev.start);
+    const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    // Android など: .ics ファイルを共有メニューで渡すと、入っているカレンダーアプリを選べる
+    if(TOUCH&&!isIOS){const f=new File([ics],'studio.ics',{type:'text/calendar'});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:ev.title});return}catch(e){if(e.name==='AbortError')return}}}
     // スマホは、置き場(Cloudflare)から「カレンダーの予定」として配信してもらうと、そのまま「カレンダーに追加」の画面が出る
     if(TOUCH&&SHARE_API){if(/ Line\//i.test(navigator.userAgent))toast('LINEの中のブラウザでは追加できないことがあります。Safariで開いてください');
       location.href=SHARE_API+'ics?b='+b64u(new TextEncoder().encode(ics));return}
