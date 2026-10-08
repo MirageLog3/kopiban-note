@@ -52,10 +52,12 @@ h1{font-size:24px;margin:4px 0 6px}
 .hstack{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .spacer{flex:1}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:14px 0}
-.studio{border-left:4px solid var(--accent)}
+/* 左の色の帯は角の丸みに沿って曲がらないよう、枠線ではなく背景で描く(内側の線がまっすぐになる) */
+.studio{--bc:var(--accent);background-image:linear-gradient(90deg,var(--bc) 0 5px,transparent 5px)}
+.addbtn{background-image:linear-gradient(90deg,var(--bc) 0 5px,transparent 5px);padding-left:16px}
 .studio .big{font-size:20px;font-weight:700}
 .studio input{font-size:13px}
-.studio.live{border-left-color:#c94fd6}.evchip{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;background:#ff6a2b22;color:var(--accent)}
+.studio.live{--bc:#c94fd6}.evchip{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;background:#ff6a2b22;color:var(--accent)}
 .studio.live .evchip{background:#c94fd622;color:#c94fd6}.evnext{font-size:11px;font-weight:700;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#fff}
 .studio.live .evnext{background:#c94fd6}.evdel{padding:2px 8px;margin-left:4px}.evpast .studio{opacity:.6}
 .sec.hstack{gap:6px}.sec.hstack button{font-size:13px;padding:5px 10px}
@@ -653,7 +655,7 @@ function viewSong(){
     <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
     ${songMedia(s)?timeBtns(b):''}
     <div class="rowbtns"><button data-act="dupBlock" data-i="${i}" title="複製">複製</button><button data-act="delBlock" data-i="${i}">削除</button></div></div>`}).join('')||'<div class="empty">ブロックを追加してください</div>'}</div>
-  <div class="adds"><span class="sub" style="align-self:center">＋ 追加:</span>${Object.entries(TYPES).map(([k,t])=>`<button data-act="addBlock" data-type="${k}" style="border-left:4px solid ${t.color}">${t.label}</button>`).join('')}</div>
+  <div class="adds"><span class="sub" style="align-self:center">＋ 追加:</span>${Object.entries(TYPES).map(([k,t])=>`<button data-act="addBlock" data-type="${k}" style="--bc:${t.color}" class="addbtn">${t.label}</button>`).join('')}</div>
   </main>`}
 
 /* ---------- metronome (ブロックごとのテンポ・拍子に合わせて鳴らす) ---------- */
