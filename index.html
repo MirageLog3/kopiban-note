@@ -809,25 +809,60 @@ const COMMON_METERS=['4/4','3/4','2/4','5/4','6/4','7/4','6/8','7/8','5/8','9/8'
 // [表記, ルートからの半音, 出しやすさ(小さいほど上に出る)]
 const CJ_T=[['',[0,4,7],0],['m',[0,3,7],0],['5',[0,7],1],['7',[0,4,7,10],1],['M7',[0,4,7,11],1],['m7',[0,3,7,10],1],['sus4',[0,5,7],1],
   ['sus2',[0,2,7],2],['dim',[0,3,6],2],['aug',[0,4,8],2],['6',[0,4,7,9],2],['m6',[0,3,7,9],2],['add9',[0,2,4,7],2],['m7(♭5)',[0,3,6,10],2],
-  ['dim7',[0,3,6,9],2],['7sus4',[0,5,7,10],2],['9',[0,2,4,7,10],2],['madd9',[0,2,3,7],3],['mM7',[0,3,7,11],3],['aug7',[0,4,8,10],3],
-  ['M9',[0,2,4,7,11],3],['m9',[0,2,3,7,10],3],['6(9)',[0,2,4,7,9],3],['7(♭9)',[0,1,4,7,10],3],['7(♯9)',[0,3,4,7,10],3],['7(♭5)',[0,4,6,10],4],
-  ['m7(11)',[0,3,5,7,10],4],['M7(♯11)',[0,4,6,7,11],4],['7(13)',[0,4,7,9,10],4],['7(♭13)',[0,4,7,8,10],4],['m11',[0,2,3,5,7,10],4],['13',[0,2,4,7,9,10],4]];
+  ['dim7',[0,3,6,9],2],['7sus4',[0,5,7,10],2],['7(9)',[0,2,4,7,10],2],['madd9',[0,2,3,7],3],['mM7',[0,3,7,11],3],['aug7',[0,4,8,10],3],
+  ['M7(9)',[0,2,4,7,11],3],['m7(9)',[0,2,3,7,10],3],['6(9)',[0,2,4,7,9],3],['7(♭9)',[0,1,4,7,10],3],['7(♯9)',[0,3,4,7,10],3],['7(♭5)',[0,4,6,10],4],
+  ['m7(11)',[0,3,5,7,10],4],['M7(♯11)',[0,4,6,7,11],4],['7(13)',[0,4,7,9,10],4],['7(♭13)',[0,4,7,8,10],4],['m7(9,11)',[0,2,3,5,7,10],4],['7(9,13)',[0,2,4,7,9,10],4]];
 const CJ_SH=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],CJ_FL=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'],CJ_MIX=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 function cjNames(){const k=String(blockKey(curBlock(),curSong())||'').trim();if(!k)return CJ_MIX;
   if(/^[A-G][b♭]/.test(k)||/^(F|Dm|Gm|Cm|Fm)$/.test(k))return CJ_FL;if(/^[A-G][#♯]/.test(k)||/^(G|D|A|E|B|Em|Bm)$/.test(k))return CJ_SH;return CJ_MIX}
-// ぴったり一致しなくても、「足りない音」「余分な音」にコストをつけて近いコードを順に出す
+// 判定は2段構え。
+// 1) 3度(m・長3度・sus4・sus2・なし)×5度(5・♭5・♯5・なし)×7度(なし・7・M7・6)×テンション(最大2つ)を全部組み合わせた辞書で、ぴったり名前が付くものを探す。
+//    名前が複雑なほど(テンション・omit・オンコードなど)コストを高くして、シンプルな名前を上に出す
+// 2) それでも足りない分は、「足りない音」「余分な音」に減点をつけて近いコードを出す
+let CJ_GEN_=null;
+function cjGen(){if(CJ_GEN_)return CJ_GEN_;const map={},byQ={};
+  const TH=[[4,'',0],[3,'m',0],[5,'sus4',1],[2,'sus2',2],[null,'o3',3]],FI=[[7,'',0],[6,'♭5',4],[8,'♯5',4],[null,'o5',1]],
+    SE=[[null,'',0],[10,'7',1],[11,'M7',1],[9,'6',2]],TE=[[1,'♭9',3],[2,'9',2],[3,'♯9',3],[5,'11',3],[6,'♯11',3],[8,'♭13',3],[9,'13',3]];
+  const combos=[[]];TE.forEach((a,i)=>{combos.push([a]);TE.slice(i+1).forEach(b=>combos.push([a,b]))});
+  for(const [t3,n3,c3] of TH)for(const [t5,n5,c5] of FI)for(const [t7,n7,c7] of SE)for(const tc of combos){
+    const base=[0,t3,t5,t7].filter(x=>x!=null);if(t3==null&&t5==null&&t7==null)continue;
+    if(tc.some(([x])=>base.includes(x)))continue;if(n3==='o3'&&tc.some(([x])=>x===3||x===4))continue;
+    if(n3==='m'&&n5==='♯5')continue; // m(♯5)は長三和音の転回形なので出さない
+    if(!n7&&tc.some(([x])=>x===9))continue; // 7度なしの13は「6」と呼ぶ
+    const iv=[...base,...tc.map(x=>x[0])].sort((a,b)=>a-b);let cost=c3+c5+c7+tc.reduce((s,x)=>s+x[2],0),q;
+    const plain=!tc.length;
+    if(n3==='m'&&n5==='♭5'&&!n7&&plain){q='dim';cost=2}
+    else if(n3==='m'&&n5==='♭5'&&n7==='7'&&plain){q='m7(♭5)';cost=2}
+    else if(n3==='m'&&n5==='♭5'&&n7==='6'&&plain){q='dim7';cost=2}
+    else if(!n3&&n5==='♯5'&&!n7&&plain){q='aug';cost=2}
+    else if(!n3&&n5==='♯5'&&n7==='7'&&plain){q='aug7';cost=3}
+    else if(n3==='o3'&&!n5&&!n7&&plain){q='5';cost=1}
+    else{let ten=tc.map(x=>x[1]);if(n5==='♭5'||n5==='♯5')ten.push(n5);if(!n7&&ten.length===1&&ten[0]==='9')ten=['add9'];
+      q=composeQ({tri:n3==='o3'?'':n3,sev:n7,ten});if(n3==='o3')q+='(omit3)'}
+    const k=iv.join(',');(map[k]=map[k]||[]).push({q,cost,o5:n5==='o5'});
+    if(!byQ[q]||byQ[q].length<iv.length)byQ[q]=iv}
+  return CJ_GEN_={map,byQ}}
 const CJ_IVN=['R','♭9','9','m3','3','11','♭5','5','♯5','13','♭7','M7'];
 // 足りないときのコスト: 5度は抜けがち(安い)、ルート・3度は重い
 const CJ_MISS={0:4,7:1,3:3,4:3};
-function cjJudge(notes){if(!notes.length)return [];const N=cjNames();const bass=Math.min(...notes)%12;const all=[...new Set(notes.map(n=>n%12))];const out=[];
+function cjJudge(notes){if(!notes.length)return [];const N=cjNames(),G=cjGen();const bass=Math.min(...notes)%12;const all=[...new Set(notes.map(n=>n%12))];const out=[];
   if(all.length===1){const r=all[0];return [{name:N[r],sc:0,sub:'単音'},{name:N[r]+'5',sc:1,sub:'5なし'},{name:N[r]+'m',sc:2,sub:'m3・5なし'}]}
-  for(let r=0;r<12;r++){const iv=all.map(p=>(p-r+12)%12);const NB=N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N;const bi=(bass-r+12)%12;
+  const rest=all.filter(p=>p!==bass);
+  for(let r=0;r<12;r++){const NB=N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N;const bi=(bass-r+12)%12;const nm=q=>N[r]+q+(bi?'/'+NB[bass]:'');
+    // 1) 辞書でぴったり(ベース込み / ベースを除いてオンコード)
+    const exact=(pcs,pen)=>{if(!pcs.includes(r))return;const L=G.map[pcs.map(p=>(p-r+12)%12).sort((a,b)=>a-b).join(',')];
+      if(L)for(const e of L)out.push({name:nm(e.q),sc:e.cost+pen+(bi?3:0),sub:e.o5?'5なし':''})};
+    // ベースがコードの音と半音でぶつかるオンコードは珍しいので重く、そうでなければ(C/D など)軽く
+    exact(all,0);if(bi&&rest.length>=2)exact(rest,rest.some(p=>[1,11].includes((p-bass+12)%12))?5:1);
+    // 2) 近いコード
+    const iv=all.map(p=>(p-r+12)%12);
     for(const [q,t,rank] of CJ_T){const miss=t.filter(x=>!iv.includes(x)),extra=iv.filter(x=>!t.includes(x));
+      if(!miss.length&&!extra.length)continue;
       if(extra.length>1||miss.length>=t.length-(t.length>3?1:0)||miss.length>2)continue;
       if(extra.length&&extra[0]!==bi&&miss.length)continue;
-      let sc=rank+miss.reduce((s,x)=>s+(CJ_MISS[x]??2),0)+extra.reduce((s,x)=>s+(x===bi?2:6),0)+(bi?3:0);
+      const sc=4+rank+miss.reduce((s,x)=>s+(CJ_MISS[x]??2),0)+extra.reduce((s,x)=>s+(x===bi?2:6),0)+(bi?3:0);
       const sub=[...miss.filter(x=>x).map(x=>CJ_IVN[x]+'なし'),...(iv.includes(0)?[]:['ルートなし']),...extra.filter(x=>x!==bi).map(x=>'+'+CJ_IVN[x])].join('・');
-      out.push({name:N[r]+q+(bi?'/'+NB[bass]:''),sc,sub})}}
+      out.push({name:nm(q),sc,sub})}}
   const seen=new Set();return out.sort((a,b)=>a.sc-b.sc).filter(x=>!seen.has(x.name)&&seen.add(x.name)).slice(0,8)}
 // on: 鍵盤モードで押している音(MIDI番号)、seq: 「低い音から順に」モードで入れた音名(0〜11)の並び
 const CJ={on:[],seq:[]};const CJ_LO=36,CJ_OCT=3;
@@ -835,8 +870,9 @@ const cjSeqMode=()=>UI('cjSeq');
 // 順に入れた音名を、前の音より高くなるように並べてMIDI番号にする(最初の音がベース)
 function cjSeqNotes(){let prev=CJ_LO-1;return CJ.seq.map(pc=>{let m=CJ_LO+pc;while(m<=prev)m+=12;prev=m;return m})}
 const cjNotes=()=>cjSeqMode()?cjSeqNotes():CJ.on;
-function cjFromCell(c){const p=parseChord(c||'');if(!p.root)return [];const r=(PCN[p.root]+(ACC[p.acc]||0)+12)%12;const t=CJ_T.find(x=>x[0]===p.q);if(!t)return [];
-  const fit=n=>n>71?n-12:n;if(p.bass){const b=(PCN[p.bass]+(ACC[p.bassAcc]||0)+12)%12;return [48+b,...t[1].map(i=>fit(60+r+i))]}return t[1].map(i=>fit(48+r+i))}
+function cjFromCell(c){const p=parseChord(c||'');if(!p.root)return [];const r=(PCN[p.root]+(ACC[p.acc]||0)+12)%12;
+  const pq=parseQ(p.q),q2=pq?composeQ(pq):p.q,G=cjGen();const ivs=G.byQ[p.q]||G.byQ[q2]||(CJ_T.find(x=>x[0]===p.q)||[])[1];if(!ivs)return [];
+  const fit=n=>n>71?n-12:n;if(p.bass){const b=(PCN[p.bass]+(ACC[p.bassAcc]||0)+12)%12;return [48+b,...ivs.map(i=>fit(60+r+i))]}return ivs.map(i=>fit(48+r+i))}
 function cjTone(midi){const c=ensureCtx();if(!c)return;const at=c.currentTime+0.01,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=440*Math.pow(2,(midi-69)/12);
   g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(0.25,at+0.01);g.gain.exponentialRampToValueAtTime(0.0001,at+1.2);o.connect(g).connect(c.destination);o.start(at);o.stop(at+1.3)}
 function cjKeyboard(){const on=CJ.on,bass=on.length?Math.min(...on):null,NW=CJ_OCT*7;
