@@ -83,8 +83,15 @@ h1{font-size:24px;margin:4px 0 6px}
 .chip{font-size:12px;color:var(--sub);background:var(--panel2);border-radius:10px;padding:2px 8px}
 .chips .tag{margin:0}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
-.blockhead.panel{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.mkrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+/* ブロック設定: 「項目名 | 入力欄」を縦にそろえて並べる。広い画面では2列 */
+.blockhead.panel{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 16px;align-items:center}
+.frow{display:grid;grid-template-columns:4.5em 1fr;align-items:center;gap:8px;min-width:0}
+.frow>span{font-size:13px;color:var(--sub)}
+.frow>select,.frow>input{width:100%;min-width:0}
+.frow.mkrow{grid-column:1/-1;align-items:start}.frow.mkrow>span{padding-top:5px}
+.mkbtns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sendbtn{width:100%;padding:12px;font-size:16px;margin:4px 0 12px}
+.sh-lab{margin-top:8px}.sh-row{flex-wrap:nowrap}.sh-row input{min-width:0}
 .toolrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 .toolrow .mstat{margin:0}
 .metro.closed{display:flex;align-items:center;gap:10px;padding:8px 12px}.metro.closed .mstat{margin:0}
@@ -690,15 +697,15 @@ function viewBlock(){
     <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">⚙ 設定 ${UI('bset')?'▾':'▸'}</button></div>
   <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),blockKey(bl,s)&&'Key '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
   <div class="blockhead panel" style="${UI('bset')?'':'display:none'}">
-    <label class="sub">種類 <select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select></label>
-    <label class="sub"><input type="number" min="1" max="64" value="${bl.bars.length}" data-change="barsCount" style="width:62px"> 小節</label>
-    <label class="sub">拍子 <select data-change="blockMeter"><option value="">曲と同じ(${songMeterDefault(s)})</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label>
-    <label class="sub">テンポ <input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="${esc(s.bpm||'')}" data-input="blockField" data-k="bpm" style="width:72px"></label>
-    <label class="sub">Key <input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key" style="width:80px"></label>
-    <label class="sub" style="flex:1;min-width:160px">メモ <input value="${esc(bl.note)}" data-input="blockField" data-k="note" placeholder="例 半音上げ" style="width:100%"></label>
-    <div class="mkrow"><span class="sub">マーカー</span>
+    <label class="frow"><span>種類</span><select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select></label>
+    <label class="frow"><span>小節数</span><input type="number" min="1" max="64" inputmode="numeric" value="${bl.bars.length}" data-change="barsCount"></label>
+    <label class="frow"><span>拍子</span><select data-change="blockMeter"><option value="">曲と同じ(${songMeterDefault(s)})</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label>
+    <label class="frow"><span>テンポ</span><input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="曲と同じ(${esc(s.bpm||'120')})" data-input="blockField" data-k="bpm"></label>
+    <label class="frow"><span>Key</span><input value="${esc(bl.key||'')}" placeholder="曲と同じ${s.key?'('+esc(s.key)+')':''}" data-input="blockField" data-k="key"></label>
+    <label class="frow"><span>メモ</span><input value="${esc(bl.note)}" data-input="blockField" data-k="note" placeholder="例 半音上げ"></label>
+    <div class="frow mkrow"><span>マーカー</span><div class="mkbtns">
     ${S.markers.map(m=>{const on=bl.tags.includes(m.name);return `<button class="tagbtn ${on?'on':''}" data-act="toggleTag" data-t="${esc(m.name)}" style="${on?`border-color:${m.color};color:${m.color};background:${m.color}22`:''}">${esc(m.name)}</button>`}).join('')}
-    <a class="sub" href="#/settings" style="font-size:12px">編集</a></div>
+    <a class="sub" href="#/settings" style="font-size:12px">編集</a></div></div>
   </div>
   <div class="toolrow">
     <button class="foldbtn ${UI('metro')?'on':''}" data-act="uiToggle" data-k="metro">🥁 メトロノーム ${UI('metro')?'▾':'▸'}</button>
@@ -985,21 +992,23 @@ async function openShare(kind){
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> 次のスタジオの日時・場所も入れる <span class="sub">(${studioSum(curSetlist().studio).replace(/<[^>]+>/g,'').trim()})</span></label>`:''}
-  ${SHARE_API?`<div id="shShortBox" class="shortbox"><span class="sub">短いコードを作っています…</span></div>`:''}
-  <div class="sub">共有リンク <span id="shLen">(${link.length}文字)</span></div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>✂ 短くする</button><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
-  <p class="note" id="shNote" style="margin:4px 0 0">${SHARE_API?'':'「短くする」を押すと、短縮サービス(da.gd)で https://da.gd/xxxx のような短いリンクにします。'}</p>
-  <div class="sub" style="margin-top:10px">共有コード <span id="shCodeLen">(${code.length}文字)</span></div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
+  ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">📤 LINEなどのアプリで送る</button>`:''}
+  <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
+  <div class="hstack sh-row"><input id="shCode" readonly value="${SHARE_API?'':esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
+  <div class="sub sh-lab">共有リンク <span id="shLen">(${link.length}文字)</span></div>
+  <div class="hstack sh-row"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>✂</button><button data-act="copy" data-t="shLink">コピー</button></div>
+  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くか、アプリの「設定 → 共有コードを読み込む」にコードを入れるだけで見られます。</p>
   </div>`;
-  if(SHARE_API)makeShort(code)}
+  SHARE_LONG=code;if(SHARE_API)makeShort(code)}
+let SHARE_LONG='';
 // 短いコード: 共有データをCloudflareの置き場に預けて、7文字の番号だけを渡す
 let SHARE_API='https://kopiban-share.kane0-4771ryo.workers.dev/';
 const isShortId=v=>/^[0-9A-Za-z]{5,10}$/.test(v);
-async function makeShort(code){const box=$('#shShortBox');
+async function makeShort(code){
   try{const r=await fetch(SHARE_API,{method:'POST',headers:{'Content-Type':'text/plain'},body:code});if(!r.ok)throw new Error('HTTP '+r.status);
-    const {id}=await r.json();if(!$('#shShortBox'))return;const link=shareBase()+'#/s/'+id;
-    box.innerHTML=`<div class="sub">短いコード(友達はアプリの「設定 → 共有コードを読み込む」に入れるだけ)</div><div class="hstack"><input id="shShort" readonly value="${id}" class="shortcode"><button class="primary" data-act="copy" data-t="shShort">コピー</button></div>`;
-    $('#shLink').value=link;$('#shLen').textContent='('+link.length+'文字)';$('#shCode').value=id;const cr=$('#shCode').closest('.hstack');cr.style.display='none';cr.previousElementSibling.style.display='none'}
-  catch(e){if(box)box.innerHTML=`<span class="sub">短いコードを作れませんでした(${esc(e.message)})。下の長いリンク・コードはそのまま使えます</span>`;const b=$('#shBtn');if(b)b.style.display=''}}
+    const {id}=await r.json();if(!$('#shCode'))return;const link=shareBase()+'#/s/'+id;
+    $('#shLink').value=link;$('#shLen').textContent='('+link.length+'文字)';$('#shCode').value=id;$('#shCodeLen').textContent='('+id.length+'文字)'}
+  catch(e){if(!$('#shCode'))return;$('#shCode').value=code;$('#shCodeLen').textContent='('+code.length+'文字・短いコードは作れませんでした)';const b=$('#shBtn');if(b)b.style.display=''}}
 async function fetchShort(id){if(!SHARE_API)throw new Error('短いコードの置き場が設定されていません');const r=await fetch(SHARE_API.replace(/\/$/,'')+'/'+id);
   if(r.status===404)throw new Error('このコードは見つかりませんでした');if(!r.ok)throw new Error('HTTP '+r.status);return (await r.text()).trim()}
 function viewImport(){
@@ -1102,7 +1111,9 @@ const ACT={
   pDel(){Object.assign(P,{root:'',acc:'',q:'',bass:'',bassAcc:'',lit:'',tie:false,slash:false});applyParts()},
   pMove:t=>move(+t.dataset.v),
   calIcs(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');const ics=buildIcs(ev,sl.id+'-'+ev.start);
-    if(/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);return}
+    // スマホは、置き場(Cloudflare)から「カレンダーの予定」として配信してもらうと、そのまま「カレンダーに追加」の画面が出る
+    if(TOUCH&&SHARE_API){if(/ Line\//i.test(navigator.userAgent))toast('LINEの中のブラウザでは追加できないことがあります。Safariで開いてください');
+      location.href=SHARE_API+'ics?b='+b64u(new TextEncoder().encode(ics));return}
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download=`スタジオ_${ev.start.slice(0,8)}.ics`;a.click();toast('カレンダー用のファイルを保存しました。開くと予定に追加されます')},
   calGoogle(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');
     const q=new URLSearchParams({action:'TEMPLATE',text:ev.title,dates:ev.start+'/'+ev.end,details:ev.desc,location:ev.place,ctz:'Asia/Tokyo'});
@@ -1117,6 +1128,8 @@ const ACT={
   bZoom(t){const v=+t.dataset.v;setBZ(v===0?1:BZ*(v>0?1.25:0.8))},
   pmPlay(){ensureCtx();M.paused()?M.play():M.pause()},
   pmMore(){$('#player').classList.toggle('more')},
+  async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
+    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
   share:()=>openShare('song'),
   async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
     if(/^(file:|http:\/\/(127\.|localhost))/.test(i.value))return toast('このPCの中のアドレスは短縮できません');
