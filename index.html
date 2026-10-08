@@ -305,7 +305,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut .tut-p{margin:0 0 4px;line-height:1.7;overflow-y:auto}
 .tut .tut-p.help{font-size:14px;color:var(--sub)}.tut .tut-p.help b{color:var(--text)}
 .tut-helprow{height:34px;display:flex;align-items:center}.tut-play{padding:4px 10px;font-size:12px;white-space:nowrap}
-.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
+.tut-toc .tut-last{border-color:var(--accent)}.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
 .tut-help .qm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--sub);font-weight:700;font-size:12px;flex:none}
 .tut-dots{display:flex;gap:5px;justify-content:center;margin:10px 0}.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.tut-dots i.on{background:var(--accent)}
 .news-v{margin-top:10px}.news-v b{font-size:13px}.news-v ul{margin:4px 0 0;padding-left:1.2em;line-height:1.7;font-size:14px}
@@ -1529,7 +1529,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
-    ${THINT?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button class="primary" data-act="tourBack">← 使い方に戻る</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
+    ${THINT?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button class="primary" data-act="tourBack">← 使い方の一覧へ</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
@@ -1678,9 +1678,9 @@ const ACT={
   tourStart(){tourStart()},
   tutGo(t){TUTI=+t.dataset.v;TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tourGuide(t){tourEnd();ACT.tutOpen(TG().findIndex(x=>x[0]===t.dataset.h))},
-  // 使い方の1項目を、実際の画面を開いて光らせて見せる。終わったら使い方のその項目に戻る
+  // 使い方の1項目を、実際の画面を開いて光らせて見せる。終わったら使い方の一覧(目次)に戻り、見ていた項目に印をつける
   tutTour(t){const i=+t.dataset.v,st=TGS()[i];if(!tgCan(i))return;TBACK=i;ACT.lbClose();THINT=true;TSTEPS=[{...st,t:st.g||st.t,tap:null}];TI=0;TH=false;tourGo()},
-  tourBack(){const i=TBACK;tourEnd();ACT.tutOpen(i)},
+  tourBack(){const i=TBACK;tourEnd();ACT.tutOpen(-1);const b=document.querySelector(`.tut-toc [data-act=tutGo][data-v="${i}"]`);if(b){b.scrollIntoView({block:'center'});b.classList.add('tut-last')}},
   tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
