@@ -89,6 +89,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .toolrow .mstat{margin:0}
 .metro.closed{display:flex;align-items:center;gap:10px;padding:8px 12px}.metro.closed .mstat{margin:0}
 .panel.metro-b{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.shortbox{background:var(--panel2);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.shortcode{flex:1;font-size:26px!important;font-weight:800;letter-spacing:4px;text-align:center;font-family:ui-monospace,Consolas,monospace}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
 #ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
@@ -392,7 +394,7 @@ function render(){
   document.documentElement.dataset.theme=S.prefs.theme||'auto';
   if(R.name==='song')html=viewSong();
   else if(R.name==='print')html=viewPrint();
-  else if(R.name==='import')html=viewImport();
+  else if(R.name==='import'||R.name==='s')html=viewImport();
   else if(R.name==='block')html=viewBlock();
   else if(R.name==='songs')html=viewSongs();
   else if(R.name==='settings')html=viewSettings();
@@ -400,7 +402,7 @@ function render(){
   $('#app').innerHTML=html;
   renderSheet();
   syncPlayer();
-  if(R.name==='import')fillImport();
+  if(R.name==='import'||R.name==='s')fillImport();
   measureMaps();
   document.querySelectorAll('[data-blob]').forEach(async el=>{el.src=await blobURL(el.dataset.blob);if(el.closest('#board'))layoutBoard()});
   layoutBoard();
@@ -952,17 +954,29 @@ async function openShare(kind){
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> 次のスタジオの日時・場所も入れる <span class="sub">(${studioSum(curSetlist().studio).replace(/<[^>]+>/g,'').trim()})</span></label>`:''}
-  <div class="sub">共有リンク <span id="shLen">(${link.length}文字)</span></div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn">✂ 短くする</button><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
-  <p class="note" id="shNote" style="margin:4px 0 0">「短くする」を押すと、短縮サービス(da.gd)で https://da.gd/xxxx のような短いリンクにします。</p>
-  ${link.length>8000?`<p class="note" style="color:var(--accent)">リンクが長め(${link.length}文字)なので、アプリによっては途中で切れるかもしれません。切れたら下の共有コードを送ってください。</p>`:''}
-  <div class="sub" style="margin-top:10px">共有コード(${code.length}文字)</div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
-  </div>`}
+  ${SHARE_API?`<div id="shShortBox" class="shortbox"><span class="sub">短いコードを作っています…</span></div>`:''}
+  <div class="sub">共有リンク <span id="shLen">(${link.length}文字)</span></div><div class="hstack"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>✂ 短くする</button><button class="primary" data-act="copy" data-t="shLink">コピー</button></div>
+  <p class="note" id="shNote" style="margin:4px 0 0">${SHARE_API?'':'「短くする」を押すと、短縮サービス(da.gd)で https://da.gd/xxxx のような短いリンクにします。'}</p>
+  <div class="sub" style="margin-top:10px">共有コード <span id="shCodeLen">(${code.length}文字)</span></div><div class="hstack"><input id="shCode" readonly value="${esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
+  </div>`;
+  if(SHARE_API)makeShort(code)}
+// 短いコード: 共有データをCloudflareの置き場に預けて、7文字の番号だけを渡す
+let SHARE_API='https://kopiban-share.kane0-4771ryo.workers.dev/';
+const isShortId=v=>/^[0-9A-Za-z]{5,10}$/.test(v);
+async function makeShort(code){const box=$('#shShortBox');
+  try{const r=await fetch(SHARE_API,{method:'POST',headers:{'Content-Type':'text/plain'},body:code});if(!r.ok)throw new Error('HTTP '+r.status);
+    const {id}=await r.json();if(!$('#shShortBox'))return;const link=shareBase()+'#/s/'+id;
+    box.innerHTML=`<div class="sub">短いコード(友達はアプリの「設定 → 共有コードを読み込む」に入れるだけ)</div><div class="hstack"><input id="shShort" readonly value="${id}" class="shortcode"><button class="primary" data-act="copy" data-t="shShort">コピー</button></div>`;
+    $('#shLink').value=link;$('#shLen').textContent='('+link.length+'文字)';$('#shCode').value=id;$('#shCodeLen').textContent='('+id.length+'文字)'}
+  catch(e){if(box)box.innerHTML=`<span class="sub">短いコードを作れませんでした(${esc(e.message)})。下の長いリンク・コードはそのまま使えます</span>`;const b=$('#shBtn');if(b)b.style.display=''}}
+async function fetchShort(id){if(!SHARE_API)throw new Error('短いコードの置き場が設定されていません');const r=await fetch(SHARE_API.replace(/\/$/,'')+'/'+id);
+  if(r.status===404)throw new Error('このコードは見つかりませんでした');if(!r.ok)throw new Error('HTTP '+r.status);return (await r.text()).trim()}
 function viewImport(){
   return topbar('')+`<main><div id="impBody"><div class="card"><span class="sub">読み込み中…</span></div></div></main>`}
 let impTab='map';
 async function fillImport(){
   const el=$('#impBody');if(!el)return;
-  try{const d=await unpackShared(R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs,studio:d.studio?{date:d.studio.d||'',start:d.studio.s||'',end:d.studio.e||'',place:d.studio.p||''}:null};
+  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs,studio:d.studio?{date:d.studio.d||'',start:d.studio.s||'',end:d.studio.e||'',place:d.studio.p||''}:null};
     const isSl=!!d.setlist;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
     const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.studio?`<div style="margin-top:6px">次のスタジオ: <b>${studioSum(PENDING.studio)}</b> <span class="sub">${daysLeft(PENDING.studio.date)}</span></div>`:''}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
@@ -1084,7 +1098,8 @@ const ACT={
     if(p.setlist){const sl={id:uid(),bandId:band().id,name:p.setlist,songIds:p.songs.map(s=>s.id),studio:p.studio||{date:'',start:'',end:'',place:''}};S.setlists.push(sl);S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
     else{const s=p.songs[0];const c=$('#impSl');if(c&&c.checked&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id}
     toast('追加しました')},
-  impCode(){const v=$('#impCode').value.trim();if(!v)return;location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
+  impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
+    if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
   audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
   bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);const st=blockTime(s,b);if(st==null)return;ensureCtx();M.seek(st);M.play()},
