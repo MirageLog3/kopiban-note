@@ -177,6 +177,12 @@ h1{font-size:24px;margin:4px 0 6px}
 .pm-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pm-more{font-size:20px;padding:4px 8px}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
+.m-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}.m-head{margin-top:0}.m-from{flex:1;min-width:0}
+.m-rate{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.m-sync{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.m-offlab{margin-top:8px}
+.m-off{display:grid;grid-template-columns:1fr 1fr 1.5fr 1fr 1fr;gap:6px;margin-top:4px}.m-off button{padding:7px 0;font-size:13px;min-width:0}
+.m-off input{width:100%;min-width:0;text-align:center;font-variant-numeric:tabular-nums}.m-now{margin-top:8px;width:100%}
+.sec-hint{margin:-4px 0 8px;font-size:12px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
 #ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
 @media screen and (max-width:700px){#ytWrap iframe{width:160px;height:90px}}
@@ -653,7 +659,7 @@ function viewSong(){
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${metroCard(s)}
   ${s.audio?'':`<div class="card hstack" id="audioDrop"><button class="primary" data-act="audioPick">🎵 音源を入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK${ytId(s.url)?' ・ 今は参考音源URLのYouTubeを下のプレーヤーで再生できます':' ・ 参考音源URLにYouTubeを入れると、それでも再生できます'}</span></div>`}
-  <div class="sec">構成 <span class="sub" style="margin-left:8px;font-weight:400">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</span></div>
+  <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
   <div class="list">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
     <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ Key '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
@@ -677,14 +683,19 @@ function metroOpts(){const r=S.prefs.mRate||1;
 const UI=k=>!!(S.prefs.ui||{})[k];
 function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI('smetro');
   if(!open)return `<div class="card metro closed"><button class="foldbtn" data-act="uiToggle" data-k="smetro">🥁 メトロノーム ▸</button><span class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源に合わせて鳴らす設定になっています':''}</span></div>`;
-  return `<div class="card metro"><div class="hstack"><button class="foldbtn" data-act="uiToggle" data-k="smetro">🥁 メトロノーム ▾</button>
-    <select id="mFrom">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select>
-    <button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button>${metroOpts()}</div>
-    ${songMedia(s)?`<div class="hstack msync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 🎵 音源に合わせて鳴らす</label>
-      ${s.mSync?`<span class="sub">1小節目の位置</span><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
-      <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset" style="width:84px"><span class="sub">秒</span>
-      <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button>
-      <button data-act="mOffNow" title="再生中の位置を1小節目にする">⏱ 今の位置を1小節目に</button>`:''}</div>`:''}
+  // スマホでも崩れないよう、1行ずつ役割を分けて並べる(開始位置 / 再生・速さ / カウント / 音源に合わせる設定)
+  const r=S.prefs.mRate||1;
+  return `<div class="card metro"><div class="m-row m-head"><button class="foldbtn" data-act="uiToggle" data-k="smetro">🥁 メトロノーム ▾</button>
+    <select id="mFrom" class="m-from">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select></div>
+    <div class="m-row"><button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button><span class="spacer"></span>
+      <label class="sub m-rate">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label></div>
+    <div class="m-row"><label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label></div>
+    ${songMedia(s)?`<div class="m-sync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 🎵 音源に合わせて鳴らす</label>
+      ${s.mSync?`<div class="sub m-offlab">1小節目の位置(秒)</div>
+      <div class="m-off"><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
+      <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset">
+      <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button></div>
+      <button class="m-now" data-act="mOffNow" title="再生中の位置を1小節目にする">⏱ 今の再生位置を1小節目にする</button>`:''}</div>`:''}
     <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源の「1小節目の位置」だけ合わせれば、あとは曲のテンポと拍子どおりに刻みます。クリックが早ければ＋、遅ければ－で微調整できます。'
       :noBpm?'テンポが未入力なので ♩120 で鳴らします。曲かブロックのテンポを入れてください':'ブロックごとのテンポ・拍子に合わせて鳴ります'}</div></div>`}
 // 音源同期: 「1小節目の位置」から、曲の構成(テンポ・拍子・小節数)だけで拍の時刻を並べる。ブロックの頭では合わせ直さない
@@ -1249,10 +1260,20 @@ function mapHTML(s,withNotes){let pos=1;
 
 // 構成表をA4の幅で並べたときの高さを測り、A4 1枚に収まる文字サイズ(px)を前もって決めておく。
 // 印刷の瞬間に計算するとiPhoneの最初のプレビューに反映されないので、表示した時点で固定値を入れておく
-function measureMaps(){document.querySelectorAll('.pv.map:not(.measure)').forEach(pv=>{const c=pv.cloneNode(true);c.classList.add('measure');
-  c.style.cssText='position:absolute;left:-99999px;top:0;width:703px;padding:0;margin:0;font-size:16px;box-shadow:none';document.body.appendChild(c);
+// 測るときは「印刷の紙幅(703px)の窓」の中で測る。iPadやPCは画面が広くて、画面幅で切り替わるスタイルが印刷時と違ってしまうため
+let MEAS_FR=null;
+// iPadのSafariは同じA4でも iPhone より使える高さが少なく、100%だと2枚目にはみ出したので目標を低めにする
+const IS_IPAD=/iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const PRINT_MM=IS_IPAD?195:225;
+function measDoc(){if(MEAS_FR&&MEAS_FR.isConnected)return MEAS_FR.contentDocument;const fr=document.createElement('iframe');
+  fr.setAttribute('aria-hidden','true');fr.tabIndex=-1;fr.style.cssText='position:absolute;left:-99999px;top:0;width:703px;height:200px;border:0;visibility:hidden';document.body.appendChild(fr);
+  const d=fr.contentDocument;d.open();d.write('<!doctype html><html><head><meta charset="utf-8"><style>'+document.querySelector('style').textContent+'</style></head><body style="margin:0"></body></html>');d.close();
+  d.documentElement.className=document.documentElement.className;MEAS_FR=fr;return d}
+function measureMaps(){const pvs=document.querySelectorAll('.pv.map:not(.measure)');if(!pvs.length)return;const d=measDoc();
+  pvs.forEach(pv=>{const c=d.importNode(pv,true);c.classList.add('measure');
+  c.style.cssText='width:703px;padding:0;margin:0;font-size:16px;box-shadow:none;max-width:none';d.body.appendChild(c);
   const pem=c.getBoundingClientRect().height/16;c.remove();
-  const pfs=Math.min(16,225*3.7795/pem).toFixed(2)+'px';if(pv.style.getPropertyValue('--pfs')!==pfs)pv.style.setProperty('--pfs',pfs)})}
+  const pfs=Math.min(16,PRINT_MM*3.7795/pem).toFixed(2)+'px';if(pv.style.getPropertyValue('--pfs')!==pfs)pv.style.setProperty('--pfs',pfs)})}
 /* ---------- share (URL) ---------- */
 const U=v=>(v===''||v==null||(Array.isArray(v)&&!v.length))?undefined:v;
 function songData(s){const sd=meterSlots(songMeterDefault(s));
