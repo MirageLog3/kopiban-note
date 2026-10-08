@@ -15,17 +15,17 @@
   --bg:#141312;--panel:#1e1c1a;--panel2:#262320;--line:#36322d;--text:#eeeae4;--sub:#9a938a;
   --accent:#ff6a2b;--accent2:#ff8a55;--ok:#2fa58c;
   --topbg:#181715ee;--sheetbg:#1c1a18f5;--hover:#ffffff08;--beat:#3d3933;--start:#6a625a;--muted:#5a534b;--shadow:#0008;
-  color-scheme:dark;
+  --inbg:#0e0d0c;--inline:#4a443d;--btnsh:#00000080;color-scheme:dark;
 }
 :root[data-theme=light]{
   --bg:#f6f3ee;--panel:#ffffff;--panel2:#f1ede6;--line:#ddd6cc;--text:#24201c;--sub:#7a7268;
   --accent:#ea5a1c;--topbg:#f6f3eeee;--sheetbg:#fbf9f6f5;--hover:#0000000a;--beat:#d6cfc4;--start:#9a9086;--muted:#b3aa9f;--shadow:#0002;
-  color-scheme:light;
+  --inbg:#ffffff;--inline:#c9bfb1;--btnsh:#0000001f;color-scheme:light;
 }
 @media (prefers-color-scheme:light){:root[data-theme=auto]{
   --bg:#f6f3ee;--panel:#ffffff;--panel2:#f1ede6;--line:#ddd6cc;--text:#24201c;--sub:#7a7268;
   --accent:#ea5a1c;--topbg:#f6f3eeee;--sheetbg:#fbf9f6f5;--hover:#0000000a;--beat:#d6cfc4;--start:#9a9086;--muted:#b3aa9f;--shadow:#0002;
-  color-scheme:light;
+  --inbg:#ffffff;--inline:#c9bfb1;--btnsh:#0000001f;color-scheme:light;
 }}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-size:15px}
@@ -38,6 +38,10 @@ button.ghost{background:none;border-color:transparent;color:var(--sub)}
 button.ghost:hover{color:var(--text)}
 input,select,textarea{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+/* ボタンと入力欄を見分けられるように: ボタンは少し浮かせ、文字を入れる欄は白(ダークでは黒)でへこませる */
+button:not(.ghost):not(.foldbtn):not(.bn):not(.kk){box-shadow:0 1px 2px var(--btnsh)}
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):not(.name):not(.lyric),textarea{background:var(--inbg);border-color:var(--inline);box-shadow:inset 0 1px 2px var(--btnsh)}
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):focus,textarea:focus{border-color:var(--accent)}
 .top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--topbg);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
 .brand{font-weight:700}
 .bandsel{color:var(--sub);font-size:13px}
@@ -1401,7 +1405,7 @@ function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUT
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整']},
+  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
