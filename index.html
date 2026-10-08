@@ -71,6 +71,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .deg{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap}
 .metro .hstack{gap:8px}.mstat{font-size:13px;color:var(--sub);margin-top:6px;font-variant-numeric:tabular-nums;min-height:1.4em}
 .mstat b{color:var(--accent);font-size:15px}
+.msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
 #ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
 @media screen and (max-width:700px){#ytWrap iframe{width:160px;height:90px}}
@@ -506,7 +507,34 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);
   return `<div class="card metro"><div class="hstack"><b>🥁 メトロノーム</b>
     <select id="mFrom">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select>
     <button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button>${metroOpts()}</div>
-    <div class="mstat" id="metroStat">${noBpm?'テンポが未入力なので ♩120 で鳴らします。曲かブロックのテンポを入れてください':'ブロックごとのテンポ・拍子に合わせて鳴ります'}</div></div>`}
+    ${songMedia(s)?`<div class="hstack msync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 🎵 音源に合わせて鳴らす</label>
+      ${s.mSync?`<span class="sub">ずらし</span><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
+      <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset" style="width:84px"><span class="sub">秒</span>
+      <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button>`:''}</div>`:''}
+    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源を再生すると、それに合わせてクリックが鳴ります。各ブロックの頭を ⏱ で登録しておくと、そこにピッタリ合わせます。早ければ＋、遅ければ－でずらしてください'
+      :noBpm?'テンポが未入力なので ♩120 で鳴らします。曲かブロックのテンポを入れてください':'ブロックごとのテンポ・拍子に合わせて鳴ります'}</div></div>`}
+// 音源同期: 音源の再生位置から「次に鳴らす拍」を割り出して鳴らす。⏱で登録したブロックの頭があればそこに合わせ直す
+const MS={ev:null,evKey:'',last:null,lastMt:null};
+function syncEvents(s){const off=+s.mOffset||0;let ev=[];let t=null;
+  s.blocks.forEach(bl=>{if(bl.start!=null){t=bl.start;ev=ev.filter(e=>e.t<t+off-0.02)}else if(t==null)t=0;
+    bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;
+      for(let k=0;k<n;k++){ev.push({t:t+off,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}})});
+  return ev.sort((a,b)=>a.t-b.t)}
+function ensureCtx(){const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return null;MT.ctx=MT.ctx||new Ctx();if(MT.ctx.state!=='running')MT.ctx.resume();return MT.ctx}
+['pointerdown','keydown'].forEach(t=>document.addEventListener(t,()=>{if(MT.ctx&&MT.ctx.state!=='running')MT.ctx.resume()},true));
+function mediaRate(){try{return M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
+function syncTick(){const s=playerSong();
+  if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
+  const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
+  const key=s.id+JSON.stringify(s.blocks.map(b=>[b.start,b.bpm,b.meter,b.bars.length]))+s.bpm+s.meter+s.mOffset;
+  if(!MS.ev||MS.evKey!==key){MS.ev=syncEvents(s);MS.evKey=key}
+  const mt=M.time(),pr=mediaRate();
+  if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6)MS.last=mt-0.001;
+  MS.lastMt=mt;const horizon=mt+0.12*pr;let cur=null;
+  for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc)}
+  MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur)}
+setInterval(syncTick,20);
+function syncPlayFrom(s,i){const ev=syncEvents(s);const e=ev.find(x=>x.bid===s.blocks[i].id);ensureCtx();M.seek(Math.max(0,e?e.t-0.05:0));M.play()}
 function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:880;
   g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(acc?0.9:0.5,at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+0.06);
   o.connect(g).connect(c.destination);o.start(at);o.stop(at+0.07)}
@@ -983,10 +1011,13 @@ const ACT={
   calGoogle(){const sl=curSetlist(),ev=studioEvent(sl);if(!ev)return toast('先に日付を入れてください');
     const q=new URLSearchParams({action:'TEMPLATE',text:ev.title,dates:ev.start+'/'+ev.end,details:ev.desc,location:ev.place,ctz:'Asia/Tokyo'});
     window.open('https://calendar.google.com/calendar/render?'+q.toString(),'_blank','noopener')},
-  mPlay(){const s=curSong();const i=+($('#mFrom')||{value:0}).value;mStart(s,s.blocks.slice(i))},
-  mPlayBlock(){const s=curSong(),i=s.blocks.indexOf(curBlock());mStart(s,s.blocks.slice(i))},
-  mLoopBlock(){const s=curSong(),bl=curBlock();mStart(s,[bl],bl.id)},
-  mStop(){mStop()},
+  mPlay(){const s=curSong();const i=+($('#mFrom')||{value:0}).value;if(s.mSync&&songMedia(s))return syncPlayFrom(s,i);mStart(s,s.blocks.slice(i))},
+  mPlayBlock(){const s=curSong(),i=s.blocks.indexOf(curBlock());if(s.mSync&&songMedia(s))return syncPlayFrom(s,i);mStart(s,s.blocks.slice(i))},
+  mLoopBlock(){const s=curSong(),bl=curBlock();
+    if(s.mSync&&songMedia(s)){if(bl.start==null)return toast('先に ⏱ でこのブロックの頭を登録してください');PL.loop=bl.id;syncPlayFrom(s,s.blocks.indexOf(bl));render();return}
+    mStart(s,[bl],bl.id)},
+  mStop(){mStop();const s=curSong();if(s&&s.mSync&&M.kind)M.pause()},
+  mOff(t){const s=curSong();s.mOffset=Math.round(((+s.mOffset||0)+ +t.dataset.v)*100)/100;const i=$('#mOffIn');if(i)i.value=s.mOffset.toFixed(2);MS.last=null;save()},
   bZoom(t){const v=+t.dataset.v;setBZ(v===0?1:BZ*(v>0?1.25:0.8))},
   share:()=>openShare('song'),
   async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
@@ -1033,6 +1064,8 @@ const CHG={
   blockType(t){curBlock().type=t.value;render()},
   mRate(t){S.prefs.mRate=+t.value;save();if(MT.playing)toast('次に再生したときから反映されます')},
   mCount(t){S.prefs.mCount=t.checked;save()},
+  mSync(t){const s=curSong();s.mSync=t.checked;if(t.checked){mStop();ensureCtx()}render()},
+  mOffset(t){const s=curSong();const v=parseFloat(String(t.value).replace(/[－−]/,'-'));s.mOffset=isNaN(v)?0:Math.round(v*100)/100;t.value=s.mOffset.toFixed(2);MS.last=null;save()},
   mkColor(t){S.markers[+t.dataset.i].color=t.value;render()},
   mkName(t){const m=S.markers[+t.dataset.i],n=t.value.trim();if(!n||n===m.name){render();return}
     if(S.markers.some(x=>x.name===n)){toast('同じ名前があります');render();return}
