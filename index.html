@@ -133,6 +133,9 @@ h1{font-size:24px;margin:4px 0 6px}
 .cj-seq{display:flex;align-items:center;gap:6px;height:44px;margin:10px 0 6px}
 .cj-chips{flex:1;min-width:0;display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
 .cj-chip{padding:4px 10px;border-radius:999px;background:var(--panel2);font-weight:700}.cj-chip.bass{background:var(--accent);color:#fff}.cj-arr{color:var(--sub);font-size:12px}
+.cj-opts{display:flex;align-items:center;gap:8px;margin-top:8px;height:34px}.cj-acc{display:flex;gap:4px}
+.cj-acc button{padding:4px 12px;min-width:44px}.cj-acc button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.cj-pcs button{white-space:nowrap;letter-spacing:-1px}@media screen and (max-width:420px){.cj-pcs button{font-size:14px}}
 .cj-hint{margin:-4px 0 8px;font-size:11px}
 .cj-pcs{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:10px}.cj-pcs button{padding:12px 0;font-size:16px;font-weight:700;min-width:0}.cj-pcs button.acc{background:var(--panel2)}
 .cj-kb button{min-width:0;margin:0;-webkit-tap-highlight-color:transparent}
@@ -821,7 +824,9 @@ const CJ_T=[['',[0,4,7],0],['m',[0,3,7],0],['5',[0,7],1],['7',[0,4,7,10],1],['M7
   ['M7(9)',[0,2,4,7,11],3],['m7(9)',[0,2,3,7,10],3],['6(9)',[0,2,4,7,9],3],['7(♭9)',[0,1,4,7,10],3],['7(♯9)',[0,3,4,7,10],3],['7(♭5)',[0,4,6,10],4],
   ['m7(11)',[0,3,5,7,10],4],['M7(♯11)',[0,4,6,7,11],4],['7(13)',[0,4,7,9,10],4],['7(♭13)',[0,4,7,8,10],4],['m7(9,11)',[0,2,3,5,7,10],4],['7(9,13)',[0,2,4,7,9,10],4]];
 const CJ_SH=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],CJ_FL=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'],CJ_MIX=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
-function cjNames(){const k=String(blockKey(curBlock(),curSong())||'').trim();if(!k)return CJ_MIX;
+// 表記: コード判定の「♭ / ♯」切り替えが優先。「自動」のときは曲・ブロックのKeyに合わせる
+function cjNames(){const a=(S.prefs.ui||{}).cjAcc;if(a==='♭')return CJ_FL;if(a==='♯')return CJ_SH;
+  const k=String(blockKey(curBlock(),curSong())||'').trim();if(!k)return CJ_MIX;
   if(/^[A-G][b♭]/.test(k)||/^(F|Dm|Gm|Cm|Fm)$/.test(k))return CJ_FL;if(/^[A-G][#♯]/.test(k)||/^(G|D|A|E|B|Em|Bm)$/.test(k))return CJ_SH;return CJ_MIX}
 // 判定は2段構え。
 // 1) 3度(m・長3度・sus4・sus2・なし)×5度(5・♭5・♯5・なし)×7度(なし・7・M7・6)×テンション(最大2つ)を全部組み合わせた辞書で、ぴったり名前が付くものを探す。
@@ -900,6 +905,8 @@ function cjSeqPad(){
   <p class="sub cj-hint">♭・♯ は直前に押した音に付きます(もう一度押すと外れます)</p>`}
 function cjBody(){const N=cjNames(),on=cjNotes(),bass=on.length?Math.min(...on):null;const cands=cjJudge(on),seq=cjSeqMode();
   return `<div class="seg cj-mode"><button class="${seq?'':'on'}" data-act="cjMode" data-v="kb">鍵盤</button><button class="${seq?'on':''}" data-act="cjMode" data-v="seq">低い音から順に</button></div>
+  <div class="cj-opts"><span class="sub">表記</span><div class="cj-acc">${[['','自動'],['♭','♭'],['♯','♯']].map(([v,l])=>`<button class="${((S.prefs.ui||{}).cjAcc||'')===v?'on':''}" data-act="cjAcc" data-v="${v}">${l}</button>`).join('')}</div>
+    <span class="spacer"></span><button class="foldbtn ${S.prefs.doremi?'on':''}" data-act="cjDoremi">ドレミ</button></div>
   ${seq?cjSeqPad():cjKeyboard()}
   <div class="hstack cj-tools"><span class="sub">${seq?'':`押した音: ${on.length?[...new Set([...on].sort((x,y)=>x-y).map(m=>drm(N[m%12])))].join(' ')+` <span style="white-space:nowrap">(●ベース ${drm(N[bass%12])})</span>`:'(鍵盤を押してください。横にスクロールできます)'}`}</span><span class="spacer"></span>
     <button data-act="cjPlay" ${on.length?'':'disabled'}>▶ 鳴らす</button><button data-act="cjClear">クリア</button></div>
@@ -1368,6 +1375,8 @@ const ACT={
   cjSeqAdd(t){CJ.seq.push({l:t.dataset.l,a:''});const n=cjSeqNotes();cjTone(n[n.length-1]);cjRender()},
   cjSeqAcc(t){const x=CJ.seq[CJ.seq.length-1];if(!x)return toast('先に音(C〜B)を押してください');x.a=x.a===t.dataset.v?'':t.dataset.v;
     const n=cjSeqNotes();cjTone(n[n.length-1]);cjRender()},
+  cjAcc(t){S.prefs.ui=S.prefs.ui||{};S.prefs.ui.cjAcc=t.dataset.v;save();cjRender()},
+  cjDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render();cjRender()},
   cjSeqBack(){CJ.seq.pop();cjRender()},
   cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
     <div class="hstack"><b>📋 コピー・貼り付け</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div><div id="cpBody">${cpBody()}</div></div>`},
