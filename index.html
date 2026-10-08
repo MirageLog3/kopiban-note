@@ -123,7 +123,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .kk.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media screen and (max-width:420px){.kk{padding:9px 0;font-size:14px}.kk.kroot,.kk.kacc{font-size:16px}.kr.r10 .kk{font-size:13px;letter-spacing:-.3px}.kk.ksym{font-size:12px}}
 .symlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;font-size:13px}
-.symlist div{display:flex;gap:8px;align-items:baseline}.symlist b{white-space:nowrap;min-width:4.5em;color:var(--text)}.symlist span{color:var(--sub)}
+.symlist div{display:grid;grid-template-columns:6.5em 1fr;gap:8px;align-items:baseline}.symlist b{color:var(--text);line-height:1.4}.symlist span{color:var(--sub);min-width:0}
 .cs-more{width:100%;margin-top:8px;font-size:13px;text-align:left;background:none;border-style:dashed}
 .cs-foot{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 .cs-foot #chordIn{width:200px;font-size:16px;padding:6px 8px}
@@ -770,7 +770,7 @@ function viewBlock(){
 /* ---------- chord grid ---------- */
 function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
-  return `<div class="legend hstack">${S.prefs.degree?'<span class="sub">ディグリー表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
+  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
     <span class="spacer"></span><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
   ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
@@ -837,7 +837,7 @@ function prevChord(){const s=curSong(),bl=curBlock();let bi=P.bar,si=P.slot-1;
     for(;bi>=0;bi--){for(;si>=0;si--){const c=(b.bars[bi].cells[si]||'').replace(/^⌒/,'');if(c)return c}if(bi>0)si=b.bars[bi-1].n-1}}
   return ''}
 // 「記号の意味」に出す一覧
-const SYMBOLS=[['1マス','8分音符1つぶん'],['空白','前のコードがそのまま続く'],['/','分数コード。右側がベース音(例 D/F♯)'],['⌒','前の小節から音を伸ばす(タイ)'],
+const SYMBOLS=[['/','分数コード。右側がベース音(例 D/F♯)'],['⌒','前の小節から音を伸ばす(タイ)'],
   ['N.C.','コードなし(休み・メロディだけ・ユニゾンなど)'],['?','分からない。あとで確認する'],['★ ※ 〇 ■ など','マーク。フレーズやボイシングなど、言葉にしにくい「あれ」の目印']];
 // 「★…」で開くマーク一覧。コードの後ろに付けても、マークだけ置いてもいい
 const MARKS=['★','☆','※','〇','●','◎','△','▲','■','□','◆','◇','♪','！','♥','♣'];
