@@ -123,6 +123,13 @@ h1{font-size:24px;margin:4px 0 6px}
 .kk.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media screen and (max-width:420px){.kk{padding:9px 0;font-size:14px}.kk.kroot,.kk.kacc{font-size:16px}.kr.r10 .kk{font-size:13px;letter-spacing:-.3px}.kk.ksym{font-size:12px}}
 .symlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;font-size:13px}
+.cj-kb{position:relative;height:130px;display:flex;margin:10px 0 8px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.cj-kb button{min-width:0;margin:0;-webkit-tap-highlight-color:transparent}
+.cj-w{flex:1;height:100%;padding:0 0 6px;background:#f6f4ef;color:#888;border:1px solid #bbb;border-radius:0 0 6px 6px;font-size:10px;display:flex;align-items:flex-end;justify-content:center}
+.cj-b{position:absolute;top:0;height:60%;width:calc(100% / 14 * 0.62);padding:0 0 4px;background:#222;color:#fff;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;font-size:9px;display:flex;align-items:flex-end;justify-content:center}
+.cj-w.on{background:var(--accent);border-color:var(--accent);color:#fff}.cj-b.on{background:var(--accent);border-color:#c94a14}
+.cj-tools{gap:6px;margin-bottom:10px;flex-wrap:nowrap}.cj-tools>.sub{flex:1;min-width:0}.cj-tools>.spacer{display:none}.cj-tools button{white-space:nowrap;flex:none}.cj-bass{font-size:12px}.cj-cands{display:flex;flex-wrap:wrap;gap:8px;min-height:44px}
+.cj-cands button{font-size:18px;font-weight:700;padding:8px 14px}.cj-cands button.top{background:var(--accent);border-color:var(--accent);color:#fff}
 .mpick .mp-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 8px}
 .mpick select{font-size:22px;padding:8px 14px;min-width:84px;text-align:center}.mpick .mp-sl{font-size:26px;color:var(--sub)}
 .symlist div{display:grid;grid-template-columns:6.5em 1fr;gap:8px;align-items:baseline}.symlist b{color:var(--text);line-height:1.4}.symlist span{color:var(--sub);min-width:0}
@@ -790,6 +797,40 @@ function chordTab(bl){
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
   <div id="grid">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
 const COMMON_METERS=['4/4','3/4','2/4','5/4','6/4','7/4','6/8','7/8','5/8','9/8','12/8'];
+/* ---------- コード名判定: 鍵盤で押した音からコード名の候補を出す ---------- */
+// [表記, ルートからの半音, 出しやすさ(小さいほど上に出る)]
+const CJ_T=[['',[0,4,7],0],['m',[0,3,7],0],['5',[0,7],1],['7',[0,4,7,10],1],['M7',[0,4,7,11],1],['m7',[0,3,7,10],1],['sus4',[0,5,7],1],
+  ['sus2',[0,2,7],2],['dim',[0,3,6],2],['aug',[0,4,8],2],['6',[0,4,7,9],2],['m6',[0,3,7,9],2],['add9',[0,2,4,7],2],['m7(♭5)',[0,3,6,10],2],
+  ['dim7',[0,3,6,9],2],['7sus4',[0,5,7,10],2],['9',[0,2,4,7,10],2],['madd9',[0,2,3,7],3],['mM7',[0,3,7,11],3],['aug7',[0,4,8,10],3],
+  ['M9',[0,2,4,7,11],3],['m9',[0,2,3,7,10],3],['6(9)',[0,2,4,7,9],3],['7(♭9)',[0,1,4,7,10],3],['7(♯9)',[0,3,4,7,10],3],['7(♭5)',[0,4,6,10],4],
+  ['m7(11)',[0,3,5,7,10],4],['M7(♯11)',[0,4,6,7,11],4],['7(13)',[0,4,7,9,10],4],['7(♭13)',[0,4,7,8,10],4],['m11',[0,2,3,5,7,10],4],['13',[0,2,4,7,9,10],4]];
+const CJ_SH=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],CJ_FL=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'],CJ_MIX=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+function cjNames(){const k=String(blockKey(curBlock(),curSong())||'').trim();if(!k)return CJ_MIX;
+  if(/^[A-G][b♭]/.test(k)||/^(F|Dm|Gm|Cm|Fm)$/.test(k))return CJ_FL;if(/^[A-G][#♯]/.test(k)||/^(G|D|A|E|B|Em|Bm)$/.test(k))return CJ_SH;return CJ_MIX}
+function cjJudge(notes){if(!notes.length)return [];const N=cjNames();const bass=Math.min(...notes)%12;const all=[...new Set(notes.map(n=>n%12))];const out=[];
+  const same=(a,b)=>a.length===b.length&&a.every(x=>b.includes(x));
+  const tryRoot=(pcs,r,pen)=>{const iv=pcs.map(p=>(p-r+12)%12);
+    const NB=N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N;
+    for(const [q,t,rank] of CJ_T){let sc=null;if(same(iv,t))sc=rank;else if(t.includes(7)&&iv.length>=3&&!iv.includes(7)&&same([...iv,7],t))sc=rank+3;
+      if(sc!=null)out.push({name:N[r]+q+(bass!==r?'/'+NB[bass]:''),sc:sc+pen+(bass!==r?4:0)})}};
+  for(const r of all)tryRoot(all,r,0);
+  const rest=all.filter(p=>p!==bass);if(rest.length>=2)for(const r of rest)tryRoot(rest,r,2);
+  const seen=new Set();return out.sort((a,b)=>a.sc-b.sc).filter(x=>!seen.has(x.name)&&seen.add(x.name)).slice(0,8)}
+const CJ={on:[]};
+function cjFromCell(c){const p=parseChord(c||'');if(!p.root)return [];const r=(PCN[p.root]+(ACC[p.acc]||0)+12)%12;const t=CJ_T.find(x=>x[0]===p.q);if(!t)return [];
+  const fit=n=>n>71?n-12:n;if(p.bass){const b=(PCN[p.bass]+(ACC[p.bassAcc]||0)+12)%12;return [48+b,...t[1].map(i=>fit(60+r+i))]}return t[1].map(i=>fit(48+r+i))}
+function cjTone(midi){const c=ensureCtx();if(!c)return;const at=c.currentTime+0.01,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=440*Math.pow(2,(midi-69)/12);
+  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(0.25,at+0.01);g.gain.exponentialRampToValueAtTime(0.0001,at+1.2);o.connect(g).connect(c.destination);o.start(at);o.stop(at+1.3)}
+function cjBody(){const N=cjNames(),on=CJ.on,bass=on.length?Math.min(...on):null;const cands=cjJudge(on);
+  const W=[0,2,4,5,7,9,11],B={1:0,3:1,6:3,8:4,10:5};let w='',b='';
+  for(let o=0;o<2;o++){W.forEach(pc=>{const m=48+o*12+pc;w+=`<button class="cj-w ${on.includes(m)?'on':''}" data-act="cjKey" data-m="${m}">${m===bass?'<b class="cj-bass">●</b>':pc===0?'C'+(o+3):''}</button>`});
+    Object.entries(B).forEach(([pc,wi])=>{const m=48+o*12+ +pc;b+=`<button class="cj-b ${on.includes(m)?'on':''}" data-act="cjKey" data-m="${m}" style="left:calc(100% / 14 * ${o*7+wi+1} - 100% / 14 * 0.31)">${m===bass?'<b class="cj-bass">●</b>':''}</button>`})}
+  return `<div class="cj-kb">${w}${b}</div>
+  <div class="hstack cj-tools"><span class="sub">押した音: ${on.length?[...new Set([...on].sort((x,y)=>x-y).map(m=>N[m%12]))].join(' ')+` <span style="white-space:nowrap">(●ベース ${N[bass%12]})</span>`:'(鍵盤を押してください)'}</span><span class="spacer"></span>
+    <button data-act="cjPlay" ${on.length?'':'disabled'}>▶ 鳴らす</button><button data-act="cjClear">クリア</button></div>
+  <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(c.name)}</button>`).join('')
+    :'<span class="sub">当てはまるコードが見つかりませんでした。音を減らしてみてください</span>':'<span class="sub">いちばん低い音がベース音になります。候補を押すとマスに入ります</span>'}</div>`}
+function cjRender(){const e=$('#cjBody');if(e)e.innerHTML=cjBody()}
 // 拍子えらび: 「数 / 分母」をそれぞれ選ぶだけ(打ち間違いで「8」だけ入る、などを防ぐ)
 let MPF=null;
 function meterModal(title,cur,resetLabel,onOk){MPF=onOk;const x=normMeter(cur||'').match(/^(\d+)\/(\d+)$/)||[0,'4','4'];
@@ -919,6 +960,7 @@ function renderSheet(focus){
   </div>
   <div class="cs-foot ${UI('kbd')?'kbd-on':''}"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
     <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>
+    <button class="foldbtn" data-act="cjOpen" title="鍵盤で押した音からコード名を探す">🎹 コード判定</button>
     <div class="steps"><span>「次」で進む</span>${steps.map(([v,l])=>`<button class="${S.prefs.step===v?'on':''}" data-act="pStep" data-v="${v}">${l}</button>`).join('')}</div></div>
   </div></div>`;
   if(focus&&!TOUCH){const i=$('#chordIn');i.focus();i.select()}
@@ -1206,6 +1248,14 @@ const ACT={
       resizeBar(bar,n);if(m)bar.m=m;else delete bar.m;if(P&&P.bar===bi)P=null;render()})},
   mpOk(){const v=$('#mpN').value+'/'+$('#mpD').value;if(!meterSlots(v))return toast('1小節32マスまでです。数を減らすか分母を大きくしてください');const f=MPF;ACT.lbClose();f&&f(v)},
   mpReset(){const f=MPF;ACT.lbClose();f&&f(null)},
+  cjOpen(){CJ.on=P?cjFromCell(curCell().replace(/^⌒/,'')):[];
+    $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cjm">
+    <div class="hstack"><b style="white-space:nowrap">🎹 コード判定</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <div id="cjBody">${cjBody()}</div></div>`},
+  cjKey(t){const m=+t.dataset.m;const i=CJ.on.indexOf(m);if(i<0){CJ.on.push(m);cjTone(m)}else CJ.on.splice(i,1);cjRender()},
+  cjPlay(){[...CJ.on].sort((a,b)=>a-b).forEach((m,i)=>setTimeout(()=>cjTone(m),i*40))},
+  cjClear(){CJ.on=[];cjRender()},
+  cjPick(t){const v=t.dataset.v;ACT.lbClose();if(!P)return;const c=curCell();setCell((c.startsWith('⌒')?'⌒':'')+v)},
   pClose(){const b=P&&P.bar;P=null;renderSheet();if(b!=null)refreshBar(b)},
   pStep(t){S.prefs.step=t.dataset.v==='bar'?'bar':+t.dataset.v;save();renderSheet(true)},
   pRoot(t){const v=t.dataset.v;if(P.slash&&P.root){P.bass=v;P.bassAcc='';P.slash=false;P.last='bass'}
