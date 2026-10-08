@@ -287,6 +287,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .tour-bub.in{opacity:1;transform:none;pointer-events:auto}
 .bunsetsu{overflow-wrap:anywhere;line-break:strict}.bunsetsu .nb{white-space:nowrap}
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
+.song-audio{margin-top:12px}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
+.brow.bq{display:flex;gap:10px;align-items:flex-start}.brow.bq input[type=number]{width:80px}
 .nm-eg{margin:0 0 10px;padding-left:1.2em;font-size:13px;color:var(--sub);line-height:1.7}
 .backlink{display:inline-block;color:var(--accent);margin:4px 0 2px;font-size:14px}
 .histbtns{display:flex;gap:2px}.histbtns button{padding:4px 7px;font-size:17px;line-height:1;display:flex;align-items:center}.histbtns button:disabled{opacity:.3}
@@ -685,19 +687,19 @@ function viewSong(){
   return topbar('')+`<main>
   <a class="back" href="#/setlist/${sl?sl.id:''}">‹ ${sl?esc(sl.name):'セトリ'}</a>
   <input class="name" style="display:block;font-size:24px;font-weight:700;background:none;border-color:transparent;padding:4px 0;width:100%" value="${esc(s.title)}" data-input="songField" data-k="title">
-  <div class="hstack meta">
+  <div class="hstack meta" id="songInfo">
     <label>テンポ<input value="${esc(s.bpm)}" data-input="songField" data-k="bpm" placeholder="例 84"></label>
     <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
     <label>Key<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
-    <label style="flex:1">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeなど"></label>
-    ${s.url?`<a class="back" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px">開く ↗</a>`:''}
-    <button style="align-self:flex-end" data-act="share">🔗 共有</button>
-    <a href="#/print/${s.id}/map" style="align-self:flex-end"><button>🖨 構成表(1枚)</button></a>
-    <a href="#/print/${s.id}" style="align-self:flex-end"><button>📄 コード譜PDF</button></a>
   </div>
+  <div class="card song-audio" id="songAudio"><b>🎵 音源</b>
+    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeなど"></label>
+      ${s.url?`<a class="back" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px">開く ↗</a>`:''}</div>
+    ${s.audio?`<p class="sub" style="margin:8px 0 0">🎵 ${esc(s.audio.name)} を入れてあります。下のプレーヤーで再生・差し替えできます。</p>`
+      :`<div class="hstack" id="audioDrop" style="margin-top:8px"><button class="primary" data-act="audioPick">🎵 音源ファイルを入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK${ytId(s.url)?' ・ 今は参考音源URLのYouTubeを下のプレーヤーで再生できます':''}</span></div>`}</div>
+  <div class="hstack song-acts" id="songActs"><button data-act="share">🔗 共有</button><a href="#/print/${s.id}/map"><button>🖨 印刷・PDF</button></a></div>
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${metroCard(s)}
-  ${s.audio?'':`<div class="card hstack" id="audioDrop"><button class="primary" data-act="audioPick">🎵 音源を入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK${ytId(s.url)?' ・ 今は参考音源URLのYouTubeを下のプレーヤーで再生できます':' ・ 参考音源URLにYouTubeを入れると、それでも再生できます'}</span></div>`}
   <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
   <div class="list">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
@@ -885,18 +887,20 @@ function viewBlock(){
     ${next?`<a class="back" href="#/block/${s.id}/${next.id}${tab}" style="margin-left:12px">${esc(next.name)} →</a>`:''}</div>
   <div class="btitle"><span class="cbar" style="background:${TYPES[bl.type].color}"></span>
     <input class="name" value="${esc(bl.name)}" data-input="blockField" data-k="name">
-    <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">⚙ 設定 ${UI('bset')?'▾':'▸'}</button></div>
+    <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">⚙ 詳しい設定 ${UI('bset')?'▾':'▸'}</button></div>
   <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),blockKey(bl,s)&&'Key '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
-  <div class="blockhead panel" style="${UI('bset')?'':'display:none'}">
-    <div class="brow b2"><label class="frow"><span>種類</span><select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select></label>
-    <label class="frow"><span>小節数</span><input type="number" min="1" max="64" inputmode="numeric" value="${bl.bars.length}" data-change="barsCount"></label></div>
-    <div class="brow b3"><label class="frow"><span>拍子</span><select data-change="blockMeter"><option value="">${songMeterDefault(s)}(曲)</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label>
-    <label class="frow"><span>テンポ</span><input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="${esc(s.bpm||'120')}" data-input="blockField" data-k="bpm"></label>
-    <label class="frow"><span>Key</span><input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key"></label></div>
-    <div class="brow b1"><label class="frow"><span>メモ</span><textarea rows="2" class="memo-ta" data-input="blockField" data-k="note" placeholder="例 半音上げ転調 リズムに注意 など">${esc(bl.note)}</textarea></label></div>
+  <div class="blockhead panel" id="bquick">
+    <div class="brow bq"><label class="frow"><span>小節数</span><input type="number" min="1" max="64" inputmode="numeric" value="${bl.bars.length}" data-change="barsCount"></label>
+      <label class="frow" style="flex:1"><span>メモ</span><textarea rows="2" class="memo-ta" data-input="blockField" data-k="note" placeholder="例 半音上げ転調・リズムに注意">${esc(bl.note)}</textarea></label></div>
     <div class="frow mkrow"><span>マーカー</span><div class="mkbtns">
     ${S.markers.map(m=>{const on=bl.tags.includes(m.name);return `<button class="tagbtn ${on?'on':''}" data-act="toggleTag" data-t="${esc(m.name)}" style="${on?`border-color:${m.color};color:${m.color};background:${m.color}22`:''}">${esc(m.name)}</button>`}).join('')}
-    <a class="sub" href="#/settings" style="font-size:12px">編集</a></div></div>
+    <a class="sub" href="#/settings/markers" style="font-size:12px">編集</a></div></div>
+  </div>
+  <div class="blockhead panel" style="${UI('bset')?'':'display:none'}">
+    <div class="brow b2"><label class="frow"><span>種類</span><select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select></label>
+    <label class="frow"><span>拍子</span><select data-change="blockMeter"><option value="">${songMeterDefault(s)}(曲)</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label></div>
+    <div class="brow b2"><label class="frow"><span>テンポ</span><input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="${esc(s.bpm||'120')}" data-input="blockField" data-k="bpm"></label>
+    <label class="frow"><span>Key</span><input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key"></label></div>
   </div>
   <div class="toolrow">
     <button class="foldbtn ${UI('metro')?'on':''}" data-act="uiToggle" data-k="metro">🥁 メトロノーム ${UI('metro')?'▾':'▸'}</button>
@@ -1429,13 +1433,13 @@ const TUT=[
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
 function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');let mh=0,mp=0;const cur=p.innerHTML;
-  TUT.forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;wbrize(p);h.style.minHeight='';p.style.height='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
-  h.innerHTML=TUT[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
+  TG().forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;wbrize(p);h.style.minHeight='';p.style.height='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
+  h.innerHTML=TG()[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
-function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUTH&&help;
-  return `<div class="tut-step">${TUTI+1} / ${TUT.length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
+function tutBody(){const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
+  return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
   <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}</div>
-  <div class="tut-dots">${TUT.map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
+  <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack">${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':'<button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="実際の画面を開きながら案内します">▶ 画面で案内</button>'}<span class="spacer"></span>
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- 画面を見ながらの案内(ツアー) ----------
@@ -1443,6 +1447,9 @@ function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUT
    メニューの「使い方を見る」は文章だけ(上の TUT)を読む */
 function tourSong(){const sl=curSetlist();const id=sl&&sl.songIds.find(songById);return songById(id)||bandSongs()[0]}
 function tourBlock(){const s=tourSong();return s&&s.blocks[0]}
+const tSong=()=> '#/song/'+tourSong().id, tBlk=()=> `#/block/${tourSong().id}/${tourBlock().id}`;
+const tCell=()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}};
+const tNoCell=()=>{if(P)ACT.pClose()};
 const TOUR=[
   {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
   {r:()=> '#/',sel:null,h:'データについて',t:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は<b>ホーム画面に追加</b>しておくのがおすすめです。',help:TUT[5][2]},
@@ -1450,16 +1457,25 @@ const TOUR=[
   {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'ライブ企画の名前などをつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、バンドごとに分けて作ると分かりやすいです。'},
   {r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
   {r:()=> '#/',sel:'main .list .row',h:'曲',t:'セトリに入っている曲です。タップすると曲の画面が開きます。',need:tourSong},
-  {r:()=> '#/song/'+tourSong().id,sel:'main .adds',h:'曲の構成',t:'「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。',need:tourSong},
-  {r:()=> '#/song/'+tourSong().id,sel:'.metro',h:'音源とメトロノーム',t:TUT[3][1],need:tourSong},
-  {r:()=> '#/song/'+tourSong().id,sel:'[data-act=share]',h:'メンバーに共有',t:TUT[4][1],help:TUT[4][2],need:tourSong},
-  {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'#grid .bar',h:'コードを入れる',t:TUT[2][1],help:TUT[2][2],need:tourBlock},
-  {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'.kb',h:'コード入力キーボード',t:'マスをタップすると出てきます。ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',need:tourBlock,
-    before:()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}}},
-  {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,
-    before:()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}}},
-  {r:()=> `#/block/${tourSong().id}/${tourBlock().id}`,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。',need:tourBlock,before:()=>{if(P)ACT.pClose()}},
-  {r:()=> location.hash||'#/',sel:'.menubtn',h:'メニュー',t:'画面の明るさ(テーマ)やコードの表示方法の切り替え、共有コードの読み込み、バックアップなどはここにまとまっています。この説明は「使い方を見る」から文章でいつでも読み返せます。',before:()=>{if(P)ACT.pClose()}}];
+  // 曲の画面
+  {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'上から、曲の基本情報・音源・メトロノーム、その下に曲の構成(イントロ・Aメロなどのブロック)が並びます。ブロックは ⋮⋮ をつかんで並べ替え、タップすると中に入れます。',need:tourSong},
+  {r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
+  {r:tSong,sel:'#songInfo',h:'① 曲の基本情報',t:'テンポ・拍子・Keyを入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
+  {r:tSong,sel:'#songAudio',h:'② 音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、下のプレーヤーで再生できます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
+  {r:tSong,sel:'.metro',h:'③ メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
+  // ブロックの画面
+  {r:tBlk,sel:'#bquick',h:'④ ブロックの画面',t:'小節数・メモ・マーカー(キメ・テンポ注意などの目印)は、ここですぐに変えられます。',need:tourBlock,before:tNoCell},
+  {r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
+  {r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・Keyを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
+  {r:tBlk,sel:'.kb',h:'⑤ コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],need:tourBlock,before:tCell},
+  {r:tBlk,sel:'[data-act=cjOpen]',h:'⑥ コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
+  {r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。',need:tourBlock,before:tNoCell},
+  // 共有・印刷
+  {r:tSong,sel:'#songActs',h:'⑦ 共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
+  {r:()=> '#/',sel:'[data-act=shareSetlist]',h:'⑧ セトリごと共有',t:'セトリ画面からは、曲順やスタジオ・本番の予定もまとめて、セトリごと共有できます。'},
+  {r:()=> '#/',sel:'.menubtn',h:'⑨ 共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]}];
+// メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
+const TG=()=>TOUR.map(s=>[s.h,s.t,s.help]);
 let TI=-1,TH=false,TSTEPS=[],TSEQ=0;
 function tourStart(){ACT.lbClose();TSTEPS=TOUR.filter(s=>!s.need||s.need());TI=0;TH=false;tourGo()}
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
@@ -1504,7 +1520,7 @@ function wbrize(el){if(!el)return;try{const w=document.createTreeWalker(el,NodeF
     parts.forEach(p=>{if(p.length>14){f.appendChild(document.createTextNode(p));return}const s=document.createElement('span');s.className='nb';s.textContent=p;f.appendChild(s)});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1618,7 +1634,7 @@ const ACT={
   tourEnd(){tourEnd()},
   tourStart(){tourStart()},
   tutOpen(){TUTI=0;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
-  tutMove(t){TUTI=Math.max(0,Math.min(TUT.length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
+  tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutEnd(){S.prefs.tutDone=true;save();ACT.lbClose()},
   cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
