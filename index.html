@@ -263,7 +263,10 @@ h1{font-size:24px;margin:4px 0 6px}
 .histbtns{display:flex;gap:2px}.histbtns button{padding:4px 8px;font-size:17px;line-height:1}.histbtns button:disabled{opacity:.3}
 @media screen and (max-width:420px){header.top .bandsel select{max-width:86px}header.top .histbtns button{padding:4px 5px;font-size:16px}header.top nav a{padding:6px 5px}}
 /* 使い方ガイド・お知らせ */
-.tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut p{margin:0 0 8px;line-height:1.7}
+.tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut .tut-p{margin:0 0 4px;line-height:1.7;overflow-y:auto}
+.tut .tut-p.help{font-size:14px;color:var(--sub)}.tut .tut-p.help b{color:var(--text)}
+.tut-helprow{height:34px;display:flex;align-items:center}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
+.tut-help .qm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--sub);font-weight:700;font-size:12px;flex:none}
 .tut-dots{display:flex;gap:5px;justify-content:center;margin:10px 0}.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.tut-dots i.on{background:var(--accent)}
 .news-v{margin-top:10px}.news-v b{font-size:13px}.news-v ul{margin:4px 0 0;padding-left:1.2em;line-height:1.7;font-size:14px}
 .newdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:3px;vertical-align:top}
@@ -682,7 +685,7 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
       <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset" style="width:84px"><span class="sub">秒</span>
       <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button>
       <button data-act="mOffNow" title="再生中の位置を1小節目にする">⏱ 今の位置を1小節目に</button>`:''}</div>`:''}
-    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源の「1小節目の位置」だけ合わせれば、あとは曲のテンポと拍子どおりに刻みます(ブロックの頭では合わせ直しません)。クリックが早ければ＋、遅ければ－'
+    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源の「1小節目の位置」だけ合わせれば、あとは曲のテンポと拍子どおりに刻みます。クリックが早ければ＋、遅ければ－で微調整できます。'
       :noBpm?'テンポが未入力なので ♩120 で鳴らします。曲かブロックのテンポを入れてください':'ブロックごとのテンポ・拍子に合わせて鳴ります'}</div></div>`}
 // 音源同期: 「1小節目の位置」から、曲の構成(テンポ・拍子・小節数)だけで拍の時刻を並べる。ブロックの頭では合わせ直さない
 const MS={ev:null,evKey:'',last:null,lastMt:null};
@@ -840,7 +843,7 @@ function viewBlock(){
     <div class="brow b3"><label class="frow"><span>拍子</span><select data-change="blockMeter"><option value="">${songMeterDefault(s)}(曲)</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label>
     <label class="frow"><span>テンポ</span><input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="${esc(s.bpm||'120')}" data-input="blockField" data-k="bpm"></label>
     <label class="frow"><span>Key</span><input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key"></label></div>
-    <div class="brow b1"><label class="frow"><span>メモ</span><textarea rows="2" class="memo-ta" data-input="blockField" data-k="note" placeholder="例 半音上げ(改行もできます)">${esc(bl.note)}</textarea></label></div>
+    <div class="brow b1"><label class="frow"><span>メモ</span><textarea rows="2" class="memo-ta" data-input="blockField" data-k="note" placeholder="例 半音上げ転調 リズムに注意 など">${esc(bl.note)}</textarea></label></div>
     <div class="frow mkrow"><span>マーカー</span><div class="mkbtns">
     ${S.markers.map(m=>{const on=bl.tags.includes(m.name);return `<button class="tagbtn ${on?'on':''}" data-act="toggleTag" data-t="${esc(m.name)}" style="${on?`border-color:${m.color};color:${m.color};background:${m.color}22`:''}">${esc(m.name)}</button>`}).join('')}
     <a class="sub" href="#/settings" style="font-size:12px">編集</a></div></div>
@@ -981,7 +984,7 @@ function cpBody(){const bl=curBlock(),c=curCell(),nb=bl.bars.length,sel=(id,v)=>
   <div class="cp-sec"><div class="cp-h">貼り付け</div><div class="cp-now">コピー中: ${cbLabel()}</div>
     ${!CB?'':CB.type==='cell'?`<button class="cp-btn primary" data-act="cpPaste">このマスに貼り付け</button>`
       :`<button class="cp-btn primary" data-act="cpPaste">${P.bar+1}小節目から貼り付け</button>
-      <p class="sub cp-note">マスの位置どおりに貼ります。こっちの小節数・拍子はそのままで、入りきらない分は貼りません</p>`}</div>`}
+      <p class="sub cp-note">マスの位置どおりに貼ります。貼り付け先の小節数・拍子はそのままで、入りきらない分は貼りません</p>`}</div>`}
 function cpPasteBars(){const bl=curBlock(),start=P.bar;let over=0,drop=0,used=0;const plan=[];
   CB.bars.forEach((src,k)=>{const tb=bl.bars[start+k];if(!tb){drop+=src.filter(Boolean).length;return}used++;
     for(let i=0;i<tb.n;i++){const v=src[i]||'',old=tb.cells[i]||'';if(old&&old!==v)over++;plan.push([tb,i,v])}
@@ -1067,7 +1070,7 @@ function prevChord(){const s=curSong(),bl=curBlock();let bi=P.bar,si=P.slot-1;
   return ''}
 // 「記号の意味」に出す一覧
 const SYMBOLS=[['/','分数コード。右側がベース音(例 D/F♯)'],['⌒','前の小節から音を伸ばす(タイ)'],
-  ['N.C.','コードなし(休み・メロディだけ・ユニゾンなど)'],['?','分からない。あとで確認する'],['★ ※ 〇 ■ など','マーク。フレーズやボイシングなど、言葉にしにくい「あれ」の目印']];
+  ['N.C.','コードなし(休み・メロディだけ・ユニゾンなど)'],['?','分からない。あとで確認する'],['★ ※ 〇 ■ など','いろいろ使えるマーク。フレーズやボイシングなど、言葉にしにくい「あれ」の自分用の目印']];
 // 「★…」で開くマーク一覧。コードの後ろに付けても、マークだけ置いてもいい
 const MARKS=['★','☆','※','〇','●','◎','△','▲','■','□','◆','◇','♪','！','♥','♣'];
 // よく使うコードの種類(ボタン一覧)。値は3度・7th・テンションの組み立てと同じ書き方
@@ -1075,7 +1078,7 @@ const PRESETS=[['','M'],['m','m'],['7','7'],['M7','M7'],['m7','m7'],['6','6'],['
 function presetName(v){const r=chordDesc({root:'C',acc:'',q:v,bass:'',tie:false});return r.replace(/^C /,'')}
 // いま選んでいるコードの読み方(例: Cm7 → C マイナー・セブンス)
 function chordDesc(p){
-  if(!p.root)return ({'?':'「?」分からない(あとで確認)','－':'「N.C.」コードなし','N.C.':'「N.C.」コードなし(休み・メロディだけ・ユニゾンなど)'})[p.lit]||(MARKS.includes(p.lit)?`「${p.lit}」マーク`:p.lit?'':'ルート音を選んでください');
+  if(!p.root)return ({'?':'「?」分からない(あとで確認)','－':'「N.C.」コードなし','N.C.':'「N.C.」コードなし'})[p.lit]||(MARKS.includes(p.lit)?`「${p.lit}」マーク`:p.lit?'':'ルート音を選んでください');
   const q=parseQ(p.q);const acc=a=>a==='b'||a==='♭'?'♭':a==='#'||a==='♯'?'♯':'';let d='';
   if(q){const T={'':'メジャー',m:'マイナー',sus4:'サスフォー',sus2:'サスツー',dim:'ディミニッシュ',aug:'オーギュメント'}[q.tri];
     const V={'':'','6':'シックス','7':'セブンス','M7':'メジャーセブンス'}[q.sev];
@@ -1140,8 +1143,8 @@ function memoTab(bl){
   <div class="drop" id="drop">
     ${photos.length?boardHTML(bl):''}
     ${audios.length?`<div class="sec">ボイスメモ</div>${audios.map(m=>`<div class="memo-item">🎙<input value="${esc(m.name)}" data-input="memoName" data-id="${m.id}"><audio controls preload="metadata" data-blob="${m.blobId}"></audio><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
-    ${texts.length?`<div class="sec">テキスト</div>${texts.map(m=>`<div class="memo-item"><textarea data-input="memoText" data-id="${m.id}" placeholder="例: 3拍子は1小節だけ！次から4拍子&半音上げ">${esc(m.text)}</textarea><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
-    ${bl.memos.length?'':'<div class="empty">手書きの採譜写真、ボイスメモ、注意書きをここに置けます</div>'}
+    ${texts.length?`<div class="sec">テキスト</div>${texts.map(m=>`<div class="memo-item"><textarea data-input="memoText" data-id="${m.id}" placeholder="例: 最後の小節だけ繰り返しじゃない！">${esc(m.text)}</textarea><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
+    ${bl.memos.length?'':'<div class="empty">手書きの採譜写真やボイスメモ、注意書きテキストなどをここにまとめて置けます</div>'}
   </div>`}
 // 写真ボード: 幅1000の仮想キャンバスに写真を自由に置く。表示は画面幅×拡大率で縮尺する
 let BZ=1;
@@ -1352,21 +1355,26 @@ async function fillImport(){
 let PENDING=null;
 /* ---------- settings ---------- */
 /* ---------- 使い方ガイド ---------- */
+// [見出し, 本文, ヘルプ([題, 中身]) があれば「？」ボタンで本文と入れ替えて表示]
 const TUT=[
-  ['ようこそ！','コピバン練習ノートは、バンドでコピーする曲の「構成・コード・メモ」をまとめておくノートです。<br>流れは <b>セトリ → 曲 → ブロック(Aメロ・サビなど) → コード</b> の順です。'],
-  ['曲を作る','上の「曲」から「＋ 曲を追加」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
-  ['コードを入れる','ブロックを開いて、マスをタップすると下にキーボードが出ます。1マス = 8分音符1つ分。<b>空いているマスは「前のコードが続く」</b>という意味なので、コードが変わるところだけ入れればOKです。<br>分からないコードは「🎹 コード判定」で鍵盤から探せます。'],
-  ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)やYouTubeのURLを入れると、ブロックごとに再生・ループできます。メトロノームは音源に合わせて鳴らすこともできます。'],
-  ['バンドに共有','曲やセトリの「共有」で、リンクを送れます。受け取った人は自分のスマホに取り込んで、自由に書き込めます(あなたのデータは変わりません)。'],
-  ['データについて','データはこのスマホ(ブラウザ)の中に保存されます。<b>ホーム画面に追加</b>して使うと消えにくくなります。間違えて消したときは、上の <b>↶</b> で元に戻せます。<br>この説明は「設定 → 使い方を見る」からいつでも見られます。']];
-let TUTI=0;
-// 説明文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする
-function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('p');let mh=0,mp=0;
-  TUT.forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;h.style.minHeight=p.style.minHeight='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
-  h.innerHTML=TUT[TUTI][0];p.innerHTML=TUT[TUTI][1];h.style.minHeight=mh+'px';p.style.minHeight=mp+'px'}
+  ['ようこそ！','コピバン練習ノートは、バンドでコピーする曲の「構成・コード・メモ」をまとめることに特化したツールです。<br>まずは使い方の流れを確認してみましょう。'],
+  ['曲を追加する','上の「曲」から「＋ 曲を追加」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
+  ['コードを入れる','追加したブロックを開くと、さらに<b>グリッド付きのボックス</b>が現れます。<b>1グリッド = 8分音符1つ分</b>、<b>グリッドで区切られたボックス = 1小節</b>です。ボックスの空白部分をタップ・クリックすると、専用のキーボードが現れます。<b>小節の頭やコードが変わる部分</b>にメモをしていきましょう。<br>コード名がわからない場合は「🎹 コード判定」で鍵盤から探せます。',
+    ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。当ツールではこの記法に慣れていない人のためにキーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すことで、コード名入力や和音でのコード名判定の際にドレミ表記のまま入力することができるので、慣れるまで活用するとよいでしょう。また、楽曲分析を目的としていたり、移調を考えていたりする方向けに「ディグリー」ボタンもあるので是非ご活用ください。']],
+  ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)やYouTubeのURLを入れると、各ブロックの頭から再生・ループ再生もできます。適切に拍子とテンポを設定することで、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
+  ['メンバーに共有','曲やセトリの「共有」ボタンを押すと共有用URL・共有コードが生成されます。受け取ったリンクや「設定」から入力したコードにより曲構成データやセトリデータを自分の端末に取り込んで、自由に書き込むことができます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
+    ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。この場合、再び同じセトリを編集したり、内容を確認したりしたい場合はそのアプリ内のブラウザから見る必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「設定」から共有コードを読み込むことでセトリなどを受け取ることができます。']],
+  ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、上の <b>↶</b> で元に戻せます。<br>この説明は「設定 → 使い方を見る」からいつでも見られます。',
+    ['データの扱い','曲やセトリのデータは端末のみに残り、クラウド上にアップロードされません(「共有」ボタンを押したときだけ、共有用のコピーが置き場に送られます)。そのため、しばらく開かないとデータが自動的に消えてしまうスマホのブラウザアプリでは永久的な保存は保証できません。「ホーム画面に追加」をすることで、自動でデータが消されることはなくなり、端末内で安全にデータを管理できるようになります。万が一に備え、多くの変更をしたときや、たくさんのセトリを作成した場合、「設定」にあるバックアップ機能を使うこともお勧めします。']]];
+let TUTI=0,TUTH=false;
+// 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
+function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');let mh=0,mp=0;const cur=p.innerHTML;
+  TUT.forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;h.style.minHeight='';p.style.height='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
+  h.innerHTML=TUT[TUTI][0];p.innerHTML=cur;h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
-function tutBody(){const [h,p]=TUT[TUTI],last=TUTI===TUT.length-1;
-  return `<div class="tut-step">${TUTI+1} / ${TUT.length}</div><h2>${h}</h2><p>${p}</p>
+function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUTH&&help;
+  return `<div class="tut-step">${TUTI+1} / ${TUT.length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
+  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}</div>
   <div class="tut-dots">${TUT.map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack">${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':'<button class="ghost" data-act="tutEnd">スキップ</button>'}<span class="spacer"></span>
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
@@ -1385,13 +1393,13 @@ function viewSettings(){if(newsUnseen()){S.prefs.newsSeen=NEWS[0].d;save()}
   ${newsCard()}
   <div class="card"><b>バンド</b><div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
     <button data-act="newBand">＋ バンドを追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">このバンドを削除</button>':''}</div></div>
-  <div class="card"><b>📱 スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ いまホーム画面のアプリとして開いています。':''}
+  <div class="card"><b>📱 スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ ホーム画面のアプリとして開いています。':''}
     ホーム画面に追加すると、アイコンから全画面で開けて、電波がないスタジオでも使えます。<br>
     ・iPhone: Safariで開いて、下の共有ボタン → 「ホーム画面に追加」<br>
     ・Android: Chromeのメニュー(︙) → 「ホーム画面に追加」<br>
-    ${STORE_OK?'✓ このブラウザには「データを消さずに残して」と伝えてあります。<br>':'ホーム画面に追加して使うと、しばらく開かなくてもデータが消えにくくなります。<br>'}
-    ※ホーム画面のアプリとブラウザでは、保存されるデータが別々になります。どちらか一方で使うか、「バックアップを書き出す」で移してください。</p></div>
-  <div class="card"><b>マーカー</b><p class="note">ブロックに付ける目印です(キメ・テンポ注意など)。名前と色は自由に変えられて、曲の一覧で危険な箇所がひと目で分かります。</p>
+    ${STORE_OK?'✓ この端末では、データが自動で消されない設定になっています。<br>':'ホーム画面に追加して使うと、しばらく開かなくてもデータが消えにくくなります。<br>'}
+    ※ホーム画面のアプリとブラウザでは、保存されるデータが別々になります。バックアップファイルでデータを移行してから使用してください。</p></div>
+  <div class="card"><b>マーカー</b><p class="note">ブロックに付ける目印です(キメ・テンポ注意など)。名前と色は自由に変えられて、曲の一覧で注意が必要な箇所がひと目で分かります。</p>
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>
   <div class="card"><b>表示</b><div class="hstack" style="margin-top:8px"><select data-change="theme">${Object.entries(THEMES).map(([k,l])=>`<option value="${k}" ${(S.prefs.theme||'auto')===k?'selected':''}>${l}${k==='auto'?'(PCの設定に合わせる)':''}</option>`).join('')}</select></div></div>
@@ -1465,8 +1473,9 @@ const ACT={
   cjDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render();cjRender()},
   cjSeqBack(){CJ.seq.pop();cjRender()},
   undo,redo,
-  tutOpen(){TUTI=0;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
-  tutMove(t){TUTI=Math.max(0,Math.min(TUT.length-1,TUTI+ +t.dataset.v));$('#tutBody').innerHTML=tutBody();tutFit()},
+  tutOpen(){TUTI=0;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
+  tutMove(t){TUTI=Math.max(0,Math.min(TUT.length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
+  tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutEnd(){S.prefs.tutDone=true;save();ACT.lbClose()},
   cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
     <div class="hstack"><b>📋 コピー・貼り付け</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div><div id="cpBody">${cpBody()}</div></div>`},
@@ -1521,7 +1530,7 @@ const ACT={
     if(TOUCH&&!isIOS){const f=new File([ics],'studio.ics',{type:'text/calendar'});
       if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:ev.title});return}catch(e){if(e.name==='AbortError')return}}}
     // スマホは、置き場(Cloudflare)から「カレンダーの予定」として配信してもらうと、そのまま「カレンダーに追加」の画面が出る
-    if(TOUCH&&SHARE_API){if(/ Line\//i.test(navigator.userAgent))toast('LINEの中のブラウザでは追加できないことがあります。Safariで開いてください');
+    if(TOUCH&&SHARE_API){if(/ Line\//i.test(navigator.userAgent))toast('LINEの中のブラウザでは追加できないことがあります。SafariやChromeなどで開いてください');
       location.href=SHARE_API+'ics?b='+b64u(new TextEncoder().encode(ics));return}
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download=`${(EV_T[e.type]||EV_T.studio).l}_${ev.start.slice(0,8)}.ics`;a.click();toast('カレンダー用のファイルを保存しました。開くと予定に追加されます')},
   evAdd(t){const sl=curSetlist();slEvents(sl).push({id:uid(),type:t.dataset.v,date:'',start:'',end:'',place:''});render()},
