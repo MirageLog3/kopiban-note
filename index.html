@@ -650,7 +650,13 @@ function mCell(e,sub){const want=e&&!e.count&&R.name==='block'&&R.b===e.bid;let 
   if(want){const bar=$('#bar-'+e.bar);const n=bar?bar.querySelectorAll('.cell').length:0;
     if(n){const f=Math.min(0.999,Math.max(0,(e.beat-1+Math.min(1,Math.max(0,sub||0)))/(e.nb||4)));el=bar.querySelectorAll('.cell')[Math.floor(f*n)]}}
   document.querySelectorAll('.cell.mcell').forEach(x=>{if(x!==el)x.classList.remove('mcell')});if(el)el.classList.add('mcell')}
+// 再生が次のブロックに進んだら、そのブロックの画面に自動で移る(ループ中・コード入力中・別のブロックを見ているときは移らない)
+let FOL=null;
+function follow(sid,bid,looping){
+  if(R.name==='block'&&R.a===sid&&!looping&&!document.body.classList.contains('sheet-open')&&FOL&&FOL===R.b&&bid&&bid!==R.b)location.replace(`#/block/${sid}/${bid}`);
+  FOL=bid||null}
 function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroStat');
+  if(!e)FOL=null;else if(!e.count)follow(MT.songId,e.bid,!!(MT.loop||PL.loop));
   document.querySelectorAll('.row.mplaying,.bar.mbar').forEach(x=>{if(!e||x.dataset.bid!==e.bid&&x.id!=='bar-'+(e&&e.bar))x.classList.remove('mplaying','mbar')});
   mCell(e,sub);
   if(!e){if(st&&stopped)st.textContent='止めました';return}
@@ -694,7 +700,8 @@ function blockRange(s,bid){const i=s.blocks.findIndex(b=>b.id===bid);const b=s.b
 function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   if(PL.loop){const r=blockRange(s,PL.loop);if(r&&(now>=r.end-0.03||now<r.start-0.5)){M.seek(r.start)}}
   let cur=null,ct=-1;for(const b of s.blocks){const t=blockTime(s,b);if(t!=null&&t<=now+0.05&&t>=ct){cur=b;ct=t}}
-  document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('playing',!!cur&&r.dataset.bid===cur.id&&now>0))}
+  document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('playing',!!cur&&r.dataset.bid===cur.id&&now>0));
+  if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
 const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':null);
