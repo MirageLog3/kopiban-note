@@ -1481,7 +1481,7 @@ const TOUR=[
   {core:1,r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。<b>小節の頭やコードが変わるマス</b>にコードを入れます。空いているマスは「前のコードが続く」という意味です。<br>光っているマスをタップしてみましょう。',
     g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',tap:'[data-act=cell][data-bar="0"][data-slot="0"]',need:tourBlock,before:tNoCell},
   {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・キーを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
-  {core:1,r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],need:tourBlock,before:tCell},
+  {core:1,r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。'},
@@ -1490,6 +1490,8 @@ const TOUR=[
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
 const TG=()=>TOUR.filter(s=>!s.noguide).map(s=>[s.h,s.g||s.t,s.help]);
 let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false;
+// 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
+const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
 function tourStart(){ACT.lbClose();THINT=false;TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
 // 初めて来た画面・初めて開いた機能に、短い案内を1回だけ出す。1つの画面で出すのは1つまで。操作中や入力中は出さない
 let HINT_AT='',HINT_IDLE=0;
@@ -1523,7 +1525,7 @@ function tourBox(){let box=$('#tour');if(box)return box;box=document.createEleme
   box.innerHTML=`<div class="tour-spot" id="tourSpot" style="left:0;top:0;width:${innerWidth}px;height:${innerHeight}px;border-radius:0"></div><div class="tour-bub" id="tourBub"></div>`;
   document.body.appendChild(box);addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true);return box}
 function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ;
-  const el=st.sel&&document.querySelector(st.sel);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
+  const el=tourEl(st);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
   const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
   bub.classList.remove('in');
   bub.innerHTML=`<div class="tut-step">${THINT?'💡 ヒント':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
@@ -1538,7 +1540,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     if(r.bottom+bh+24>H&&r.top-bh-24<0&&getComputedStyle(el).position!=='fixed'&&!el.closest('.sheet,header,#sheet'))window.scrollBy(0,r.top-70)}
   tourPlace();setTimeout(()=>{if(seq!==TSEQ)return;tourPlace();bub.classList.add('in')},330)}
 function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(!st||!sp||!bub)return;
-  const el=st.sel&&document.querySelector(st.sel);const W=innerWidth,Hh=innerHeight,m=6,bh=bub.offsetHeight;
+  const el=tourEl(st);const W=innerWidth,Hh=innerHeight,m=6,bh=bub.offsetHeight;
   if(!el){Object.assign(sp.style,{left:W/2+'px',top:Hh/2+'px',width:'0px',height:'0px',borderRadius:'10px'});
     Object.assign(bub.style,{top:Math.max(12,(Hh-bh)/2)+'px',bottom:''});return}
   // 画面全体を見せたいステップは、上のバーより下を全部明るくして、吹き出しは一番下に出す
