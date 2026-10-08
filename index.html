@@ -1456,39 +1456,56 @@ function tourBlock(){const s=tourSong();return s&&s.blocks[0]}
 const tSong=()=> '#/song/'+tourSong().id, tBlk=()=> `#/block/${tourSong().id}/${tourBlock().id}`;
 const tCell=()=>{if(!P){const c=document.querySelector('[data-act=cell][data-bar="0"][data-slot="0"]');if(c)c.click()}};
 const tNoCell=()=>{if(P)ACT.pClose()};
+const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone,IS_PHONE=()=>matchMedia('(pointer:coarse)').matches;
+// core: 初めて開いたときの案内(曲を開いてコードを1つ入れるまで)  on: その画面に初めて来たときに1回だけ出す案内  kb: キーボードが開いているとき
+// g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない
 const TOUR=[
-  {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
-  {r:()=> '#/',sel:null,h:'データについて',t:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は<b>ホーム画面に追加</b>しておくのがおすすめです。',help:TUT[5][2]},
+  {core:1,r:()=> '#/',sel:null,h:'ようこそ！',t:'コピバン練習ノートは、バンドでコピーする曲の「構成・コード・メモ」をまとめるツールです。<br>まずは曲を1つ開いて、コードを入れてみましょう。最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。'},
+  {core:1,r:()=> '#/',sel:null,h:'先にホーム画面に追加',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。',
+    g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
   {r:()=> '#/',sel:'main',whole:true,h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。ほかの画面からは、いちばん上のバーにある「セトリ」の文字を押すとここに戻ってこられます。'},
-  {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'ライブ企画の名前などをつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、バンドごとに分けて作ると分かりやすいです。'},
-  {r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
-  {r:()=> '#/',sel:'main .list .row',h:'曲を開く',t:'セトリに入っている曲です。光っている曲をタップして、曲の画面を開いてみましょう。',tap:'main .list .row a.body',need:tourSong},
+  {on:'setlist',r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'ライブ企画の名前などをつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、バンドごとに分けて作ると分かりやすいです。'},
+  {on:'setlist',r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
+  {core:1,r:()=> '#/',sel:'main .list .row',h:'曲を開く',t:'セトリに入っている曲です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'セトリに入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body',need:tourSong},
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
-  {r:tSong,sel:'#songInfo',h:'① 曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
-  {r:tSong,sel:'#songAudio',h:'② 音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
-  {r:tSong,sel:'.metro',h:'③ メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
-  {r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。',need:tourSong},
-  {r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
+  {on:'song',r:tSong,sel:'#songInfo',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
+  {on:'song',r:tSong,sel:'#songAudio',h:'音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
+  {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
+  {on:'song',r:tSong,sel:'#songActs',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
   // ブロックの画面
-  {r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'ブロックをタップすると、その中に入ってコードなどを書き込めます。光っているブロックをタップしてみましょう。',tap:'main .list .row a.body',need:tourBlock},
-  {r:tBlk,sel:'#bquick',h:'④ ブロックの画面',t:'小節数・メモ・マーカー(キメ・テンポ注意などの目印)は、ここですぐに変えられます。',need:tourBlock,before:tNoCell},
-  {r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
-  {r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・キーを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
-  {r:tBlk,sel:'#grid .bar .cell',h:'マスをタップ',t:'マスをタップすると、コード入力用のキーボードが出てきます。光っているマスをタップしてみましょう。',tap:'[data-act=cell][data-bar="0"][data-slot="0"]',need:tourBlock,before:tNoCell},
-  {r:tBlk,sel:'.kb',h:'⑤ コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],need:tourBlock,before:tCell},
-  {r:tBlk,sel:'[data-act=cjOpen]',h:'⑥ コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
-  {r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。',need:tourBlock,before:tNoCell},
-  // 共有・印刷
-  {r:tBlk,sel:'main a.back',h:'曲の画面に戻る',t:'左上の「‹ 構成」をタップすると、曲の画面に戻れます。タップしてみましょう。',tap:'main a.back',need:tourBlock,before:tNoCell},
-  {r:tSong,sel:'#songActs',h:'⑦ 共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
-  {r:tSong,sel:'main a.back',h:'セトリ画面に戻る',t:'左上のセトリ名をタップすると、セトリ画面に戻れます。タップしてみましょう。',tap:'main a.back',need:tourSong},
-  {r:()=> '#/',sel:'[data-act=shareSetlist]',h:'⑧ セトリごと共有',t:'セトリ画面からは、曲順やスタジオ・本番の予定もまとめて、セトリごと共有できます。'},
-  {r:()=> '#/',sel:'.menubtn',h:'⑨ 共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]}];
+  {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロなどの「ブロック」が曲の順番に並んでいます。光っているブロックをタップして、中に入ってみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
+  {on:'block',r:tBlk,sel:'#bquick',h:'ブロックの画面',t:'小節数・メモ・マーカー(キメ・テンポ注意などの目印)は、ここですぐに変えられます。',need:tourBlock,before:tNoCell},
+  {core:1,r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。<b>小節の頭やコードが変わるマス</b>にコードを入れます。空いているマスは「前のコードが続く」という意味です。<br>光っているマスをタップしてみましょう。',
+    g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',tap:'[data-act=cell][data-bar="0"][data-slot="0"]',need:tourBlock,before:tNoCell},
+  {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・キーを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
+  {core:1,r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],need:tourBlock,before:tCell},
+  {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
+  {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
+  {on:'setlist',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。'},
+  {on:'setlist',r:()=> '#/',sel:'.menubtn',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
+  {core:1,noguide:1,r:tBlk,sel:null,h:'これで準備OK',t:'「はじめる」を押したら、開いているキーボードでコードを入れてみましょう。あとは同じように、曲の構成とコードを書いていきます。<br>音源・メトロノーム・共有などは、初めてその画面を開いたときに短い案内が出ます。全部の説明は「☰ メニュー → 使い方を見る」でいつでも見られます。',need:tourBlock}];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
-const TG=()=>TOUR.map(s=>[s.h,s.t,s.help]);
-let TI=-1,TH=false,TSTEPS=[],TSEQ=0;
-function tourStart(){ACT.lbClose();TSTEPS=TOUR.filter(s=>!s.need||s.need());TI=0;TH=false;tourGo()}
+const TG=()=>TOUR.filter(s=>!s.noguide).map(s=>[s.h,s.g||s.t,s.help]);
+let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false;
+function tourStart(){ACT.lbClose();THINT=false;TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
+// 初めて来た画面・初めて開いた機能に、短い案内を1回だけ出す。1つの画面で出すのは1つまで。操作中や入力中は出さない
+let HINT_AT='',HINT_IDLE=0;
+addEventListener('pointerdown',()=>HINT_IDLE=Date.now(),true);addEventListener('keydown',()=>HINT_IDLE=Date.now(),true);
+function hintInView(sel){const el=sel&&document.querySelector(sel);if(!el)return false;const r=el.getBoundingClientRect();
+  const hb=($('header.top')||{getBoundingClientRect:()=>({bottom:0})}).getBoundingClientRect().bottom;
+  return r.width>0&&r.height>0&&r.top>=hb&&r.bottom<=innerHeight-40}
+function hintCheck(){try{if(!S||!S.prefs.tutDone||TI>=0||$('#tour')||document.hidden)return;
+  if($('#overlay')&&$('#overlay').innerHTML.trim())return;
+  const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
+  if(Date.now()-HINT_IDLE<1500)return;
+  const at=location.hash+(P?'#kb':'');if(at===HINT_AT)return;
+  const seen=S.prefs.hints||(S.prefs.hints={});
+  const st=TOUR.find(s=>s.on===R.name&&!seen[s.h]&&!!s.kb===!!P&&(!s.need||s.need())&&hintInView(s.sel));if(!st)return;
+  HINT_AT=at;seen[st.h]=1;save();THINT=true;TSTEPS=[st];TI=0;TH=false;tourShow()}catch(_){}}
+setInterval(hintCheck,1000);
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
@@ -1501,7 +1518,7 @@ function tourTap(x,y){const st=TSTEPS[TI];if(!st||!st.tap||TTAP)return;const el=
   setTimeout(()=>{rp.remove();TTAP=false;el.click();TI++;TH=false;setTimeout(tourGo,300)},480)}
 let TTAP=false;
 function tourBox(){let box=$('#tour');if(box)return box;box=document.createElement('div');box.id='tour';
-  box.addEventListener('click',e=>{if(e.target.closest('#tourBub'))return;const st=TSTEPS[TI];if(!st||!st.tap)return;
+  box.addEventListener('click',e=>{if(e.target.closest('#tourBub'))return;if(THINT)return tourEnd();const st=TSTEPS[TI];if(!st||!st.tap)return;
     const r=$('#tourSpot').getBoundingClientRect();if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)tourTap(e.clientX,e.clientY)});
   box.innerHTML=`<div class="tour-spot" id="tourSpot" style="left:0;top:0;width:${innerWidth}px;height:${innerHeight}px;border-radius:0"></div><div class="tour-bub" id="tourBub"></div>`;
   document.body.appendChild(box);addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true);return box}
@@ -1509,11 +1526,11 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   const el=st.sel&&document.querySelector(st.sel);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
   const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
   bub.classList.remove('in');
-  bub.innerHTML=`<div class="tut-step">${TI+1} / ${TSTEPS.length}</div><b class="tour-h">${st.h}</b>
+  bub.innerHTML=`<div class="tut-step">${THINT?'💡 ヒント':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
-    <div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
-    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`;
+    ${THINT?'<div class="hstack" style="margin-top:8px"><span class="spacer"></span><button class="primary" data-act="tourEnd">OK</button></div>':`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
+    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
@@ -1532,7 +1549,9 @@ function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(
   if(Hh-bot>=bh+12)Object.assign(bub.style,{top:bot+10+'px',bottom:''});
   else if(top>=bh+12)Object.assign(bub.style,{top:top-bh-10+'px',bottom:''});
   else Object.assign(bub.style,{top:'',bottom:'12px'})}
-function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;S.prefs.tutDone=true;save();if(P)ACT.pClose();if(location.hash!=='#/'&&location.hash)location.hash='#/'}
+function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;HINT_AT=location.hash+(P?'#kb':'');HINT_IDLE=Date.now();
+  // 最初の案内は、終わった画面のまま続けて書き込めるようにする(セトリ画面に戻さない)
+  if(!THINT){S.prefs.tutDone=true;S.prefs.hints=S.prefs.hints||{};save()}THINT=false}
 // 日本語の改行を文節っぽい区切りでだけ起こす: ひらがな・句読点のあと、漢字・カタカナ・英数字・かっこの前を改行してよい場所にする
 function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
   const re=/(?<=[ぁ-ゖ、。」』）)！？・])(?=[一-龠々〆ァ-ヶーｦ-ﾟA-Za-z0-9「『（(＋→←])/;
@@ -1543,7 +1562,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['最初の案内を短く(曲を開いてコードを1つ入れるまで)。ほかの機能は、初めてその画面を開いたときに💡ヒントで1回だけ案内','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1889,6 +1908,8 @@ window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';rend
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(v=>{STORE_OK=v}).catch(()=>{});
   render();gcBlobs();
   if(!S.prefs.tutDone&&!/^#\/(s|import)\//.test(location.hash))setTimeout(tourStart,400);
+  // 前の長い案内を見終わっている人には、画面ごとの案内は出さない
+  else if(S.prefs.tutDone&&!S.prefs.hints){S.prefs.hints={};TOUR.forEach(s=>{if(s.on)S.prefs.hints[s.h]=1})}
 })();
 </script>
 </body>
