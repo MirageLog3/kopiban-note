@@ -1286,11 +1286,10 @@ async function openShare(kind){
   <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> 次のスタジオの日時・場所も入れる <span class="sub">(${studioSum(curSetlist().studio).replace(/<[^>]+>/g,'').trim()})</span></label>`:''}
   ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">📤 LINEなどのアプリで送る</button>`:''}
-  <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
-  <div class="hstack sh-row"><input id="shCode" readonly value="${SHARE_API?'':esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
+  <div hidden><span id="shCodeLen"></span><input id="shCode" readonly value="${SHARE_API?'':esc(code)}"></div>
   <div class="sub sh-lab">共有リンク <span id="shLen">(${link.length}文字)</span></div>
   <div class="hstack sh-row"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>✂</button><button data-act="copy" data-t="shLink">コピー</button></div>
-  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くか、アプリの「設定 → 共有コードを読み込む」にコードを入れるだけで見られます。</p>
+  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くだけで見られます。ホーム画面に追加したアプリに取り込みたいときは、リンクをコピーして、アプリの「設定 → 共有」に貼り付けます。</p>
   </div>`;
   SHARE_LONG=code;if(SHARE_API)makeShort(code)}
 let SHARE_LONG='';
@@ -1328,7 +1327,7 @@ const TUT=[
   ['曲を作る','上の「曲」から「＋ 曲を追加」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
   ['コードを入れる','ブロックを開いて、マスをタップすると下にキーボードが出ます。1マス = 8分音符1つ分。<b>空いているマスは「前のコードが続く」</b>という意味なので、コードが変わるところだけ入れればOKです。<br>分からないコードは「🎹 コード判定」で鍵盤から探せます。'],
   ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)やYouTubeのURLを入れると、ブロックごとに再生・ループできます。メトロノームは音源に合わせて鳴らすこともできます。'],
-  ['バンドに共有','曲やセトリの「共有」で、コードやリンクを送れます。受け取った人は自分のスマホに取り込んで、自由に書き込めます(あなたのデータは変わりません)。'],
+  ['バンドに共有','曲やセトリの「共有」で、リンクを送れます。受け取った人は自分のスマホに取り込んで、自由に書き込めます(あなたのデータは変わりません)。'],
   ['データについて','データはこのスマホ(ブラウザ)の中に保存されます。<b>ホーム画面に追加</b>して使うと消えにくくなります。間違えて消したときは、上の <b>↶</b> で元に戻せます。<br>この説明は「設定 → 使い方を見る」からいつでも見られます。']];
 let TUTI=0;
 // 説明文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする
@@ -1343,7 +1342,7 @@ function tutBody(){const [h,p]=TUT[TUTI],last=TUTI===TUT.length-1;
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-08',items:['元に戻す・やり直すボタン(画面の上の ↶ ↷)','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
+  {d:'2026-10-08',items:['元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有はリンクだけにしました(共有コードの欄をなくしました)','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
   return `<div class="card"><b>🆕 お知らせ(不具合修正・アップデート)</b>
@@ -1366,8 +1365,8 @@ function viewSettings(){if(newsUnseen()){S.prefs.newsSeen=NEWS[0].d;save()}
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>
   <div class="card"><b>表示</b><div class="hstack" style="margin-top:8px"><select data-change="theme">${Object.entries(THEMES).map(([k,l])=>`<option value="${k}" ${(S.prefs.theme||'auto')===k?'selected':''}>${l}${k==='auto'?'(PCの設定に合わせる)':''}</option>`).join('')}</select></div></div>
-  <div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を貼ると、その曲やセトリを取り込めます。</p>
-    <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
+  <div class="card"><b>共有</b><p class="note">友達から届いた共有リンクを貼ると、その曲やセトリを取り込めます。</p>
+    <div class="hstack"><input id="impCode" placeholder="共有リンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     <p class="note" style="margin-top:12px">アプリをネット上に置いた場合は、そのURLをここに入れると共有リンクがそこを指すようになります。</p>
     <input value="${esc(S.prefs.shareBase||'')}" data-input="shareBase" placeholder="空欄なら https://miragelog3.github.io/kopiban-note/" style="width:100%"></div>
   <div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
@@ -1509,11 +1508,11 @@ const ACT={
   pmPlay(){ensureCtx();M.paused()?M.play():M.pause()},
   pmMore(){$('#player').classList.toggle('more')},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
-    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
+    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
   share:()=>openShare('song'),
   async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
     if(/^(file:|http:\/\/(127\.|localhost))/.test(i.value))return toast('このPCの中のアドレスは短縮できません');
-    if(i.value.length>5000)return toast('長すぎて短縮できません(5000文字まで)。共有コードを使ってください');
+    if(i.value.length>5000)return toast('長すぎて短縮できません(5000文字まで)。このままのリンクを送ってください');
     t.disabled=true;t.textContent='短縮中…';
     try{const u=await isgd(i.value);i.value=u;$('#shLen').textContent='('+u.length+'文字)';$('#shNote').textContent='短くしました。このリンクを開くと元の共有ページに飛びます。';t.textContent='✓ 短縮済み'}
     catch(e){t.disabled=false;t.textContent='✂ 短くする';toast('短縮できませんでした: '+e.message)}},
