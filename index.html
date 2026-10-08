@@ -280,7 +280,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .mlist{display:flex;flex-direction:column}.mrow{display:flex;align-items:center;gap:10px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);border-radius:0;background:none!important;box-shadow:none!important;text-align:left;font-size:15px;color:var(--text)}
 .mrow:last-child{border-bottom:none}.mi{width:1.6em;text-align:center}
 .backlink{display:inline-block;color:var(--accent);margin:4px 0 2px;font-size:14px}
-.histbtns{display:flex;gap:2px}.histbtns button{padding:4px 8px;font-size:17px;line-height:1}.histbtns button:disabled{opacity:.3}
+.histbtns{display:flex;gap:2px}.histbtns button{padding:4px 7px;font-size:17px;line-height:1;display:flex;align-items:center}.histbtns button:disabled{opacity:.3}
 @media screen and (max-width:420px){header.top .bandsel select{max-width:86px}header.top .histbtns button{padding:4px 5px;font-size:16px}header.top nav a{padding:6px 5px}}
 /* 使い方ガイド・お知らせ */
 .tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut .tut-p{margin:0 0 4px;line-height:1.7;overflow-y:auto}
@@ -563,19 +563,25 @@ function render(){
   layoutBoard();
   save();
 }
+// 元に戻す・やり直すのアイコン(よくある丸い矢印)
+const ICON_UNDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>';
+const ICON_REDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>';
 function topbar(tab){
   const opts=S.bands.map(b=>`<option value="${b.id}" ${b.id===band().id?'selected':''}>${esc(b.name)}</option>`).join('');
   return `<header class="top"><div class="brand">🎸<span class="brand-t"> コピバン練習ノート</span></div>
   <label class="bandsel">バンド<select data-change="band">${opts}<option value="__new">＋ 新しいバンド</option></select></label>
   <nav><a href="#/" class="${tab==='setlist'?'on':''}">セトリ</a><a href="#/songs" class="${tab==='songs'?'on':''}">曲</a></nav>
-  <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" ${H.past.length?'':'disabled'}>↶</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" ${H.future.length?'':'disabled'}>↷</button></span>
+  <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
   <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・バックアップなど)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
 const MENU=[['tut','📖','使い方を見る'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンドの管理'],['markers','🏷','マーカーの編集'],
   ['backup','💾','バックアップ・復元'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
-  <div class="mline"><span>コードの表示</span><span class="mseg"><button class="${S.prefs.doremi?'on':''}" data-act="menuDoremi">ドレミ</button><button class="${S.prefs.degree?'on':''}" data-act="menuDegree">ディグリー</button></span></div></div>`}
+  <div class="mline"><span>コードの表示</span><span class="mseg">${[['abc','C D E'],['doremi','ドレミ'],['degree','ディグリー']].map(([v,l])=>`<button class="${codeView()===v?'on':''}" data-act="menuCode" data-v="${v}">${l}</button>`).join('')}</span></div></div>`}
+// コードの表示は「アルファベット / ドレミ / ディグリー」のどれか1つ
+const codeView=()=>S.prefs.degree?'degree':S.prefs.doremi?'doremi':'abc';
+function setCodeView(v){S.prefs.degree=v==='degree';S.prefs.doremi=v==='doremi';save();render()}
 function menuList(){return `<div class="mlist">${MENU.map(([k,i,l])=>k==='tut'?`<button class="mrow" data-act="menuTut"><span class="mi">${i}</span>${l}<span class="spacer"></span><span class="sub">›</span></button>`
   :`<a class="mrow" href="#/settings/${k}"><span class="mi">${i}</span>${l}${k==='news'&&newsUnseen()?'<span class="newdot"></span>':''}<span class="spacer"></span><span class="sub">›</span></a>`).join('')}</div>`}
 function menuHTML(){return `<div class="drawer-bg" data-act="lbClose"></div><aside class="drawer"><div class="hstack"><b>メニュー</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
@@ -1409,7 +1415,7 @@ const TUT=[
   ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)やYouTubeのURLを入れると、各ブロックの頭から再生・ループ再生もできます。適切に拍子とテンポを設定することで、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
   ['メンバーに共有','曲やセトリの「共有」ボタンを押すと共有用URL・共有コードが生成されます。受け取ったリンクや「☰ メニュー」から入力したコードにより曲構成データやセトリデータを自分の端末に取り込んで、自由に書き込むことができます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
     ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。この場合、再び同じセトリを編集したり、内容を確認したりしたい場合はそのアプリ内のブラウザから見る必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー」から共有コードを読み込むことでセトリなどを受け取ることができます。']],
-  ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、上の <b>↶</b> で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
+  ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
     ['データの扱い','曲やセトリのデータは端末のみに残り、クラウド上にアップロードされません(「共有」ボタンを押したときだけ、共有用のコピーが置き場に送られます)。そのため、しばらく開かないとデータが自動的に消えてしまうスマホのブラウザアプリでは永久的な保存は保証できません。「ホーム画面に追加」をすることで、自動でデータが消されることはなくなり、端末内で安全にデータを管理できるようになります。万が一に備え、多くの変更をしたときや、たくさんのセトリを作成した場合、「☰ メニュー」にあるバックアップ機能を使うこともお勧めします。']]];
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
@@ -1425,7 +1431,7 @@ function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUT
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','マークに ↑ ↓ 〜 を追加','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1435,10 +1441,10 @@ function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
 let STORE_OK=null;
 // 設定は項目ごとのページ(#/settings/<項目>)。#/settings だけならメニューと同じ一覧を出す
 function viewSettings(){const k=R.a;
-  if(!k)return topbar('settings')+`<main><h1>設定</h1><div class="card">${menuDisp()}</div><div class="card" style="padding:4px 14px">${menuList()}</div></main>`;
+  if(!k)return topbar('settings')+`<main><h1>メニュー</h1><div class="card">${menuDisp()}</div><div class="card" style="padding:4px 14px">${menuList()}</div></main>`;
   if(k==='news'&&newsUnseen()){S.prefs.newsSeen=NEWS[0].d;save()}
   const m=MENU.find(x=>x[0]===k)||['','',''];const C=settingCards();
-  return topbar('settings')+`<main><a class="backlink" href="#/settings">‹ 設定</a><h1>${m[1]} ${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
+  return topbar('settings')+`<main><a class="backlink" href="javascript:void 0" data-act="goBack">‹ 戻る</a><h1>${m[1]} ${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
 function settingCards(){return {news:newsCard(),
   band:`<div class="card"><b>バンド</b><div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
     <button data-act="newBand">＋ バンドを追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">このバンドを削除</button>':''}</div></div>`,
@@ -1453,8 +1459,7 @@ function settingCards(){return {news:newsCard(),
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>`,
   share:`<div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を入れると、その曲やセトリを取り込めます。</p>
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
-    <p class="note" style="margin-top:12px">アプリをネット上に置いた場合は、そのURLをここに入れると共有リンクがそこを指すようになります。</p>
-    <input value="${esc(S.prefs.shareBase||'')}" data-input="shareBase" placeholder="空欄なら https://miragelog3.github.io/kopiban-note/" style="width:100%"></div>`,
+    </div>`,
   backup:`<div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">バックアップを書き出す</button><button data-act="import">バックアップから復元</button></div></div>`,
   tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたセトリが開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやKeyは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
@@ -1490,8 +1495,8 @@ const ACT={
     const nb=newBlock(ty,same&&ty!=='X'?`${same+1}${TYPES[ty].label}`:TYPES[ty].label);const n=meterSlots(songMeterDefault(s));nb.bars.forEach(b=>resizeBar(b,n));s.blocks.push(nb);render()},
   dupBlock(t){const s=curSong(),i=+t.dataset.i;const c=JSON.parse(JSON.stringify(s.blocks[i]));c.id=uid();c.memos=[];c.name+='(コピー)';s.blocks.splice(i+1,0,c);render()},
   delBlock(t){const s=curSong(),b=s.blocks[+t.dataset.i];if(!confirm(`「${b.name}」を削除しますか？`))return;memoBlobIds([b]).forEach(delBlob);s.blocks.splice(+t.dataset.i,1);render()},
-  toggleDegree(){S.prefs.degree=!S.prefs.degree;render()},
-  toggleDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render()},
+  toggleDegree(){setCodeView(S.prefs.degree?'abc':'degree')},
+  toggleDoremi(){setCodeView(S.prefs.doremi?'abc':'doremi')},
   mkAdd(){const n=(prompt('マーカーの名前 (例 コーラスあり)')||'').trim();if(!n)return;if(S.markers.some(m=>m.name===n))return toast('同じ名前があります');
     const pal=['#ff6a2b','#2fa58c','#7c7fd6','#e0b13a','#4a8fd6','#d64a8f','#8fd64a'];S.markers.push({name:n,color:pal[S.markers.length%pal.length]});render()},
   mkDel(t){const m=S.markers[+t.dataset.i];const used=S.songs.reduce((a,s)=>a+s.blocks.filter(b=>b.tags.includes(m.name)).length,0);
@@ -1517,7 +1522,7 @@ const ACT={
   cjSeqAcc(t){const x=CJ.seq[CJ.seq.length-1];if(!x)return toast('先に音(C〜B)を押してください');x.a=x.a===t.dataset.v?'':t.dataset.v;
     const n=cjSeqNotes();cjTone(n[n.length-1]);cjRender()},
   cjAcc(t){S.prefs.ui=S.prefs.ui||{};S.prefs.ui.cjAcc=t.dataset.v;save();cjRender()},
-  cjDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render();cjRender()},
+  cjDoremi(){setCodeView(S.prefs.doremi?'abc':'doremi');cjRender()},
   cjSeqBack(){CJ.seq.pop();cjRender()},
   undo,redo,
   tutOpen(){TUTI=0;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
@@ -1630,8 +1635,8 @@ const ACT={
   menuOpen(){$('#overlay').innerHTML=menuHTML()},
   menuTut(){ACT.tutOpen()},
   menuTheme(t){S.prefs.theme=t.dataset.v;render();if($('.drawer'))$('#overlay').innerHTML=menuHTML()},
-  menuDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render();if($('.drawer'))$('#overlay').innerHTML=menuHTML()},
-  menuDegree(){S.prefs.degree=!S.prefs.degree;save();render();if($('.drawer'))$('#overlay').innerHTML=menuHTML()},
+  menuCode(t){setCodeView(t.dataset.v);if($('.drawer'))$('#overlay').innerHTML=menuHTML()},
+  goBack(){if(history.length>1)history.back();else location.hash='#/'},
   cycleTheme(){const o=['auto','light','dark'];S.prefs.theme=o[(o.indexOf(S.prefs.theme||'auto')+1)%3];render()},
   async doPrint(){await Promise.all([...document.querySelectorAll('.pv img')].map(i=>i.complete&&i.src?0:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,1500)})));
     const t=document.title;document.title=(songById(R.a)||(PENDING&&{title:PENDING.setlist||PENDING.songs[0].title})||{title:t}).title;measureMaps();
