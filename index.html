@@ -129,7 +129,9 @@ h1{font-size:24px;margin:4px 0 6px}
 .cj-mode{display:flex;gap:6px;margin-top:10px}.cj-mode button{flex:1;padding:8px 0}.cj-mode button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .cj-kbw{overflow-x:auto;margin:10px 0 8px;-webkit-overflow-scrolling:touch}
 .cj-kb{position:relative;height:130px;display:flex;min-width:max(100%,630px);user-select:none;-webkit-user-select:none;touch-action:pan-x}
-.cj-seq{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-height:44px;margin:10px 0 6px}
+/* 候補が増えても鍵盤・音ボタンの位置が動かないように、各段の高さを固定する */
+.cj-seq{display:flex;align-items:center;gap:6px;height:44px;margin:10px 0 6px}
+.cj-chips{flex:1;min-width:0;display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
 .cj-chip{padding:4px 10px;border-radius:999px;background:var(--panel2);font-weight:700}.cj-chip.bass{background:var(--accent);color:#fff}.cj-arr{color:var(--sub);font-size:12px}
 .cj-hint{margin:-4px 0 8px;font-size:11px}
 .cj-pcs{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:10px}.cj-pcs button{padding:12px 0;font-size:16px;font-weight:700;min-width:0}.cj-pcs button.acc{background:var(--panel2)}
@@ -137,7 +139,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .cj-w{flex:1;height:100%;padding:0 0 6px;background:#f6f4ef;color:#888;border:1px solid #bbb;border-radius:0 0 6px 6px;font-size:10px;display:flex;align-items:flex-end;justify-content:center}
 .cj-b{position:absolute;top:0;height:60%;width:calc(100% / 14 * 0.62);padding:0 0 4px;background:#222;color:#fff;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;font-size:9px;display:flex;align-items:flex-end;justify-content:center}
 .cj-w.on{background:var(--accent);border-color:var(--accent);color:#fff}.cj-b.on{background:var(--accent);border-color:#c94a14}
-.cj-tools{gap:6px;margin-bottom:10px;flex-wrap:nowrap}.cj-tools>.sub{flex:1;min-width:0}.cj-tools>.spacer{display:none}.cj-tools button{white-space:nowrap;flex:none}.cj-bass{font-size:12px}.cj-cands{display:flex;flex-wrap:wrap;gap:8px;min-height:44px}
+.cj-tools{gap:6px;margin-bottom:10px;flex-wrap:nowrap}.cj-tools>.sub{flex:1;min-width:0;height:2.6em;line-height:1.3;overflow:hidden}.cj-tools>.spacer{display:none}.cj-tools button{white-space:nowrap;flex:none}.cj-bass{font-size:12px}.cj-cands{display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;height:128px;overflow-y:auto}
 .cj-cands button{font-size:18px;font-weight:700;padding:8px 14px;line-height:1.2}.cj-cands button small{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:2px}.cj-cands button.top{background:var(--accent);border-color:var(--accent);color:#fff}
 .mpick .mp-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 8px}
 .mpick select{font-size:22px;padding:8px 14px;min-width:84px;text-align:center}.mpick .mp-sl{font-size:26px;color:var(--sub)}
@@ -891,8 +893,8 @@ function cjKeyboard(){const on=CJ.on,bass=on.length?Math.min(...on):null,NW=CJ_O
     Object.entries(B).forEach(([pc,wi])=>{const m=CJ_LO+o*12+ +pc;b+=`<button class="cj-b ${on.includes(m)?'on':''}" data-act="cjKey" data-m="${m}" style="left:calc(100% / ${NW} * ${o*7+wi+1} - 100% / ${NW} * 0.31);width:calc(100% / ${NW} * 0.62)">${m===bass?'<b class="cj-bass">●</b>':''}</button>`})}
   return `<div class="cj-kbw" id="cjKbw"><div class="cj-kb">${w}${b}</div></div>`}
 function cjSeqPad(){
-  return `<div class="cj-seq">${CJ.seq.length?CJ.seq.map((x,i)=>`<span class="cj-chip ${i?'':'bass'}">${drm(x.l+x.a)}</span>`).join('<span class="cj-arr">→</span>'):'<span class="sub">いちばん低い音(ベース)から順に押してください</span>'}
-    <span class="spacer"></span><button class="ghost" data-act="cjSeqBack" ${CJ.seq.length?'':'disabled'}>⌫</button></div>
+  return `<div class="cj-seq"><div class="cj-chips" id="cjChips">${CJ.seq.length?CJ.seq.map((x,i)=>`<span class="cj-chip ${i?'':'bass'}">${drm(x.l+x.a)}</span>`).join('<span class="cj-arr">→</span>'):'<span class="sub">いちばん低い音(ベース)から順に押してください</span>'}</div>
+    <button class="ghost" data-act="cjSeqBack" ${CJ.seq.length?'':'disabled'}>⌫</button></div>
   <div class="cj-pcs">${['C','D','E','F','G','A','B'].map(l=>`<button data-act="cjSeqAdd" data-l="${l}">${drm(l)}</button>`).join('')}
     <button class="acc" data-act="cjSeqAcc" data-v="♭">♭</button><button class="acc" data-act="cjSeqAcc" data-v="♯">♯</button></div>
   <p class="sub cj-hint">♭・♯ は直前に押した音に付きます(もう一度押すと外れます)</p>`}
@@ -904,7 +906,7 @@ function cjBody(){const N=cjNames(),on=cjNotes(),bass=on.length?Math.min(...on):
   <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(drm(c.name))}${c.sub?`<small>${esc(c.sub)}</small>`:''}</button>`).join('')
     :'<span class="sub">当てはまるコードが見つかりませんでした。音を減らしてみてください</span>':'<span class="sub">いちばん低い音がベース音になります。候補を押すとマスに入ります</span>'}</div>`}
 // 描き直しても鍵盤の横スクロール位置は保つ。最初に開いたときは真ん中(C3あたり)を見せる
-function cjRender(first){const e=$('#cjBody');if(!e)return;const k=$('#cjKbw'),x=k?k.scrollLeft:null;e.innerHTML=cjBody();const k2=$('#cjKbw');
+function cjRender(first){const e=$('#cjBody');if(!e)return;const k=$('#cjKbw'),x=k?k.scrollLeft:null;e.innerHTML=cjBody();const ch=$('#cjChips');if(ch)ch.scrollLeft=ch.scrollWidth;const k2=$('#cjKbw');
   if(k2){if(x!=null&&!first)k2.scrollLeft=x;else{const on=CJ.on,lo=on.length?Math.min(...on):48;const wk=k2.scrollWidth/(CJ_OCT*7);
     const wi=Math.floor((lo-CJ_LO)/12)*7+[0,0,1,1,2,3,3,4,4,5,5,6][(lo-CJ_LO)%12];k2.scrollLeft=Math.max(0,wi*wk-wk)}}}
 /* ---------- コードのコピー・貼り付け ----------
