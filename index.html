@@ -111,8 +111,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .kb{display:flex;flex-direction:column;gap:5px;margin-top:6px}
 .kr{display:grid;gap:5px}.kr.r10{grid-template-columns:repeat(10,1fr)}.kr.r9{grid-template-columns:repeat(7,1fr) 1fr 1fr}
 .kr.r9:nth-child(4){grid-template-columns:repeat(9,1fr)}
-.kr.kfoot{grid-template-columns:1fr 1fr 1.4fr}
-.kr.ksyms{grid-template-columns:repeat(9,1fr)}
+.kr.kfoot{grid-template-columns:repeat(4,1fr)}
+.kr.r9.ksyms{grid-template-columns:repeat(7,1fr)}
 .kr.r8{grid-template-columns:repeat(8,1fr)}
 .kk.kmark{font-size:18px;background:var(--panel2)}
 @media (pointer:coarse){.cs-foot.kbd-on #chordIn{display:block;width:100%;flex-basis:100%}}
@@ -1065,14 +1065,12 @@ function renderSheet(focus){
       <button class="kk ksym ${P.tie?'on':''}" data-act="pTie" title="前の小節から音を伸ばす(タイ)">⌒</button>
       <button class="kk ksym" data-act="pLit" data-v="?" title="分からない(あとで確認)">?</button>
       <button class="kk ksym" data-act="pLit" data-v="N.C." title="コードなし(休み・メロディだけ・ユニゾンなど)">N.C.</button>
-      <button class="kk ksym ${UI('marks')?'on':''}" data-act="uiToggle" data-k="marks" title="★※〇■などのマーク">★…</button>
-      <button class="kk ksym ${UI('kbd')?'on':''}" data-act="kKbd" title="スマホのキーボードで入力(絵文字なども)">⌨</button>
       <button class="kk kfn" data-act="kBack" title="1文字消す">⌫</button></div>
     ${UI('marks')?`<div class="kr r8 kmarks">${MARKS.map(m=>`<button class="kk kmark" data-act="kMark" data-v="${m}">${m}</button>`).join('')}</div>`:''}
-    <div class="kr kfoot"><button class="kk kfn" data-act="pDel">消す</button>
+    <div class="kr kfoot"><button class="kk ksym ${UI('marks')?'on':''}" data-act="uiToggle" data-k="marks" title="★※〇■などのマーク">★…</button><button class="kk kfn" data-act="pDel">消す</button>
       <button class="kk kfn" data-act="pMove" data-v="-1">← 前</button><button class="kk kfn primary" data-act="pMove" data-v="1">次 →</button></div>
   </div>
-  <div class="cs-foot ${UI('kbd')?'kbd-on':''}"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
+  <div class="cs-foot"><input id="chordIn" value="${esc(val)}" autocomplete="off" spellcheck="false" placeholder="直接入力 例 Bm7, F#m/A">
     <button class="foldbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー</button>
     <button class="foldbtn ${S.prefs.doremi?'on':''}" data-act="toggleDoremi" title="C D E… を ド レ ミ… で表示">ドレミ</button>
     <button class="foldbtn" data-act="cjOpen" title="鍵盤で押した音からコード名を探す">🎹 コード判定</button>
