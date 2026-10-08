@@ -137,7 +137,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .cj-b{position:absolute;top:0;height:60%;width:calc(100% / 14 * 0.62);padding:0 0 4px;background:#222;color:#fff;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;font-size:9px;display:flex;align-items:flex-end;justify-content:center}
 .cj-w.on{background:var(--accent);border-color:var(--accent);color:#fff}.cj-b.on{background:var(--accent);border-color:#c94a14}
 .cj-tools{gap:6px;margin-bottom:10px;flex-wrap:nowrap}.cj-tools>.sub{flex:1;min-width:0}.cj-tools>.spacer{display:none}.cj-tools button{white-space:nowrap;flex:none}.cj-bass{font-size:12px}.cj-cands{display:flex;flex-wrap:wrap;gap:8px;min-height:44px}
-.cj-cands button{font-size:18px;font-weight:700;padding:8px 14px}.cj-cands button.top{background:var(--accent);border-color:var(--accent);color:#fff}
+.cj-cands button{font-size:18px;font-weight:700;padding:8px 14px;line-height:1.2}.cj-cands button small{display:block;font-size:10px;font-weight:400;opacity:.75;margin-top:2px}.cj-cands button.top{background:var(--accent);border-color:var(--accent);color:#fff}
 .mpick .mp-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 8px}
 .mpick select{font-size:22px;padding:8px 14px;min-width:84px;text-align:center}.mpick .mp-sl{font-size:26px;color:var(--sub)}
 .symlist div{display:grid;grid-template-columns:6.5em 1fr;gap:8px;align-items:baseline}.symlist b{color:var(--text);line-height:1.4}.symlist span{color:var(--sub);min-width:0}
@@ -815,14 +815,19 @@ const CJ_T=[['',[0,4,7],0],['m',[0,3,7],0],['5',[0,7],1],['7',[0,4,7,10],1],['M7
 const CJ_SH=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],CJ_FL=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'],CJ_MIX=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 function cjNames(){const k=String(blockKey(curBlock(),curSong())||'').trim();if(!k)return CJ_MIX;
   if(/^[A-G][b♭]/.test(k)||/^(F|Dm|Gm|Cm|Fm)$/.test(k))return CJ_FL;if(/^[A-G][#♯]/.test(k)||/^(G|D|A|E|B|Em|Bm)$/.test(k))return CJ_SH;return CJ_MIX}
+// ぴったり一致しなくても、「足りない音」「余分な音」にコストをつけて近いコードを順に出す
+const CJ_IVN=['R','♭9','9','m3','3','11','♭5','5','♯5','13','♭7','M7'];
+// 足りないときのコスト: 5度は抜けがち(安い)、ルート・3度は重い
+const CJ_MISS={0:4,7:1,3:3,4:3};
 function cjJudge(notes){if(!notes.length)return [];const N=cjNames();const bass=Math.min(...notes)%12;const all=[...new Set(notes.map(n=>n%12))];const out=[];
-  const same=(a,b)=>a.length===b.length&&a.every(x=>b.includes(x));
-  const tryRoot=(pcs,r,pen)=>{const iv=pcs.map(p=>(p-r+12)%12);
-    const NB=N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N;
-    for(const [q,t,rank] of CJ_T){let sc=null;if(same(iv,t))sc=rank;else if(t.includes(7)&&iv.length>=3&&!iv.includes(7)&&same([...iv,7],t))sc=rank+3;
-      if(sc!=null)out.push({name:N[r]+q+(bass!==r?'/'+NB[bass]:''),sc:sc+pen+(bass!==r?4:0)})}};
-  for(const r of all)tryRoot(all,r,0);
-  const rest=all.filter(p=>p!==bass);if(rest.length>=2)for(const r of rest)tryRoot(rest,r,2);
+  if(all.length===1){const r=all[0];return [{name:N[r],sc:0,sub:'単音'},{name:N[r]+'5',sc:1,sub:'5なし'},{name:N[r]+'m',sc:2,sub:'m3・5なし'}]}
+  for(let r=0;r<12;r++){const iv=all.map(p=>(p-r+12)%12);const NB=N[r].includes('♭')?CJ_FL:N[r].includes('♯')?CJ_SH:N;const bi=(bass-r+12)%12;
+    for(const [q,t,rank] of CJ_T){const miss=t.filter(x=>!iv.includes(x)),extra=iv.filter(x=>!t.includes(x));
+      if(extra.length>1||miss.length>=t.length-(t.length>3?1:0)||miss.length>2)continue;
+      if(extra.length&&extra[0]!==bi&&miss.length)continue;
+      let sc=rank+miss.reduce((s,x)=>s+(CJ_MISS[x]??2),0)+extra.reduce((s,x)=>s+(x===bi?2:6),0)+(bi?3:0);
+      const sub=[...miss.filter(x=>x).map(x=>CJ_IVN[x]+'なし'),...(iv.includes(0)?[]:['ルートなし']),...extra.filter(x=>x!==bi).map(x=>'+'+CJ_IVN[x])].join('・');
+      out.push({name:N[r]+q+(bi?'/'+NB[bass]:''),sc,sub})}}
   const seen=new Set();return out.sort((a,b)=>a.sc-b.sc).filter(x=>!seen.has(x.name)&&seen.add(x.name)).slice(0,8)}
 // on: 鍵盤モードで押している音(MIDI番号)、seq: 「低い音から順に」モードで入れた音名(0〜11)の並び
 const CJ={on:[],seq:[]};const CJ_LO=36,CJ_OCT=3;
@@ -848,7 +853,7 @@ function cjBody(){const N=cjNames(),on=cjNotes(),bass=on.length?Math.min(...on):
   ${seq?cjSeqPad():cjKeyboard()}
   <div class="hstack cj-tools"><span class="sub">${seq?'':`押した音: ${on.length?[...new Set([...on].sort((x,y)=>x-y).map(m=>N[m%12]))].join(' ')+` <span style="white-space:nowrap">(●ベース ${N[bass%12]})</span>`:'(鍵盤を押してください。横にスクロールできます)'}`}</span><span class="spacer"></span>
     <button data-act="cjPlay" ${on.length?'':'disabled'}>▶ 鳴らす</button><button data-act="cjClear">クリア</button></div>
-  <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(c.name)}</button>`).join('')
+  <div class="cj-cands">${on.length?cands.length?cands.map((c,i)=>`<button class="${i?'':'top'}" data-act="cjPick" data-v="${esc(c.name)}">${esc(c.name)}${c.sub?`<small>${esc(c.sub)}</small>`:''}</button>`).join('')
     :'<span class="sub">当てはまるコードが見つかりませんでした。音を減らしてみてください</span>':'<span class="sub">いちばん低い音がベース音になります。候補を押すとマスに入ります</span>'}</div>`}
 // 描き直しても鍵盤の横スクロール位置は保つ。最初に開いたときは真ん中(C3あたり)を見せる
 function cjRender(first){const e=$('#cjBody');if(!e)return;const k=$('#cjKbw'),x=k?k.scrollLeft:null;e.innerHTML=cjBody();const k2=$('#cjKbw');
