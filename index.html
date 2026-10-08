@@ -71,6 +71,21 @@ h1{font-size:24px;margin:4px 0 6px}
 .deg{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap}
 .metro .hstack{gap:8px}.mstat{font-size:13px;color:var(--sub);margin-top:6px;font-variant-numeric:tabular-nums;min-height:1.4em}
 .mstat b{color:var(--accent);font-size:15px}
+.btitle{display:flex;align-items:center;gap:8px;margin-top:10px}
+.btitle .cbar{width:6px;height:34px;flex:0 0 auto}
+.btitle .name{flex:1;min-width:0;font-size:20px;font-weight:700;background:none;border-color:transparent;padding:4px 2px}
+.btitle .name:focus{border-color:var(--accent)}
+.foldbtn{font-size:13px;padding:5px 10px;white-space:nowrap}.foldbtn.on{border-color:var(--accent);color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin:6px 0 0 14px}
+.chip{font-size:12px;color:var(--sub);background:var(--panel2);border-radius:10px;padding:2px 8px}
+.chips .tag{margin:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+.blockhead.panel{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.mkrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.toolrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.toolrow .mstat{margin:0}
+.metro.closed{display:flex;align-items:center;gap:10px;padding:8px 12px}.metro.closed .mstat{margin:0}
+.panel.metro-b{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
 #ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
@@ -503,38 +518,43 @@ function clicksFor(s,blocks,barsOf){const ev=[];let t=0;const rate=S.prefs.mRate
 function metroOpts(){const r=S.prefs.mRate||1;
   return `<label class="sub">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label>
   <label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label>`}
-function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);
-  return `<div class="card metro"><div class="hstack"><b>🥁 メトロノーム</b>
+const UI=k=>!!(S.prefs.ui||{})[k];
+function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI('smetro');
+  if(!open)return `<div class="card metro closed"><button class="foldbtn" data-act="uiToggle" data-k="smetro">🥁 メトロノーム ▸</button><span class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源に合わせて鳴らす設定になっています':''}</span></div>`;
+  return `<div class="card metro"><div class="hstack"><button class="foldbtn" data-act="uiToggle" data-k="smetro">🥁 メトロノーム ▾</button>
     <select id="mFrom">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select>
     <button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button>${metroOpts()}</div>
     ${songMedia(s)?`<div class="hstack msync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 🎵 音源に合わせて鳴らす</label>
-      ${s.mSync?`<span class="sub">ずらし</span><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
+      ${s.mSync?`<span class="sub">1小節目の位置</span><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
       <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset" style="width:84px"><span class="sub">秒</span>
-      <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button>`:''}</div>`:''}
-    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源を再生すると、それに合わせてクリックが鳴ります。各ブロックの頭を ⏱ で登録しておくと、そこにピッタリ合わせます。早ければ＋、遅ければ－でずらしてください'
+      <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button>
+      <button data-act="mOffNow" title="再生中の位置を1小節目にする">⏱ 今の位置を1小節目に</button>`:''}</div>`:''}
+    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源の「1小節目の位置」だけ合わせれば、あとは曲のテンポと拍子どおりに刻みます(ブロックの頭では合わせ直しません)。クリックが早ければ＋、遅ければ－'
       :noBpm?'テンポが未入力なので ♩120 で鳴らします。曲かブロックのテンポを入れてください':'ブロックごとのテンポ・拍子に合わせて鳴ります'}</div></div>`}
-// 音源同期: 音源の再生位置から「次に鳴らす拍」を割り出して鳴らす。⏱で登録したブロックの頭があればそこに合わせ直す
+// 音源同期: 「1小節目の位置」から、曲の構成(テンポ・拍子・小節数)だけで拍の時刻を並べる。ブロックの頭では合わせ直さない
 const MS={ev:null,evKey:'',last:null,lastMt:null};
-function syncEvents(s){const off=+s.mOffset||0;let ev=[];let t=null;
-  s.blocks.forEach(bl=>{if(bl.start!=null){t=bl.start;ev=ev.filter(e=>e.t<t+off-0.02)}else if(t==null)t=0;
-    bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;
-      for(let k=0;k<n;k++){ev.push({t:t+off,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}})});
-  return ev.sort((a,b)=>a.t-b.t)}
+function syncEvents(s){const off=+s.mOffset||0;const ev=[];let t=off;
+  s.blocks.forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;
+    for(let k=0;k<n;k++){ev.push({t,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}));
+  return ev}
+function syncEv(s){const key=s.id+JSON.stringify(s.blocks.map(b=>[b.id,b.bpm,b.meter,b.bars.map(x=>x.n+(x.m||''))]))+s.bpm+s.meter+s.mOffset;
+  if(!MS.ev||MS.evKey!==key){MS.ev=syncEvents(s);MS.evKey=key}return MS.ev}
+const syncOn=s=>!!(s&&s.mSync&&songMedia(s));
+// ブロックの頭の時刻: 同期モードなら拍の並びから計算、それ以外は ⏱ で登録した位置
+function blockTime(s,b){if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===b.id);return e?e.t:null}return b.start}
 function ensureCtx(){const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return null;MT.ctx=MT.ctx||new Ctx();if(MT.ctx.state!=='running')MT.ctx.resume();return MT.ctx}
 ['pointerdown','keydown'].forEach(t=>document.addEventListener(t,()=>{if(MT.ctx&&MT.ctx.state!=='running')MT.ctx.resume()},true));
 function mediaRate(){try{return M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
 function syncTick(){const s=playerSong();
   if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
   const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
-  const key=s.id+JSON.stringify(s.blocks.map(b=>[b.start,b.bpm,b.meter,b.bars.length]))+s.bpm+s.meter+s.mOffset;
-  if(!MS.ev||MS.evKey!==key){MS.ev=syncEvents(s);MS.evKey=key}
-  const mt=M.time(),pr=mediaRate();
+  syncEv(s);const mt=M.time(),pr=mediaRate();
   if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6)MS.last=mt-0.001;
   MS.lastMt=mt;const horizon=mt+0.12*pr;let cur=null;
   for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc)}
   MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur)}
 setInterval(syncTick,20);
-function syncPlayFrom(s,i){const ev=syncEvents(s);const e=ev.find(x=>x.bid===s.blocks[i].id);ensureCtx();M.seek(Math.max(0,e?e.t-0.05:0));M.play()}
+function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ensureCtx();M.seek(Math.max(0,(t||0)-0.05));M.play()}
 function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:880;
   g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(acc?0.9:0.5,at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+0.06);
   o.connect(g).connect(c.destination);o.start(at);o.stop(at+0.07)}
@@ -562,10 +582,11 @@ function mPaint(e,stopped){const s=songById(MT.songId);const st=$('#metroStat');
 /* ---------- song audio player ---------- */
 const PL={songId:null,blobId:null,loop:null};
 const fmtT=t=>t==null?'':`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
-function timeBtns(b){return `<span class="tbtns"><span class="tstamp">${b.start!=null?fmtT(b.start):'--:--'}</span>
-  <button data-act="bPlay" data-id="${b.id}" title="このブロックの頭から再生" ${b.start==null?'disabled':''}>▶</button>
-  <button class="${PL.loop===b.id?'on':''}" data-act="bLoop" data-id="${b.id}" title="このブロックを繰り返す" ${b.start==null?'disabled':''}>🔁</button>
-  <button data-act="bMark" data-id="${b.id}" title="今の再生位置をこのブロックの頭にする">⏱</button></span>`}
+function timeBtns(b){const s=curSong()||playerSong();const t=blockTime(s,b),sync=syncOn(s);
+  return `<span class="tbtns"><span class="tstamp" title="${sync?'メトロノームの拍の並びから計算した位置':'⏱で登録した位置'}">${t!=null?fmtT(t):'--:--'}</span>
+  <button data-act="bPlay" data-id="${b.id}" title="このブロックの頭から再生" ${t==null?'disabled':''}>▶</button>
+  <button class="${PL.loop===b.id?'on':''}" data-act="bLoop" data-id="${b.id}" title="このブロックを繰り返す" ${t==null?'disabled':''}>🔁</button>
+  ${sync?'':`<button data-act="bMark" data-id="${b.id}" title="今の再生位置をこのブロックの頭にする">⏱</button>`}</span>`}
 function initPlayer(){
   $('#player').innerHTML=`<div class="pl-in"><span id="plName" class="pl-name"></span><div id="ytWrap" style="display:none"><div id="yt"></div></div><audio id="pa" controls preload="metadata"></audio>
   <label class="sub">速さ <select id="plRate">${[100,90,80,75,70,60,50].map(v=>`<option value="${v/100}">${v}%</option>`).join('')}</select></label>
@@ -578,11 +599,11 @@ function initPlayer(){
   a.addEventListener('timeupdate',onTime);
 }
 function playerSong(){return songById(PL.songId)}
-function blockRange(s,bid){const i=s.blocks.findIndex(b=>b.id===bid);const b=s.blocks[i];if(!b||b.start==null)return null;
-  const nx=s.blocks.slice(i+1).find(x=>x.start!=null&&x.start>b.start);return {start:b.start,end:nx?nx.start:(M.dur()||Infinity)}}
+function blockRange(s,bid){const i=s.blocks.findIndex(b=>b.id===bid);const b=s.blocks[i];const st=b&&blockTime(s,b);if(st==null)return null;
+  const nx=s.blocks.slice(i+1).map(x=>blockTime(s,x)).find(x=>x!=null&&x>st);return {start:st,end:nx!=null?nx:(M.dur()||Infinity)}}
 function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   if(PL.loop){const r=blockRange(s,PL.loop);if(r&&(now>=r.end-0.03||now<r.start-0.5)){M.seek(r.start)}}
-  let cur=null;for(const b of s.blocks)if(b.start!=null&&b.start<=now+0.05&&(!cur||b.start>=cur.start))cur=b;
+  let cur=null,ct=-1;for(const b of s.blocks){const t=blockTime(s,b);if(t!=null&&t<=now+0.05&&t>=ct){cur=b;ct=t}}
   document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('playing',!!cur&&r.dataset.bid===cur.id&&now>0))}
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
@@ -628,23 +649,30 @@ function viewBlock(){
   <div class="hstack"><a class="back" href="#/song/${s.id}">‹ 構成</a><span class="sub">${esc(s.title)}</span><span class="spacer"></span>
     ${prev?`<a class="back" href="#/block/${s.id}/${prev.id}${tab}">← ${esc(prev.name)}</a>`:''}
     ${next?`<a class="back" href="#/block/${s.id}/${next.id}${tab}" style="margin-left:12px">${esc(next.name)} →</a>`:''}</div>
-  <div class="blockhead" style="margin-top:10px">
-    <span class="cbar" style="background:${TYPES[bl.type].color};width:6px;height:34px"></span>
+  <div class="btitle"><span class="cbar" style="background:${TYPES[bl.type].color}"></span>
     <input class="name" value="${esc(bl.name)}" data-input="blockField" data-k="name">
-    <select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select>
+    <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">⚙ 設定 ${UI('bset')?'▾':'▸'}</button></div>
+  <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),blockKey(bl,s)&&'Key '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
+  <div class="blockhead panel" style="${UI('bset')?'':'display:none'}">
+    <label class="sub">種類 <select data-change="blockType">${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===bl.type?'selected':''}>${t.label}</option>`).join('')}</select></label>
     <label class="sub"><input type="number" min="1" max="64" value="${bl.bars.length}" data-change="barsCount" style="width:62px"> 小節</label>
     <label class="sub">拍子 <select data-change="blockMeter"><option value="">曲と同じ(${songMeterDefault(s)})</option>${[...COMMON_METERS,...(bl.meter&&!COMMON_METERS.includes(bl.meter)?[bl.meter]:[])].map(m=>`<option value="${m}" ${bl.meter===m?'selected':''}>${m}</option>`).join('')}<option value="__other">その他(入力)…</option></select></label>
     <label class="sub">テンポ <input type="number" min="20" max="400" inputmode="numeric" value="${esc(bl.bpm||'')}" placeholder="${esc(s.bpm||'')}" data-input="blockField" data-k="bpm" style="width:72px"></label>
     <label class="sub">Key <input value="${esc(bl.key||'')}" placeholder="${esc(s.key||'曲と同じ')}" data-input="blockField" data-k="key" style="width:80px"></label>
-    <input value="${esc(bl.note)}" data-input="blockField" data-k="note" placeholder="メモ (例 半音上げ)" style="width:200px">
-  </div>
-  <div class="hstack" style="margin-top:8px;gap:6px">
+    <label class="sub" style="flex:1;min-width:160px">メモ <input value="${esc(bl.note)}" data-input="blockField" data-k="note" placeholder="例 半音上げ" style="width:100%"></label>
+    <div class="mkrow"><span class="sub">マーカー</span>
     ${S.markers.map(m=>{const on=bl.tags.includes(m.name);return `<button class="tagbtn ${on?'on':''}" data-act="toggleTag" data-t="${esc(m.name)}" style="${on?`border-color:${m.color};color:${m.color};background:${m.color}22`:''}">${esc(m.name)}</button>`}).join('')}
-    <a class="sub" href="#/settings" style="font-size:12px">マーカーを編集</a>
-    ${songMedia(s)?`<span class="spacer"></span>${timeBtns(bl)}`:''}
+    <a class="sub" href="#/settings" style="font-size:12px">編集</a></div>
   </div>
-  <div class="hstack metro-b"><button data-act="mPlayBlock">🥁 ここから</button><button data-act="mLoopBlock">🔁 このブロックを繰り返す</button><button data-act="mStop">■</button>
-    ${metroOpts()}<span class="mstat" id="metroStat"></span></div>
+  <div class="toolrow">
+    <button class="foldbtn ${UI('metro')?'on':''}" data-act="uiToggle" data-k="metro">🥁 メトロノーム ${UI('metro')?'▾':'▸'}</button>
+    ${songMedia(s)?timeBtns(bl):''}
+    <span class="spacer"></span><span class="mstat" id="metroStat"></span>
+  </div>
+  <div class="panel metro-b" style="${UI('metro')?'':'display:none'}">
+    ${syncOn(s)?`<button data-act="mPlayBlock">▶ ここから音源と再生</button><button data-act="mLoopBlock">🔁 このブロックを繰り返す</button><button data-act="mStop">■</button><span class="sub">音源に合わせて鳴らす設定です(曲の画面で変更)</span>`
+      :`<button data-act="mPlayBlock">▶ ここから</button><button data-act="mLoopBlock">🔁 このブロックを繰り返す</button><button data-act="mStop">■</button>${metroOpts()}`}
+  </div>
   <div class="tabs"><a href="#/block/${s.id}/${bl.id}" class="${memo?'':'on'}">コード・歌詞</a><a href="#/block/${s.id}/${bl.id}/memo" class="${memo?'on':''}">メモ ${bl.memos.length||''}</a></div>
   ${memo?memoTab(bl):chordTab(bl)}
   </main>`}
@@ -652,8 +680,9 @@ function viewBlock(){
 /* ---------- chord grid ---------- */
 function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
-  return `<div class="legend hstack"><span>1マス = 8分 ・ 空白 = 前のコードが続く ・ ⌒ = 前の小節からタイ ・ ★ = 仮置き ・ － = メロディ的な動き ・ 1小節だけ拍子を変えるときは小節番号をクリック</span>
-    <button class="tagbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>${noKey?'<span style="color:var(--accent)">← 曲かブロックのKeyを入れると度数になります</span>':''}</div>
+  return `<div class="legend hstack"><button class="tagbtn ${S.prefs.degree?'on':''}" data-act="toggleDegree" title="Keyから見た度数で表示">ディグリー表示</button>${noKey?'<span style="color:var(--accent)">曲かブロックのKeyを入れると度数になります</span>':''}
+    <span class="spacer"></span><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
+  ${UI('help')?'<div class="legend panel">1マス = 8分 ・ 空白 = 前のコードが続く ・ ⌒ = 前の小節からタイ ・ ★ = 仮置き ・ － = メロディ的な動き ・ ? = 分からない ・ 1小節だけ拍子を変えるときは小節番号をクリック</div>':''}
   <div id="grid">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
 const COMMON_METERS=['4/4','3/4','2/4','5/4','6/4','7/4','6/8','7/8','5/8','9/8','12/8'];
 const normMeter=m=>String(m||'').trim().replace(/[／]/g,'/').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
@@ -1014,7 +1043,7 @@ const ACT={
   mPlay(){const s=curSong();const i=+($('#mFrom')||{value:0}).value;if(s.mSync&&songMedia(s))return syncPlayFrom(s,i);mStart(s,s.blocks.slice(i))},
   mPlayBlock(){const s=curSong(),i=s.blocks.indexOf(curBlock());if(s.mSync&&songMedia(s))return syncPlayFrom(s,i);mStart(s,s.blocks.slice(i))},
   mLoopBlock(){const s=curSong(),bl=curBlock();
-    if(s.mSync&&songMedia(s)){if(bl.start==null)return toast('先に ⏱ でこのブロックの頭を登録してください');PL.loop=bl.id;syncPlayFrom(s,s.blocks.indexOf(bl));render();return}
+    if(syncOn(s)){PL.loop=bl.id;syncPlayFrom(s,s.blocks.indexOf(bl));render();return}
     mStart(s,[bl],bl.id)},
   mStop(){mStop();const s=curSong();if(s&&s.mSync&&M.kind)M.pause()},
   mOff(t){const s=curSong();s.mOffset=Math.round(((+s.mOffset||0)+ +t.dataset.v)*100)/100;const i=$('#mOffIn');if(i)i.value=s.mOffset.toFixed(2);MS.last=null;save()},
@@ -1036,7 +1065,9 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
   audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
-  bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);if(b.start==null)return;M.seek(b.start);M.play()},
+  bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);const st=blockTime(s,b);if(st==null)return;ensureCtx();M.seek(st);M.play()},
+  uiToggle(t){S.prefs.ui=S.prefs.ui||{};const k=t.dataset.k;S.prefs.ui[k]=!S.prefs.ui[k];render()},
+  mOffNow(){const s=curSong();if(!M.kind)return;s.mOffset=Math.round(M.time()*100)/100;MS.last=null;save();render();toast('1小節目を '+s.mOffset.toFixed(2)+' 秒にしました')},
   bLoop(t){const id=t.dataset.id;PL.loop=PL.loop===id?null:id;if(PL.loop){const r=blockRange(curSong(),id);if(r){M.seek(r.start);M.play()}}render()},
   bMark(t){const b=curSong().blocks.find(x=>x.id===t.dataset.id);b.start=Math.round(M.time()*10)/10;save();render();toast(`「${b.name}」の頭を ${fmtT(b.start)} にしました`)},
   pickFiles(){pickMode='memo';const f=$('#filePick');f.accept='image/*,audio/*,video/*';f.value='';f.click()},
