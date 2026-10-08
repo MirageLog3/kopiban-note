@@ -123,6 +123,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .kk.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media screen and (max-width:420px){.kk{padding:9px 0;font-size:14px}.kk.kroot,.kk.kacc{font-size:16px}.kr.r10 .kk{font-size:13px;letter-spacing:-.3px}.kk.ksym{font-size:12px}}
 .symlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px;font-size:13px}
+.mpick .mp-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 8px}
+.mpick select{font-size:22px;padding:8px 14px;min-width:84px;text-align:center}.mpick .mp-sl{font-size:26px;color:var(--sub)}
 .symlist div{display:grid;grid-template-columns:6.5em 1fr;gap:8px;align-items:baseline}.symlist b{color:var(--text);line-height:1.4}.symlist span{color:var(--sub);min-width:0}
 .cs-more{width:100%;margin-top:8px;font-size:13px;text-align:left;background:none;border-style:dashed}
 .cs-foot{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
@@ -663,7 +665,12 @@ function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroSta
   const bl=s&&s.blocks.find(b=>b.id===e.bid);
   if(st)st.innerHTML=e.count?`<b>カウント ${e.beat}</b>`:`<b>${esc(bl?bl.name:'')}</b> ${e.bar+1}小節目 ・ ${e.beat}拍 <span class="sub">♩${Math.round(blockBpm(bl,s)*(S.prefs.mRate||1))}${MT.loop?' ・ 繰り返し中':''}</span>`;
   if(!e.count){document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('mplaying',r.dataset.bid===e.bid));
-    if(R.name==='block'&&R.b===e.bid)document.querySelectorAll('.bar').forEach(b=>b.classList.toggle('mbar',b.id==='bar-'+e.bar))}}
+    if(R.name==='block'&&R.b===e.bid){document.querySelectorAll('.bar').forEach(b=>b.classList.toggle('mbar',b.id==='bar-'+e.bar));
+      const key=e.bid+':'+e.bar;if(MT.lastKey!==key){MT.lastKey=key;keepVisible($('#bar-'+e.bar))}}}}
+// 再生中の小節が画面の外(下のプレーヤーの裏も含む)に出たら、上から1/3くらいの位置までスクロール
+function keepVisible(el){if(!el||document.body.classList.contains('sheet-open'))return;const r=el.getBoundingClientRect();
+  const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;const bot=innerHeight-pb-12;
+  if(r.top<70||r.bottom>bot)window.scrollBy({top:r.top-Math.max(80,(innerHeight-pb)/3),behavior:'smooth'})}
 
 /* ---------- song audio player ---------- */
 const PL={songId:null,blobId:null,loop:null};
@@ -783,6 +790,15 @@ function chordTab(bl){
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
   <div id="grid">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
 const COMMON_METERS=['4/4','3/4','2/4','5/4','6/4','7/4','6/8','7/8','5/8','9/8','12/8'];
+// 拍子えらび: 「数 / 分母」をそれぞれ選ぶだけ(打ち間違いで「8」だけ入る、などを防ぐ)
+let MPF=null;
+function meterModal(title,cur,resetLabel,onOk){MPF=onOk;const x=normMeter(cur||'').match(/^(\d+)\/(\d+)$/)||[0,'4','4'];
+  $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal mpick">
+  <div class="hstack"><b>${esc(title)}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+  <div class="mp-row"><select id="mpN" aria-label="1小節の拍数">${Array.from({length:16},(_,i)=>i+1).map(n=>`<option ${+x[1]===n?'selected':''}>${n}</option>`).join('')}</select>
+    <span class="mp-sl">/</span><select id="mpD" aria-label="分母">${[2,4,8,16].map(d=>`<option ${+x[2]===d?'selected':''}>${d}</option>`).join('')}</select></div>
+  <p class="sub" style="margin:0 0 12px">左が1小節の拍数、右が何分音符で数えるか(4 = 4分、8 = 8分)</p>
+  <div class="hstack">${resetLabel?`<button data-act="mpReset">${esc(resetLabel)}</button>`:''}<span class="spacer"></span><button class="primary" data-act="mpOk">決定</button></div></div>`}
 const normMeter=m=>String(m||'').trim().replace(/[／]/g,'/').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
 function meterSlots(m){const x=normMeter(m).match(/^(\d{1,2})\/(2|4|8|16)$/);if(!x)return 0;const n=+x[1],d=+x[2];const v=d===2?n*4:d===4?n*2:n;return n>0&&v<=32?v:0}
 const songMeterDefault=s=>{const m=normMeter(s&&s.meter).split(/[,、\s]+/).find(meterSlots);return m||'4/4'};
@@ -1183,11 +1199,13 @@ const ACT={
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.filter(x=>x!==m.name)));S.markers.splice(+t.dataset.i,1);render()},
   toggleTag(t){const bl=curBlock(),x=t.dataset.t;bl.tags=bl.tags.includes(x)?bl.tags.filter(y=>y!==x):[...bl.tags,x];render()},
   cell:t=>selectCell(+t.dataset.bar,+t.dataset.slot),
-  barN(t){const s=curSong(),bl=curBlock(),bar=bl.bars[+t.dataset.bar];const cur=barMeter(bl,bar,s)||String(bar.n);
-    let v=prompt(`この小節だけの拍子 (例 3/4, 7/8, 6/8)\nまたはマス数 (12 = 3連符, 16 = 16分)\n\n空欄にするとブロックの拍子(${blockMeter(bl,s)})に戻ります`,cur);if(v===null)return;v=normMeter(v);
-    let n,m;if(!v){m=null;n=meterSlots(blockMeter(bl,s))}else if(meterSlots(v)){m=v===blockMeter(bl,s)?null:v;n=meterSlots(v)}else{n=parseInt(v);m=null;if(!n||n<1||n>32)return toast('「3/4」のような拍子か、数字で入れてください')}
-    if(bar.cells.slice(n).some(Boolean)&&!confirm('はみ出すマスのコードは消えます。よろしいですか？'))return;
-    resizeBar(bar,n);if(m)bar.m=m;else delete bar.m;if(P&&P.bar===+t.dataset.bar)P=null;render()},
+  barN(t){const s=curSong(),bl=curBlock(),bi=+t.dataset.bar,bar=bl.bars[bi];const bm=blockMeter(bl,s);
+    meterModal(`${bi+1}小節目だけの拍子`,barMeter(bl,bar,s)||bm,`ブロックと同じ(${bm})に戻す`,v=>{
+      const m=v&&v!==bm?v:null,n=meterSlots(m||bm);
+      if(bar.cells.slice(n).some(Boolean)&&!confirm('はみ出すマスのコードは消えます。よろしいですか？'))return;
+      resizeBar(bar,n);if(m)bar.m=m;else delete bar.m;if(P&&P.bar===bi)P=null;render()})},
+  mpOk(){const v=$('#mpN').value+'/'+$('#mpD').value;if(!meterSlots(v))return toast('1小節32マスまでです。数を減らすか分母を大きくしてください');const f=MPF;ACT.lbClose();f&&f(v)},
+  mpReset(){const f=MPF;ACT.lbClose();f&&f(null)},
   pClose(){const b=P&&P.bar;P=null;renderSheet();if(b!=null)refreshBar(b)},
   pStep(t){S.prefs.step=t.dataset.v==='bar'?'bar':+t.dataset.v;save();renderSheet(true)},
   pRoot(t){const v=t.dataset.v;if(P.slash&&P.root){P.bass=v;P.bassAcc='';P.slash=false;P.last='bass'}
@@ -1310,8 +1328,10 @@ const CHG={
     if(!bars.length){render();return}
     if(bars.some(x=>x.cells.slice(n).some(Boolean))&&!confirm('拍子を変えると、はみ出すマスのコードが消えます。よろしいですか？(ブロックごとに拍子を決めてあるところはそのままです)')){render();return}
     bars.forEach(x=>resizeBar(x,n));render();toast('拍子 '+songMeterDefault(s)+' に合わせました')},
-  blockMeter(t){const s=curSong(),bl=curBlock();const prev=bl.meter;let v=t.value;
-    if(v==='__other'){v=normMeter(prompt('拍子を入力 (例 7/4, 11/8, 15/16)',bl.meter||''));if(!meterSlots(v)){if(v)toast('「7/4」のように「数/2・4・8・16」で入れてください');render();return}}
+  blockMeter(t){const s=curSong(),bl=curBlock();const v=t.value;
+    if(v==='__other'){render();meterModal('ブロックの拍子',blockMeter(bl,s),'',v=>ACT.setBlockMeter(v));return}
+    ACT.setBlockMeter(v)},
+  setBlockMeter(v){const s=curSong(),bl=curBlock();const prev=bl.meter;
     bl.meter=v;const n=meterSlots(blockMeter(bl,s));
     const targets=bl.bars.filter(b=>!b.m&&b.n!==n);
     if(targets.some(b=>b.cells.slice(n).some(Boolean))&&!confirm('拍子を変えると、はみ出すマスのコードが消えます。よろしいですか？')){bl.meter=prev;render();return}
