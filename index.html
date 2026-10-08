@@ -285,7 +285,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .tour-bub{position:fixed;left:12px;right:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px var(--shadow);max-width:520px;margin:0 auto;
   opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .22s ease-out,transform .22s ease-out}
 .tour-bub.in{opacity:1;transform:none;pointer-events:auto}
-.bunsetsu{word-break:keep-all;overflow-wrap:anywhere;line-break:strict}
+.bunsetsu{overflow-wrap:anywhere;line-break:strict}.bunsetsu .nb{white-space:nowrap}
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
 .nm-eg{margin:0 0 10px;padding-left:1.2em;font-size:13px;color:var(--sub);line-height:1.7}
 .backlink{display:inline-block;color:var(--accent);margin:4px 0 2px;font-size:14px}
@@ -535,7 +535,7 @@ function newBlock(type,name,bars){bars=bars??(type==='In'||type==='Out'?4:8);
 function newSong(bandId,title){return {id:uid(),bandId,title,bpm:'',meter:'4/4',key:'',url:'',
   blocks:[newBlock('In'),newBlock('A'),newBlock('B'),newBlock('S'),newBlock('Out')]}}
 function defaultState(){const b={id:uid(),name:'マイバンド'};const song=newSong(b.id,'サンプル曲');
-  const sl={id:uid(),bandId:b.id,name:'次のライブ',songIds:[song.id],events:[]};
+  const sl={id:uid(),bandId:b.id,name:'〇月定例ライブ',songIds:[song.id],events:[]};
   return {v:1,bands:[b],songs:[song],setlists:[sl],cur:{band:b.id,setlist:sl.id},prefs:{step:2}}}
 const band=()=>S.bands.find(b=>b.id===S.cur.band)||S.bands[0];
 const songById=id=>S.songs.find(s=>s.id===id);
@@ -1425,7 +1425,7 @@ const TUT=[
   ['メンバーに共有','曲やセトリの「共有」ボタンを押すと共有用URL・共有コードが生成されます。受け取ったリンクや「☰ メニュー」から入力したコードにより曲構成データやセトリデータを自分の端末に取り込んで、自由に書き込むことができます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
     ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。この場合、再び同じセトリを編集したり、内容を確認したりしたい場合はそのアプリ内のブラウザから見る必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー」から共有コードを読み込むことでセトリなどを受け取ることができます。']],
   ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
-    ['データの扱い','曲やセトリのデータは端末のみに残り、クラウド上にアップロードされません(「共有」ボタンを押したときだけ、共有用のコピーが置き場に送られます)。そのため、しばらく開かないとデータが自動的に消えてしまうスマホのブラウザアプリでは永久的な保存は保証できません。「ホーム画面に追加」をすることで、自動でデータが消されることはなくなり、端末内で安全にデータを管理できるようになります。万が一に備え、多くの変更をしたときや、たくさんのセトリを作成した場合、「☰ メニュー」にあるバックアップ機能を使うこともお勧めします。']]];
+    ['データの扱い','・曲やセトリは、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、ときどき「☰ メニュー → バックアップ」で保存しておくと安心です。']]];
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
 function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');let mh=0,mp=0;const cur=p.innerHTML;
@@ -1444,7 +1444,7 @@ function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUT
 function tourSong(){const sl=curSetlist();const id=sl&&sl.songIds.find(songById);return songById(id)||bandSongs()[0]}
 function tourBlock(){const s=tourSong();return s&&s.blocks[0]}
 const TOUR=[
-  {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「次のライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
+  {r:()=> '#/',sel:null,h:'ようこそ！',t:TUT[0][1]+'<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本です。自由に書き換えたり消したりして大丈夫です。'},
   {r:()=> '#/',sel:null,h:'データについて',t:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は<b>ホーム画面に追加</b>しておくのがおすすめです。',help:TUT[5][2]},
   {r:()=> '#/',sel:'main h1',h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。上の「セトリ」でいつでもここに戻れます。'},
   {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'コピバンならコピーするバンドの名前、イベントならライブ企画の名前でセトリを作りましょう。'},
@@ -1497,7 +1497,8 @@ function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resiz
 function wbrize(el){if(!el)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
   const re=/(?<=[ぁ-ゖ、。」』）)！？・])(?=[一-龠々〆ァ-ヶーｦ-ﾟA-Za-z0-9「『（(＋→←])/;
   ns.forEach(n=>{const parts=n.nodeValue.split(re);if(parts.length<2)return;const f=document.createDocumentFragment();
-    parts.forEach((p,i)=>{if(i)f.appendChild(document.createElement('wbr'));f.appendChild(document.createTextNode(p))});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
+    // 区切りごとに「途中で改行しない」かたまりにする。かたまりの間は、ブラウザの禁則(「や。の位置)に任せて改行される
+    parts.forEach(p=>{if(p.length>14){f.appendChild(document.createTextNode(p));return}const s=document.createElement('span');s.className='nb';s.textContent=p;f.appendChild(s)});n.replaceWith(f)});el.classList.add('bunsetsu')}catch(_){}}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
   {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
