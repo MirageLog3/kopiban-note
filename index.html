@@ -1331,6 +1331,11 @@ const TUT=[
   ['バンドに共有','曲やセトリの「共有」で、コードやリンクを送れます。受け取った人は自分のスマホに取り込んで、自由に書き込めます(あなたのデータは変わりません)。'],
   ['データについて','データはこのスマホ(ブラウザ)の中に保存されます。<b>ホーム画面に追加</b>して使うと消えにくくなります。間違えて消したときは、上の <b>↶</b> で元に戻せます。<br>この説明は「設定 → 使い方を見る」からいつでも見られます。']];
 let TUTI=0;
+// 説明文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする
+function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('p');let mh=0,mp=0;
+  TUT.forEach(([a,b])=>{h.innerHTML=a;p.innerHTML=b;h.style.minHeight=p.style.minHeight='';mh=Math.max(mh,h.offsetHeight);mp=Math.max(mp,p.offsetHeight)});
+  h.innerHTML=TUT[TUTI][0];p.innerHTML=TUT[TUTI][1];h.style.minHeight=mh+'px';p.style.minHeight=mp+'px'}
+addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 function tutBody(){const [h,p]=TUT[TUTI],last=TUTI===TUT.length-1;
   return `<div class="tut-step">${TUTI+1} / ${TUT.length}</div><h2>${h}</h2><p>${p}</p>
   <div class="tut-dots">${TUT.map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
@@ -1431,8 +1436,8 @@ const ACT={
   cjDoremi(){S.prefs.doremi=!S.prefs.doremi;save();render();cjRender()},
   cjSeqBack(){CJ.seq.pop();cjRender()},
   undo,redo,
-  tutOpen(){TUTI=0;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`},
-  tutMove(t){TUTI=Math.max(0,Math.min(TUT.length-1,TUTI+ +t.dataset.v));$('#tutBody').innerHTML=tutBody()},
+  tutOpen(){TUTI=0;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
+  tutMove(t){TUTI=Math.max(0,Math.min(TUT.length-1,TUTI+ +t.dataset.v));$('#tutBody').innerHTML=tutBody();tutFit()},
   tutEnd(){S.prefs.tutDone=true;save();ACT.lbClose()},
   cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
     <div class="hstack"><b>📋 コピー・貼り付け</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div><div id="cpBody">${cpBody()}</div></div>`},
