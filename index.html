@@ -305,7 +305,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .tut-step{font-size:12px;color:var(--sub);margin:2px 0 6px}.tut h2{margin:4px 0 8px;font-size:19px}.tut .tut-p{margin:0 0 4px;line-height:1.7;overflow-y:auto}
 .tut .tut-p.help{font-size:14px;color:var(--sub)}.tut .tut-p.help b{color:var(--text)}
 .tut-helprow{height:34px;display:flex;align-items:center}.tut-play{padding:4px 10px;font-size:12px;white-space:nowrap}
-.tut-toc .tut-last{border-color:var(--accent)}.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay[disabled]{opacity:.35}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
+.tut-toc .tut-last{border-color:var(--accent)}.tut-toc .trow{display:flex;gap:6px;align-items:stretch}.tut-toc .trow button:first-child{flex:1;min-width:0}.tut-toc .trow .tplay{width:auto;flex:none;text-align:center;padding:8px 14px;color:var(--accent)}.tut-help{padding:4px 10px 4px 4px;font-size:12px;color:var(--sub);background:transparent;border:none;display:flex;align-items:center;gap:6px;text-align:left}
 .tut-help .qm{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--sub);font-weight:700;font-size:12px;flex:none}
 .tut-dots{display:flex;gap:5px;justify-content:center;margin:10px 0}.tut-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}.tut-dots i.on{background:var(--accent)}
 .news-v{margin-top:10px}.news-v b{font-size:13px}.news-v ul{margin:4px 0 0;padding-left:1.2em;line-height:1.7;font-size:14px}
@@ -518,7 +518,8 @@ const delBlob=()=>{};
 async function gcBlobs(){try{const keys=await idb('blobs','readonly',s=>s.getAllKeys());const used=new Set(songBlobIds(S.songs));
   const drop=(keys||[]).filter(k=>!used.has(k));if(drop.length)await idb('blobs','readwrite',s=>{drop.forEach(k=>s.delete(k))})}catch(_){}}
 let saveT;
-function save(){histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250)}
+let DEMO=null; // 案内用の見本を表示中(このあいだは保存しない)
+function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250)}
 /* ---------- 元に戻す・やり直す ----------
    保存のたびに曲・セトリなどの中身を比べて、変わっていたら前の状態を積む。0.8秒以内の連続した変更(文字入力など)は1回分にまとめる */
 const H={past:[],future:[],last:null,t:0,busy:false};
@@ -1446,11 +1447,11 @@ function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelect
   h.innerHTML=TG()[TUTI][0];p.innerHTML=cur;wbrize(p);h.style.minHeight=mh+'px';p.style.height=mp+'px'}
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
-function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<div class="trow"><button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>${tgCan(i)?`<button class="tplay" data-act="tutTour" data-v="${i}" title="画面で見る">▶</button>`:TGS()[i].sel?`<button class="tplay" disabled title="${tgWhy(i)}">▶</button>`:''}</div>`).join('')}</div>
+function tutToc(){let g='';return `<div class="tut-step">使い方</div><h2>目次</h2><div class="tut-toc">${TG().map(([h,,,grp],i)=>`${grp!==g?`<h4>${g=grp}</h4>`:''}<div class="trow"><button data-act="tutGo" data-v="${i}">${h===grp?'どんな画面？':h}</button>${tgCan(i)?`<button class="tplay" data-act="tutTour" data-v="${i}" title="画面で見る">▶</button>`:''}</div>`).join('')}</div>
   <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
-  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:TGS()[TUTI].sel?`<span class="sub" style="font-size:11px">${tgWhy(TUTI)}</span>`:''}</div>
+  <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:''}</div>
   <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack"><button class="ghost" data-act="tutGo" data-v="-1">≡ 目次</button><span class="spacer"></span>${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':''}
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ →'}</button></div>`}
@@ -1503,12 +1504,12 @@ const TG=()=>TOUR.filter(s=>!s.noguide).map((s,i)=>[s.h,s.g||s.t,s.help,tGrp(s,i
 // THINT: 「使い方を見る」から1つの項目だけを画面で見ているとき(TBACK: 戻る先の項目)
 let TI=-1,TH=false,TSTEPS=[],TSEQ=0,THINT=false,TBACK=-1;
 const TGS=()=>TOUR.filter(s=>!s.noguide);
-const tgCan=i=>{const st=TGS()[i];return st&&st.sel&&(!st.need||st.need())};
-const tgWhy=i=>{const st=TGS()[i];return st.need===slHasSong?'セトリに曲を入れると画面で見られます':st.r===tBlk&&bandSongs().length?'ブロックがある曲を作ると画面で見られます':st.r===tSong||st.r===tBlk||st.tap?'曲を作ると画面で見られます':'セトリを作ると画面で見られます'};
+// 光らせる場所がある項目は「画面で見る」ができる(セトリや曲がなければ見本を出す)
+const tgCan=i=>{const st=TGS()[i];return !!(st&&st.sel)};
 const tgNext=i=>{for(let j=i+1;j<TGS().length;j++)if(tgCan(j))return j;return -1};
 // 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
-function tourStart(){ACT.lbClose();THINT=false;TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
+function tourStart(){ACT.lbClose();THINT=false;if(!DEMO&&needDemo())demoOn();TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need()));TI=0;TH=false;tourGo()}
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
@@ -1531,6 +1532,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   bub.classList.remove('in');
   bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
+    ${DEMO?`<p class="sub" style="margin:6px 0 0;font-size:12px">※ セトリや曲がないので、見本を表示しています(閉じると元に戻ります)</p>`:''}
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
@@ -1556,7 +1558,16 @@ function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(
   else Object.assign(bub.style,{top:'',bottom:'12px'})}
 function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;
   // 最初の案内は、終わった画面のまま続けて書き込めるようにする(セトリ画面に戻さない)
+  if(DEMO)demoOff();
   if(!THINT){S.prefs.tutDone=true;save()}THINT=false}
+// セトリや曲を消していて案内する場所がないときは、その場限りの見本(サンプル曲が入ったセトリ)を表示して案内する。
+// 見本のあいだは保存しない。案内を閉じたら元のデータに戻してセトリ画面を表示する
+const needDemo=()=>!slHasSong()||!tourBlock();
+function demoOn(){const b=band();DEMO={setlists:S.setlists,songs:S.songs,cur:{...S.cur}};
+  const song=newSong(b.id,'サンプル曲'),sl={id:uid(),bandId:b.id,name:'〇月定例ライブ',songIds:[song.id],events:[]};
+  S.setlists=[...S.setlists,sl];S.songs=[...S.songs,song];S.cur={...S.cur,setlist:sl.id};render()}
+function demoOff(){const d=DEMO;DEMO=null;Object.assign(S,{setlists:d.setlists,songs:d.songs,cur:d.cur});P=null;
+  history.replaceState(null,'','#/');render();scrollTo(0,0)}
 // 日本語の改行を文節っぽい区切りでだけ起こす: ひらがな・句読点のあと、漢字・カタカナ・英数字・かっこの前を改行してよい場所にする
 function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)return;try{const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),ns=[];while(w.nextNode())ns.push(w.currentNode);
   const re=/(?<=[ぁ-ゖ、。」』）)！？・])(?=[一-龠々〆ァ-ヶーｦ-ﾟA-Za-z0-9「『（(＋→←])/;
@@ -1684,7 +1695,7 @@ const ACT={
   tutGo(t){TUTI=+t.dataset.v;TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tourGuide(t){tourEnd();ACT.tutOpen(TG().findIndex(x=>x[0]===t.dataset.h))},
   // 使い方の1項目を、実際の画面を開いて光らせて見せる。終わったら使い方の一覧(目次)に戻り、見ていた項目に印をつける
-  tutTour(t){const i=+t.dataset.v,st=TGS()[i];if(!tgCan(i))return;TBACK=i;ACT.lbClose();THINT=true;TSTEPS=[{...st,t:st.g||st.t,tap:null}];TI=0;TH=false;tourGo()},
+  tutTour(t){const i=+t.dataset.v,st=TGS()[i];if(!tgCan(i))return;TBACK=i;if(!DEMO&&needDemo())demoOn();ACT.lbClose();THINT=true;TSTEPS=[{...st,t:st.g||st.t,tap:null}];TI=0;TH=false;tourGo()},
   tourNextTopic(){const j=tgNext(TBACK);if(j<0)return ACT.tourBack();ACT.tutTour({dataset:{v:j}})},
   tourBack(){const i=TBACK;tourEnd();ACT.tutOpen(-1);const b=document.querySelector(`.tut-toc [data-act=tutGo][data-v="${i}"]`);if(b){b.scrollIntoView({block:'center'});b.classList.add('tut-last')}},
   tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
