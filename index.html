@@ -158,6 +158,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .bp-del{position:absolute;top:-14px;right:-14px;width:40px;height:40px;border-radius:50%;padding:0;font-size:18px;opacity:.8}
 .row.mplaying{box-shadow:inset 4px 0 0 var(--accent);background:#ff6a2b10}
 .bar.mbar .cells{outline:2px solid var(--accent);outline-offset:1px}
+.cell.mcell{background:#ff6a2b55;box-shadow:inset 0 -3px 0 var(--accent)}
 .legend.hstack{gap:8px}
 .mk input[type=color]{width:38px;height:32px;padding:2px}
 .cbar{width:5px;align-self:stretch;border-radius:3px}
@@ -586,7 +587,7 @@ const blockBpm=(b,s)=>+b.bpm||+s.bpm||120;
 function barBeats(bl,bar,s){const m=normMeter(barMeter(bl,bar,s)||blockMeter(bl,s)).match(/^(\d+)\/(\d+)$/);return m?{n:+m[1],d:+m[2]}:{n:4,d:4}}
 function clicksFor(s,blocks,barsOf){const ev=[];let t=0;const rate=S.prefs.mRate||1;
   for(const bl of blocks)for(const bi of barsOf(bl)){const bar=bl.bars[bi];const {n,d}=barBeats(bl,bar,s);const dur=60/(blockBpm(bl,s)*rate)*4/d;
-    for(let k=0;k<n;k++){ev.push({t,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}
+    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}
   return {ev,total:t}}
 function metroOpts(){const r=S.prefs.mRate||1;
   return `<label class="sub">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label>
@@ -608,7 +609,7 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
 const MS={ev:null,evKey:'',last:null,lastMt:null};
 function syncEvents(s){const off=+s.mOffset||0;const ev=[];let t=off;
   s.blocks.forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;
-    for(let k=0;k<n;k++){ev.push({t,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}));
+    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}));
   return ev}
 function syncEv(s){const key=s.id+JSON.stringify(s.blocks.map(b=>[b.id,b.bpm,b.meter,b.bars.map(x=>x.n+(x.m||''))]))+s.bpm+s.meter+s.mOffset;
   if(!MS.ev||MS.evKey!==key){MS.ev=syncEvents(s);MS.evKey=key}return MS.ev}
@@ -625,7 +626,7 @@ function syncTick(){const s=playerSong();
   if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6)MS.last=mt-0.001;
   MS.lastMt=mt;const horizon=mt+0.12*pr;let cur=null;
   for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc)}
-  MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur)}
+  MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur,false,cur?(mt-cur.t)/cur.dur:0)}
 setInterval(syncTick,20);
 function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ensureCtx();M.seek(Math.max(0,(t||0)-0.05));M.play()}
 function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:880;
@@ -642,10 +643,16 @@ function mStart(s,blocks,loopId){mStop();const Ctx=window.AudioContext||window.w
   MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15){clickAt(e.at,e.acc);MT.vis.push(e);MT.i++}
     if(!e&&MT.vis.length&&MT.ctx.currentTime>MT.vis[MT.vis.length-1].at+0.6)mStop()},25);
   const draw=()=>{if(!MT.playing)return;const now=MT.ctx.currentTime;let cur=null;while(MT.vis.length>1&&MT.vis[1].at<=now)MT.vis.shift();if(MT.vis[0]&&MT.vis[0].at<=now)cur=MT.vis[0];
-    mPaint(cur);MT.raf=requestAnimationFrame(draw)};draw()}
+    mPaint(cur,false,cur?(now-cur.at)/cur.dur:0);MT.raf=requestAnimationFrame(draw)};draw()}
 function mStop(){clearInterval(MT.timer);cancelAnimationFrame(MT.raf);const was=MT.playing;MT.playing=false;MT.loop=null;if(was)mPaint(null,true)}
-function mPaint(e,stopped){const s=songById(MT.songId);const st=$('#metroStat');
+// 再生中のマス: 拍の中の進み具合(sub 0〜1)から、小節のマス数に割り当てる
+function mCell(e,sub){const want=e&&!e.count&&R.name==='block'&&R.b===e.bid;let el=null;
+  if(want){const bar=$('#bar-'+e.bar);const n=bar?bar.querySelectorAll('.cell').length:0;
+    if(n){const f=Math.min(0.999,Math.max(0,(e.beat-1+Math.min(1,Math.max(0,sub||0)))/(e.nb||4)));el=bar.querySelectorAll('.cell')[Math.floor(f*n)]}}
+  document.querySelectorAll('.cell.mcell').forEach(x=>{if(x!==el)x.classList.remove('mcell')});if(el)el.classList.add('mcell')}
+function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroStat');
   document.querySelectorAll('.row.mplaying,.bar.mbar').forEach(x=>{if(!e||x.dataset.bid!==e.bid&&x.id!=='bar-'+(e&&e.bar))x.classList.remove('mplaying','mbar')});
+  mCell(e,sub);
   if(!e){if(st&&stopped)st.textContent='止めました';return}
   const bl=s&&s.blocks.find(b=>b.id===e.bid);
   if(st)st.innerHTML=e.count?`<b>カウント ${e.beat}</b>`:`<b>${esc(bl?bl.name:'')}</b> ${e.bar+1}小節目 ・ ${e.beat}拍 <span class="sub">♩${Math.round(blockBpm(bl,s)*(S.prefs.mRate||1))}${MT.loop?' ・ 繰り返し中':''}</span>`;
