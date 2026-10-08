@@ -285,6 +285,10 @@ h1{font-size:24px;margin:4px 0 6px}
 .tour-bub{position:fixed;left:12px;right:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px var(--shadow);max-width:520px;margin:0 auto;
   opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .22s ease-out,transform .22s ease-out}
 .tour-bub.in{opacity:1;transform:none;pointer-events:auto}
+.tour-spot.tap{animation:tourPulse 1.1s ease-in-out infinite}
+@keyframes tourPulse{0%,100%{outline-width:2px;outline-offset:0}50%{outline-width:4px;outline-offset:3px}}
+.tour-ripple{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--accent);pointer-events:none;animation:tourRip .48s ease-out forwards;z-index:2}
+@keyframes tourRip{0%{transform:scale(.3);opacity:.8}100%{transform:scale(2);opacity:0}}
 .bunsetsu{overflow-wrap:anywhere;line-break:strict}.bunsetsu .nb{white-space:nowrap}
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
 .song-audio{margin-top:12px}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
@@ -1456,7 +1460,7 @@ const TOUR=[
   {r:()=> '#/',sel:'main',whole:true,h:'セトリ画面',t:'ライブやコピバンごとのセトリ(曲順)をまとめる画面です。ほかの画面からは、いちばん上のバーにある「セトリ」の文字を押すとここに戻ってこられます。'},
   {r:()=> '#/',sel:'[data-act=newSetlist]',h:'セトリを作る',t:'ライブ企画の名前などをつけてセトリを作りましょう。同じライブで何バンドか掛け持ちするときは、バンドごとに分けて作ると分かりやすいです。'},
   {r:()=> '#/',sel:'.sec.hstack',h:'スタジオ・本番の予定',t:'スタジオ練習や本番の日程を入れておけます。カレンダーへの追加やメンバーへの共有もできます。'},
-  {r:()=> '#/',sel:'main .list .row',h:'曲',t:'セトリに入っている曲です。タップすると曲の画面が開きます。',need:tourSong},
+  {r:()=> '#/',sel:'main .list .row',h:'曲を開く',t:'セトリに入っている曲です。光っている曲をタップして、曲の画面を開いてみましょう。',tap:'main .list .row a.body',need:tourSong},
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかんで並べ替え、タップするとブロックの中に入れます。',need:tourSong},
@@ -1465,14 +1469,18 @@ const TOUR=[
   {r:tSong,sel:'#songAudio',h:'② 音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
   {r:tSong,sel:'.metro',h:'③ メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
   // ブロックの画面
+  {r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'ブロックをタップすると、その中に入ってコードなどを書き込めます。光っているブロックをタップしてみましょう。',tap:'main .list .row a.body',need:tourBlock},
   {r:tBlk,sel:'#bquick',h:'④ ブロックの画面',t:'小節数・メモ・マーカー(キメ・テンポ注意などの目印)は、ここですぐに変えられます。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・キーを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
+  {r:tBlk,sel:'#grid .bar .cell',h:'マスをタップ',t:'マスをタップすると、コード入力用のキーボードが出てきます。光っているマスをタップしてみましょう。',tap:'[data-act=cell][data-bar="0"][data-slot="0"]',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'.kb',h:'⑤ コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],need:tourBlock,before:tCell},
   {r:tBlk,sel:'[data-act=cjOpen]',h:'⑥ コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。',need:tourBlock,before:tNoCell},
   // 共有・印刷
+  {r:tBlk,sel:'main a.back',h:'曲の画面に戻る',t:'左上の「‹ 構成」をタップすると、曲の画面に戻れます。タップしてみましょう。',tap:'main a.back',need:tourBlock,before:tNoCell},
   {r:tSong,sel:'#songActs',h:'⑦ 共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
+  {r:tSong,sel:'main a.back',h:'セトリ画面に戻る',t:'左上のセトリ名をタップすると、セトリ画面に戻れます。タップしてみましょう。',tap:'main a.back',need:tourSong},
   {r:()=> '#/',sel:'[data-act=shareSetlist]',h:'⑧ セトリごと共有',t:'セトリ画面からは、曲順やスタジオ・本番の予定もまとめて、セトリごと共有できます。'},
   {r:()=> '#/',sel:'.menubtn',h:'⑨ 共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]}];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
@@ -1483,7 +1491,16 @@ function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tou
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
 // 案内用の重ね板。明るく見せる枠(spot)と吹き出し(bub)は作り直さずに使い回して、枠が動くアニメーションを出す
+// 画面が切り替わるところは、光っている場所を自分でタップして進む(「👆 タップする」でも同じ場所が押される演出をしてから進む)
+function tourTap(x,y){const st=TSTEPS[TI];if(!st||!st.tap||TTAP)return;const el=document.querySelector(st.tap);
+  if(!el){TI++;TH=false;return tourGo()}TTAP=true;const r=el.getBoundingClientRect();
+  const rp=document.createElement('div');rp.className='tour-ripple';rp.style.left=(x??r.left+Math.min(r.width/2,60))+'px';rp.style.top=(y??r.top+r.height/2)+'px';
+  $('#tour').appendChild(rp);const b=$('#tourBub');if(b)b.classList.remove('in');
+  setTimeout(()=>{rp.remove();TTAP=false;el.click();TI++;TH=false;setTimeout(tourGo,300)},480)}
+let TTAP=false;
 function tourBox(){let box=$('#tour');if(box)return box;box=document.createElement('div');box.id='tour';
+  box.addEventListener('click',e=>{if(e.target.closest('#tourBub'))return;const st=TSTEPS[TI];if(!st||!st.tap)return;
+    const r=$('#tourSpot').getBoundingClientRect();if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)tourTap(e.clientX,e.clientY)});
   box.innerHTML=`<div class="tour-spot" id="tourSpot" style="left:0;top:0;width:${innerWidth}px;height:${innerHeight}px;border-radius:0"></div><div class="tour-bub" id="tourBub"></div>`;
   document.body.appendChild(box);addEventListener('resize',tourPlace);addEventListener('scroll',tourPlace,true);return box}
 function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ;
@@ -1494,7 +1511,8 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     <div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
-    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`;
+    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.tap?'<button class="primary" data-act="tourTap">👆 タップする</button>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`;
+  $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
   if(el&&!st.whole){const r=el.getBoundingClientRect(),bh=bub.offsetHeight,H=innerHeight;
@@ -1632,6 +1650,7 @@ const ACT={
   undo,redo,
   tourMove(t){TI=Math.max(0,TI+ +t.dataset.v);TH=false;tourGo()},
   tourHelp(){TH=!TH;tourShow()},
+  tourTap(){tourTap()},
   tourEnd(){tourEnd()},
   tourStart(){tourStart()},
   tutOpen(){TUTI=0;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
