@@ -279,6 +279,7 @@ h1{font-size:24px;margin:4px 0 6px}
 .mseg{display:flex;gap:4px}.mseg button{padding:5px 9px;font-size:13px;white-space:nowrap}.mseg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .mlist{display:flex;flex-direction:column}.mrow{display:flex;align-items:center;gap:10px;width:100%;padding:13px 4px;border:none;border-bottom:1px solid var(--line);border-radius:0;background:none!important;box-shadow:none!important;text-align:left;font-size:15px;color:var(--text)}
 .mrow:last-child{border-bottom:none}.mi{width:1.6em;text-align:center}
+.nm-eg{margin:0 0 10px;padding-left:1.2em;font-size:13px;color:var(--sub);line-height:1.7}
 .backlink{display:inline-block;color:var(--accent);margin:4px 0 2px;font-size:14px}
 .histbtns{display:flex;gap:2px}.histbtns button{padding:4px 7px;font-size:17px;line-height:1;display:flex;align-items:center}.histbtns button:disabled{opacity:.3}
 @media screen and (max-width:420px){header.top .bandsel select{max-width:86px}header.top .histbtns button{padding:4px 5px;font-size:16px}header.top nav a{padding:6px 5px}}
@@ -569,12 +570,12 @@ const ICON_REDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentCo
 function topbar(tab){
   const opts=S.bands.map(b=>`<option value="${b.id}" ${b.id===band().id?'selected':''}>${esc(b.name)}</option>`).join('');
   return `<header class="top"><div class="brand">🎸<span class="brand-t"> コピバン練習ノート</span></div>
-  <label class="bandsel">バンド<select data-change="band">${opts}<option value="__new">＋ 新しいバンド</option></select></label>
+  <label class="bandsel">バンド・サークル<select data-change="band">${opts}<option value="__new">＋ 新しいバンド・サークル</option></select></label>
   <nav><a href="#/" class="${tab==='setlist'?'on':''}">セトリ</a><a href="#/songs" class="${tab==='songs'?'on':''}">曲</a></nav>
   <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
   <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・バックアップなど)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
-const MENU=[['tut','📖','使い方を見る'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンドの管理'],['markers','🏷','マーカーの編集'],
+const MENU=[['tut','📖','使い方を見る'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンド・サークルの管理'],['markers','🏷','マーカーの編集'],
   ['backup','💾','バックアップ・復元'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
@@ -641,7 +642,7 @@ function buildIcs(ev,uidv){const e=s=>String(s).replace(/\\/g,'\\\\').replace(/\
 function viewSetlist(){
   const sls=bandSetlists();
   let sl=sls.find(x=>x.id===R.a)||sls.find(x=>x.id===S.cur.setlist)||sls[0];
-  if(!sl)return topbar('setlist')+`<main><div class="empty">このバンドにはまだセトリがありません<br><br><button class="primary" data-act="newSetlist">＋ セトリを作る</button></div></main>`;
+  if(!sl)return topbar('setlist')+`<main><div class="empty">ここにはまだセトリがありません<br><br><button class="primary" data-act="newSetlist">＋ セトリを作る</button></div></main>`;
   S.cur.setlist=sl.id;
   slEvents(sl);
   const songs=sl.songIds.map(songById).filter(Boolean);
@@ -1431,7 +1432,7 @@ function tutBody(){const [h,p,help]=TUT[TUTI],last=TUTI===TUT.length-1,showH=TUT
   <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'はじめる':'次へ →'}</button></div>`}
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1446,8 +1447,9 @@ function viewSettings(){const k=R.a;
   const m=MENU.find(x=>x[0]===k)||['','',''];const C=settingCards();
   return topbar('settings')+`<main><a class="backlink" href="javascript:void 0" data-act="goBack">‹ 戻る</a><h1>${m[1]} ${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
 function settingCards(){return {news:newsCard(),
-  band:`<div class="card"><b>バンド</b><div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
-    <button data-act="newBand">＋ バンドを追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">このバンドを削除</button>':''}</div></div>`,
+  band:`<div class="card"><b>バンド・サークル</b><p class="note">サークルでコピバンを組む人はサークル名、オリジナルバンドやサポートの人はそのバンド名にしておくと、掛け持ちしていても分けて管理できます。</p>
+    <div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
+    <button data-act="newBand">＋ 追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">これを削除</button>':''}</div></div>`,
   app:`<div class="card"><b>📱 スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ ホーム画面のアプリとして開いています。':''}
     ホーム画面に追加すると、アイコンから全画面で開けて、電波がないスタジオでも使えます。<br>
     ・iPhone: Safariで開いて、下の共有ボタン → 「ホーム画面に追加」<br>
@@ -1478,13 +1480,27 @@ function toast(t){const e=document.createElement('div');e.className='toast';e.te
 function curSetlist(){return S.setlists.find(x=>x.id===S.cur.setlist)}
 function createSong(addToSetlist){const t=prompt('曲名');if(!t)return;const s=newSong(band().id,t);S.songs.push(s);
   if(addToSetlist&&curSetlist())curSetlist().songIds.push(s.id);location.hash='#/song/'+s.id}
-function newSetlist(){const n=prompt('セトリの名前(ライブ名など)');if(!n)return;const sl={id:uid(),bandId:band().id,name:n,songIds:[],events:[]};
-  S.setlists.push(sl);S.cur.setlist=sl.id;location.hash='#/setlist/'+sl.id;render()}
-function newBand(){const n=prompt('バンド名');if(!n)return;const b={id:uid(),name:n};S.bands.push(b);S.cur.band=b.id;S.cur.setlist=null;location.hash='#/';render()}
+// 名前を決める画面: 何を入れればいいかの説明と例を添える(prompt だと説明が出せないため)
+let NMF=null;
+function nameModal(title,hint,eg,value,onOk){NMF=onOk;
+  $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
+  <div class="hstack"><b>${esc(title)}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+  <p class="note" style="margin:6px 0 8px">${hint}</p>
+  <ul class="nm-eg">${eg.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <input id="nmIn" value="${esc(value||'')}" placeholder="名前を入力" style="width:100%" enterkeyhint="done">
+  <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="nmOk">${value?'変更する':'作る'}</button></div></div>`;
+  const i=$('#nmIn');i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ACT.nmOk()}})}
+const SL_HINT=['セトリの名前','何のためのセトリか分かる名前にしましょう。<b>コピバンならコピーするバンドの名前</b>、<b>イベントならライブ企画の名前</b>がおすすめです。',
+  ['コピバン: 「○○(コピーするバンド名)」「○○コピー」','ライブ: 「11月定期ライブ」「新歓ライブ」']];
+function newSetlist(){nameModal('新しいセトリ',SL_HINT[1],SL_HINT[2],'',n=>{const sl={id:uid(),bandId:band().id,name:n,songIds:[],events:[]};
+  S.setlists.push(sl);S.cur.setlist=sl.id;location.hash='#/setlist/'+sl.id;render()})}
+function newBand(){nameModal('新しいバンド・サークル','<b>サークルでコピバンを組む人はサークル名</b>、<b>オリジナルバンドやサポートの人はそのバンド名</b>を入れてください。セトリや曲はこの中に作ります。',
+  ['サークル: 「軽音サークル○○」','バンド: 「(自分のバンド名)」'],'',n=>{const b={id:uid(),name:n};S.bands.push(b);S.cur.band=b.id;S.cur.setlist=null;location.hash='#/';render()})}
 const ACT={
   goBlock:t=>location.hash=`#/block/${R.a}/${t.dataset.id}`,
   newSetlist,newBand,
-  renameSetlist(){const sl=curSetlist();const n=prompt('セトリの名前',sl.name);if(n){sl.name=n;render()}},
+  renameSetlist(){const sl=curSetlist();nameModal('セトリの名前を変更',SL_HINT[1],SL_HINT[2],sl.name,n=>{sl.name=n;render()})},
+  nmOk(){const v=($('#nmIn')||{}).value;if(!v||!v.trim())return toast('名前を入れてください');const f=NMF;ACT.lbClose();f&&f(v.trim())},
   delSetlist(){const sl=curSetlist();if(!confirm(`セトリ「${sl.name}」を削除しますか？(曲そのものは残ります)`))return;S.setlists=S.setlists.filter(x=>x!==sl);S.cur.setlist=null;location.hash='#/';render()},
   slRemove:t=>{curSetlist().songIds.splice(+t.dataset.i,1);render()},
   newSongToSetlist:()=>createSong(true),
