@@ -456,7 +456,10 @@ body.has-player #sheet .sheet{bottom:54px}
   .pl-mini{display:flex}
   .pl-rate-t{display:none}.pl-rate select{font-size:13px;padding:4px 2px}
   #ytWrap iframe{width:96px!important;height:54px!important}
-  #player.more .pl-name{display:block!important;flex-basis:100%;font-size:12px;order:-1}
+  /* ⋯ を押したとき: 1行目は再生バーのまま、2行目に曲名・速さ・差し替え・外す */
+  #player.more .pl-mini{flex-basis:100%}
+  #player.more .pl-name{display:block!important;flex:1 1 0;min-width:0;max-width:none;font-size:12px;order:1}
+  #player.more .pl-rate{order:2}#player.more #plPick{order:3}#player.more #plRemove{order:4}#player.more .pm-more{color:var(--accent)}
   #player.more #plPick,#player.more #plRemove{display:inline-block!important}
   body.has-player main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
   body.has-player #sheet .sheet{bottom:0}
