@@ -349,6 +349,15 @@ h1{font-size:24px;margin:4px 0 6px}
 .mtable .mx{padding-left:1em}
 .mtable .mnote{font-size:.95em;font-weight:600;display:inline;margin-right:.5em;vertical-align:middle}
 .mtable .mmemo{font-size:.75em;color:#444;margin-top:.3em;line-height:1.5}
+.mtable .mlyr{font-size:.85em;color:#222;margin-top:.3em;line-height:1.55}
+.lyr-open{margin:-2px 0 8px}
+.lyr-m textarea{width:100%;min-height:9em;font-size:14px;line-height:1.6}
+.lyr-opts{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+.lyr-prev{max-height:34vh;overflow-y:auto;margin:6px 0 10px}
+.lyr-p{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:6px 0;font-size:13px}
+.lyr-p .hstack{gap:6px}.lyr-p select{max-width:55%}
+.lyr-p .l1{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lyr-p .warn{color:var(--accent);font-size:12px}
 .mtable .ptag{display:inline-block;margin:0 .25em 0 0;vertical-align:middle;font-size:.7em;padding:.1em .35em}
 .mtable .mp{width:4em;text-align:right;font-size:.7em;color:#999;white-space:nowrap}
 
@@ -711,6 +720,7 @@ function viewSong(){
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${metroCard(s)}
   <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
+  <div class="lyr-open"><button class="foldbtn" data-act="lyrOpen">🎤 歌詞をまとめて入れる</button></div>
   <div class="list">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
     <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
@@ -929,7 +939,7 @@ function viewBlock(){
 function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
   return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのキー(調)を入れると度数になります</span>':''}
-    <span class="spacer"></span><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
+    <span class="spacer"></span><button class="foldbtn" data-act="lyrOpen" data-b="${bl.id}">🎤 歌詞を貼る</button><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
   ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
   <div id="grid">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
@@ -1034,6 +1044,27 @@ function cjBody(){const N=cjNames(),on=cjNotes(),bass=on.length?Math.min(...on):
 function cjRender(first){const e=$('#cjBody');if(!e)return;const k=$('#cjKbw'),x=k?k.scrollLeft:null;e.innerHTML=cjBody();const ch=$('#cjChips');if(ch)ch.scrollLeft=ch.scrollWidth;const k2=$('#cjKbw');
   if(k2){if(x!=null&&!first)k2.scrollLeft=x;else{const on=CJ.on,lo=on.length?Math.min(...on):48;const wk=k2.scrollWidth/(CJ_OCT*7);
     const wi=Math.floor((lo-CJ_LO)/12)*7+[0,0,1,1,2,3,3,4,4,5,5,6][(lo-CJ_LO)%12];k2.scrollLeft=Math.max(0,wi*wk-wk)}}}
+/* ---------- 歌詞をまとめて入れる ---------- */
+let LYR={per:2,assign:[],text:''};
+const blockById=(s,id)=>s.blocks.find(b=>b.id===id);
+// 貼り付けた文 → [{lines:[...]}]。曲全体のときは空行でまとまりに分ける。ブロック1つのときは全部の行を1まとまりにする
+function lyrParas(){const t=(LYR.text||'').replace(/\r/g,'');
+  const paras=LYR.bid?[t]:t.split(/\n[ \t　]*\n/);
+  return paras.map(p=>p.split('\n').map(x=>x.trim()).filter(Boolean)).filter(l=>l.length)}
+// 歌うブロック(イントロ・間奏・アウトロ以外)に、上から順に割り当てるのを初期値にする
+function lyrPlan(){const s=curSong();const paras=lyrParas();if(LYR.bid)return paras.length?[{bl:blockById(s,LYR.bid),lines:paras[0],k:0}]:[];
+  const sing=s.blocks.filter(b=>!['In','I','Out'].includes(b.type));
+  return paras.map((lines,k)=>{if(LYR.assign[k]==null)LYR.assign[k]=sing[k]?sing[k].id:'';return {bl:blockById(s,LYR.assign[k]),lines,k}}).filter(p=>p.bl)}
+function lyrPrev(){const el=$('#lyrPrev');if(!el)return;const s=curSong(),paras=lyrParas();lyrPlan();
+  const go=$('#lyrGo');if(go)go.disabled=!paras.length;
+  if(!paras.length){el.innerHTML='';return}
+  el.innerHTML=paras.map((lines,k)=>{const bl=LYR.bid?blockById(s,LYR.bid):blockById(s,LYR.assign[k]);const need=lines.length*LYR.per;
+    const over=bl&&need>bl.bars.length?Math.ceil((need-bl.bars.length)/LYR.per):0;
+    return `<div class="lyr-p"><div class="hstack">${LYR.bid?`<b>${esc(bl.name)}</b>`:`<select data-change="lyrSel" data-p="${k}"><option value="">入れない</option>${s.blocks.map(b=>`<option value="${b.id}" ${b.id===LYR.assign[k]?'selected':''}>${esc(b.name)}(${b.bars.length}小節)</option>`).join('')}</select>`}
+      <span class="sub">${lines.length}行 → ${need}小節分</span></div>
+      <div class="l1">${esc(lines[0])}${lines.length>1?' …':''}</div>
+      ${bl&&over?`<div class="warn">ブロックは${bl.bars.length}小節なので、入りきらない${over}行は最後の小節にまとめて入れます</div>`:''}
+      ${!bl&&!LYR.bid?'<div class="sub">このまとまりは入れません</div>':''}</div>`}).join('')}
 /* ---------- コードのコピー・貼り付け ----------
    小節は「何マス目か」の位置どおりに貼る。貼り先の小節数・拍子・マス数は変えず、入りきらない分は貼らない */
 let CB=null;try{CB=JSON.parse(localStorage.getItem('kopiban-cb')||'null')}catch(_){}
@@ -1293,19 +1324,21 @@ function chordSheetHTML(s,withNotes,withPhotos,showBand){
 
 function printTabs(s,on){return `<span class="ptabs"><a href="#/print/${s.id}/map" class="${on==='map'?'on':''}">構成表(1枚)</a><a href="#/print/${s.id}" class="${on==='chord'?'on':''}">コード譜</a></span>`}
 function viewMap(s){
-  const withNotes=S.prefs.printNotes!==false;
+  const withNotes=S.prefs.printNotes!==false,hasLyr=s.blocks.some(b=>b.bars.some(x=>x.lyric)),withLyr=hasLyr&&S.prefs.printLyrics!==false;
   return topbar('')+`<main>
   <div class="pbar-actions noprint"><a class="back" href="#/song/${s.id}">‹ 構成に戻る</a>${printTabs(s,'map')}<span class="spacer"></span>
+    ${hasLyr?`<label class="sub"><input type="checkbox" data-change="printOpt" data-k="printLyrics" ${withLyr?'checked':''}> 歌詞</label>`:''}
     <label class="sub"><input type="checkbox" data-change="printOpt" data-k="printNotes" ${withNotes?'checked':''}> テキストメモ</label>
     <button class="primary" data-act="doPrint">印刷 / PDFに保存</button></div>
   <p class="sub noprint" style="max-width:860px;margin:6px auto">印刷するとA4 1枚に収まるよう自動で縮小されます。譜面台に置く用。</p>
-  ${mapHTML(s,withNotes)}</main>`}
-function mapHTML(s,withNotes){let pos=1;
+  ${mapHTML(s,withNotes,withLyr)}</main>`}
+// withLyr: ブロックごとに、小節に入れた歌詞を「 / 」でつないで載せる(歌詞を覚えきれない人が譜面台で見る用)
+function mapHTML(s,withNotes,withLyr){let pos=1;
   const rows=s.blocks.map((b,i)=>{const from=pos;pos+=b.bars.length;
     const memo=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>esc(m.text)).join(' / '):'';
     return `<tr><td class="mi">${i+1}</td><td class="mc" style="background:${TYPES[b.type].color}"></td>
       <td class="mn">${esc(b.name)}</td><td class="mb"><b>${b.bars.length}</b><span>小節</span></td>
-      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
+      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${withLyr&&b.bars.some(x=>x.lyric)?`<div class="mlyr">${b.bars.filter(x=>x.lyric).map(x=>esc(x.lyric)).join(' / ')}</div>`:''}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
       <td class="mp">${from}–${pos-1}</td></tr>`}).join('');
   return `<div class="pv map"><div class="mhead"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}</div></div>
     <div style="margin:10px 0 12px">${strip(s,true)}</div>
@@ -1414,7 +1447,7 @@ async function fillImport(){
   const el=$('#impBody');if(!el)return;
   try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs,events:(d.events||[]).map(e=>Object.assign({id:uid()},e))};
     const isSl=!!d.setlist;
-    const body=songs.map(s=>(impTab==='map'?mapHTML(s,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
+    const body=songs.map(s=>(impTab==='map'?mapHTML(s,true,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
     const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
     el.innerHTML=`<div class="card noprint"><b>共有された${isSl?'セトリ':'曲'}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${isSl?'セトリ':'曲'}に追加」すると、あなたの端末だけにコピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
@@ -1483,6 +1516,7 @@ const TOUR=[
   {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
+  {on:'song',r:tSong,sel:'.lyr-open',h:'歌詞をまとめて入れる',t:'「🎤 歌詞をまとめて入れる」に曲の歌詞を貼り付けると、空行で区切ったまとまりごとにブロックへ、1行ずつ小節へ振り分けます。どのまとまりをどのブロックに入れるか、1行を何小節にするかは、入れる前に選び直せます。入れた歌詞は構成表やコード譜にも載ります。',need:tourSong},
   {on:'song',r:tSong,sel:'#songActs',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
   // ブロックの画面
   {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。⋮⋮ をつかむと並べ替え、いちばん下のボタンから追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
@@ -1494,11 +1528,12 @@ const TOUR=[
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cpOpen]',h:'コピペ',t:'「📋 コピペ」で、マス1つ・何小節か・ブロック全部のコードをコピーして、ほかの場所に貼り付けられます。別のブロックや別の曲にも貼れるので、2番やくり返しの部分を書くときに便利です。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
+  {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。',need:hasSl},
   {on:'setlist',grp:'共有',r:()=> '#/',sel:'.menubtn',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
-const TOUR_MORE=['音源','メトロノーム','コード入力キーボード','詳しい設定','共有・印刷','スタジオ・本番の予定','セトリごと共有'];
+const TOUR_MORE=['音源','メトロノーム','歌詞をまとめて入れる','コード入力キーボード','メモ(写真・録音)','詳しい設定','共有・印刷','スタジオ・本番の予定','セトリごと共有'];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
 const tGrp=(s,i)=>s.grp||(i<2?'はじめに':s.r===tSong?'曲の画面':s.r===tBlk?'ブロックの画面':'セトリ画面');
 const TG=()=>TOUR.filter(s=>!s.noguide).map((s,i)=>[s.h,s.g||s.t,s.help,tGrp(s,i)]);
@@ -1579,7 +1614,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1703,6 +1738,23 @@ const ACT={
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutEnd(){S.prefs.tutDone=true;save();ACT.lbClose()},
+  // 歌詞をまとめて貼り付けて、空行で区切ったまとまり→ブロック、1行→小節に振り分ける
+  lyrOpen(t){const s=curSong();if(!s)return;LYR={bid:t.dataset.b||null,per:LYR.per||2,assign:[],text:''};
+    $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal lyr-m">
+    <div class="hstack"><b>🎤 歌詞を${LYR.bid?'貼る':'まとめて入れる'}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <p class="sub" style="margin:4px 0 8px">${LYR.bid?`歌詞を貼り付けると、このブロック(${esc(blockById(s,LYR.bid).name)})の小節に1行ずつ入れます。`:'曲の歌詞をまとめて貼り付けると、<b>空行で区切ったまとまりごとにブロックへ</b>、<b>1行ずつ小節へ</b>振り分けます。歌詞サイトからコピーした文をそのまま貼ってOKです。'}</p>
+    <textarea id="lyrIn" data-input="lyrText" placeholder="ここに歌詞を貼り付け"></textarea>
+    <div class="lyr-opts"><span class="sub">1行 =</span><select data-change="lyrPer">${[1,2,4].map(n=>`<option value="${n}" ${n===LYR.per?'selected':''}>${n}小節</option>`).join('')}</select><span class="sub">(歌詞は行の最初の小節に入ります)</span></div>
+    <div class="lyr-prev" id="lyrPrev"></div>
+    <div class="hstack"><span class="spacer"></span><button class="ghost" data-act="lbClose">やめる</button><button class="primary" data-act="lyrApply" id="lyrGo" disabled>入れる</button></div></div>`;
+    $('#lyrIn').focus()},
+  lyrApply(){const s=curSong();const plan=lyrPlan();if(!plan.length)return;
+    const filled=plan.filter(p=>p.bl.bars.some(x=>x.lyric)).map(p=>p.bl.name);
+    if(filled.length&&!confirm(`${[...new Set(filled)].join('・')} に入っている歌詞を、貼り付けた歌詞で置き換えます。よろしいですか？`))return;
+    const done=new Set();
+    plan.forEach(({bl,lines})=>{if(!done.has(bl.id)){bl.bars.forEach(x=>x.lyric='');done.add(bl.id)}
+      const last=bl.bars.length-1;lines.forEach((ln,j)=>{const i=j*LYR.per;if(i<=last)bl.bars[i].lyric=ln;else bl.bars[last].lyric=(bl.bars[last].lyric?bl.bars[last].lyric+' / ':'')+ln})});
+    save();ACT.lbClose();render();toast(`${done.size}ブロックに歌詞を入れました`)},
   cpOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal cpm">
     <div class="hstack"><b>📋 コピー・貼り付け</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div><div id="cpBody">${cpBody()}</div></div>`},
   cpCell(){cbSet({type:'cell',v:curCell()});toast('コピーしました');ACT.lbClose()},
@@ -1853,6 +1905,8 @@ const CHG={
     if(targets.some(b=>b.cells.slice(n).some(Boolean))&&!confirm('拍子を変えると、はみ出すマスのコードが消えます。よろしいですか？')){bl.meter=prev;render();return}
     targets.forEach(b=>resizeBar(b,n));P=null;render()},
   printOpt(t){S.prefs[t.dataset.k]=t.checked;render()},
+  lyrPer(t){LYR.per=+t.value;lyrPrev()},
+  lyrSel(t){LYR.assign[+t.dataset.p]=t.value;lyrPrev()},
   theme(t){S.prefs.theme=t.value;render()},
   barsCount(t){const bl=curBlock();const n=Math.max(1,Math.min(64,parseInt(t.value)||1));
     if(n<bl.bars.length&&bl.bars.slice(n).some(b=>b.cells.some(Boolean)||b.lyric)&&!confirm(`${n+1}小節目以降のコードと歌詞が消えます。よろしいですか？`)){t.value=bl.bars.length;return}
@@ -1863,6 +1917,7 @@ const INP={
   songField(t){curSong()[t.dataset.k]=t.value},
   blockField(t){curBlock()[t.dataset.k]=t.value},
   lyric(t){curBlock().bars[+t.dataset.bar].lyric=t.value},
+  lyrText(t){LYR.text=t.value;lyrPrev()},
   memoName(t){findMemo(t.dataset.id).m.name=t.value},
   memoText(t){findMemo(t.dataset.id).m.text=t.value},
   bandName(t){band().name=t.value},
