@@ -1481,7 +1481,7 @@ const TOUR=[
   {on:'song',r:tSong,sel:'#songInfo',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songAudio',h:'音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
-  {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songActs',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
   // ブロックの画面
@@ -1492,6 +1492,7 @@ const TOUR=[
   {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'途中で転調する・拍子が変わる・テンポが変わるなど、曲の一部だけ変化があるときは、「⚙ 詳しい設定」でそのブロックだけ拍子・テンポ・キーを変えられます。ブロックの種類(イントロ・Aメロなど)もここで変えられます。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
+  {on:'block',kb:1,r:tBlk,sel:'[data-act=cpOpen]',h:'コピペ',t:'「📋 コピペ」で、マス1つ・何小節か・ブロック全部のコードをコピーして、ほかの場所に貼り付けられます。別のブロックや別の曲にも貼れるので、2番やくり返しの部分を書くときに便利です。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有',r:()=> '#/',sel:'[data-act=shareSetlist]',h:'セトリごと共有',t:'曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。',need:hasSl},
   {on:'setlist',grp:'共有',r:()=> '#/',sel:'.menubtn',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
