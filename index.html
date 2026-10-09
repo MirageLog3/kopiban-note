@@ -182,6 +182,7 @@ h1{font-size:24px;margin:4px 0 6px}
 #pmSeek{flex:1;min-width:0;accent-color:var(--accent);height:28px}
 .pm-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pm-more{font-size:20px;padding:4px 8px}
+.url-stat{font-size:12px;margin-top:4px;line-height:1.5}.url-stat:empty{display:none}.url-stat .ok{color:var(--ok);font-weight:600}.url-stat .ng{color:var(--accent)}
 .m-vol{gap:10px}.m-vol label{display:flex;align-items:center;gap:4px;flex:1;min-width:0}.m-vol input[type=range]{flex:1;min-width:60px;accent-color:var(--accent)}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .m-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}.m-head{margin-top:0}.m-from{flex:1;min-width:0}
@@ -718,10 +719,11 @@ function viewSong(){
     <label>キー(調)<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
   </div>
   <div class="card song-audio" id="songAudio"><b>🎵 音源</b>
-    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeなど"></label>
-      ${s.url?`<a class="back" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px">開く ↗</a>`:''}</div>
+    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeのリンクを貼り付け"></label>
+      <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a></div>
+    <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     ${s.audio?`<p class="sub" style="margin:8px 0 0">🎵 ${esc(s.audio.name)} を入れてあります。下のプレーヤーで再生・差し替えできます。</p>`
-      :`<div class="hstack" id="audioDrop" style="margin-top:8px"><button class="primary" data-act="audioPick">🎵 音源ファイルを入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK${ytId(s.url)?' ・ 今は参考音源URLのYouTubeを下のプレーヤーで再生できます':''}</span></div>`}</div>
+      :`<div class="hstack" id="audioDrop" style="margin-top:8px"><button class="primary" data-act="audioPick">🎵 音源ファイルを入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
   <div class="hstack song-acts" id="songActs"><button data-act="share">🔗 共有</button><a href="#/print/${s.id}/map"><button>🖨 印刷・PDF</button></a></div>
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${metroCard(s)}
@@ -880,6 +882,15 @@ function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
 const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':null);
+// 参考音源URLを入れたときの状態表示。貼り付けただけで読み込まれる(ボタンを押す必要はない)ことが分かるようにする
+function urlStatHTML(s){const u=(s&&s.url||'').trim();if(!u)return '';
+  if(!ytId(u))return `<span class="ng">このリンクはここでは再生できません(YouTubeのリンクだけ再生できます)。「開く ↗」でリンク先を開けます。</span>`;
+  if(s.audio)return `<span class="sub">YouTubeのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとYouTubeで再生します)。</span>`;
+  const st=M.ytState;
+  return st==='error'?`<span class="ng">✕ ${M.ytErr===100?'動画が見つかりませんでした(削除されたか非公開かもしれません)。':M.ytErr===2?'リンクの形が正しくないようです。YouTubeの「共有」からコピーしたリンクを貼ってみてください。':M.ytErr===101||M.ytErr===150?'この動画はYouTube以外での再生が許可されていないため、ここでは再生できません。「開く ↗」でYouTubeを開いて聴いてください。':'YouTubeを読み込めませんでした。「開く ↗」でYouTubeを開いて聴いてください。'}</span>`
+    :st==='ready'?`<span class="ok">✓ 読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`
+    :`<span class="sub">YouTubeを読み込んでいます…</span>`}
+function updUrlStat(){const el=$('#urlStat'),s=curSong();if(el&&s)el.innerHTML=urlStatHTML(s)}
 const M={kind:null,yt:null,
   ok(){return this.kind==='yt'?!!(this.yt&&this.yt.getCurrentTime):true},
   time(){return this.kind==='yt'?(this.ok()?this.yt.getCurrentTime():0):$('#pa').currentTime},
@@ -898,9 +909,12 @@ function applyAVol(){const v=S.prefs.aVol??1,a=$('#pa');
     if(M.g)M.g.gain.value=v}
   else a.volume=v}
 function loadYT(id){
+  M.ytState='loading';
   if(M.yt&&M.yt.cueVideoById){M.yt.cueVideoById(id);return}
   const make=()=>{M.yt=new YT.Player('yt',{width:'240',height:'135',videoId:id,playerVars:{playsinline:1,rel:0},
-    events:{onReady(){M.yt.setPlaybackRate(+$('#plRate').value);applyAVol()},onError(e){toast('YouTubeを再生できませんでした(コード '+e.data+')。公開版のページで開くと再生できます')}}})};
+    events:{onReady(){M.yt.setPlaybackRate(+$('#plRate').value);applyAVol();if(M.ytState!=='error')M.ytState='ready';updUrlStat()},
+      onStateChange(e){if(e.data===5||e.data===1){if(M.ytState!=='error'||e.data===1)M.ytState='ready';updUrlStat()}},
+      onError(e){M.ytState='error';M.ytErr=e.data;updUrlStat();toast('YouTubeを再生できませんでした(コード '+e.data+')。公開版のページで開くと再生できます')}}})};
   if(window.YT&&window.YT.Player)make();else{window.onYouTubeIframeAPIReady=make;if(!$('#ytapi')){const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.appendChild(sc)}}}
 function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<0.999)applyAVol()}
   const s=(R.name==='song'||R.name==='block')?songById(R.a):null;const kind=songMedia(s);const show=!!kind;
@@ -1638,7 +1652,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1939,7 +1953,7 @@ const CHG={
 };
 const INP={
   evf(t){const {e}=evFind(t.dataset.id);if(!e)return;e[t.dataset.k]=t.value;const s=$('#evSum-'+e.id);if(s)s.innerHTML=studioSum(e)},
-  songField(t){curSong()[t.dataset.k]=t.value},
+  songField(t){curSong()[t.dataset.k]=t.value;if(t.dataset.k==='url'){syncPlayer();updUrlStat();const o=$('#urlOpen');if(o){o.href=t.value.trim();o.style.display=t.value.trim()?'':'none'}}},
   blockField(t){curBlock()[t.dataset.k]=t.value},
   lyric(t){curBlock().bars[+t.dataset.bar].lyric=t.value},
   lyrText(t){LYR.text=t.value;lyrPrev()},
