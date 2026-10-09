@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>/* iPhone・iPadでは、文字の小さい入力欄を押したときに画面が勝手に拡大されるのを止める(指での拡大縮小はそのままできる) */
+if(/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))document.querySelector('meta[name=viewport]').content+=',maximum-scale=1'</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="コピバンノート">
 <meta name="theme-color" content="#141312">
@@ -734,9 +736,14 @@ function viewSong(){
 const MT={ctx:null,timer:null,raf:null,playing:false,songId:null,loop:null,pre:[],pass:null,preDur:0,i:0,start:0,vis:[]};
 const blockBpm=(b,s)=>+b.bpm||+s.bpm||120;
 function barBeats(bl,bar,s){const m=normMeter(barMeter(bl,bar,s)||blockMeter(bl,s)).match(/^(\d+)\/(\d+)$/);return m?{n:+m[1],d:+m[2]}:{n:4,d:4}}
+// 刻み(曲ごとの設定): 拍の間に小さい音を足す。8分・8分ハネ(シャッフル/スウィング: 裏を3連の3つ目に置く)・3連・16分。
+// 4分音符を1つの単位にして刻むので、2/2なら1拍の中に4分の音も入る。x/8の拍子(1拍が8分)では足さない
+const MSUB=[['','拍ごと'],['8','8分'],['sw','8分ハネ(スウィング)'],['3','3連'],['16','16分']];
+function subOffs(s,d,dur){const m=s&&s.mSub,q=4/d;if(!m||q<1)return [];const fr={'8':[.5],sw:[2/3],'3':[1/3,2/3],'16':[.25,.5,.75]}[m]||[];const out=[];
+  for(let i=0;i<q-1e-9;i++){if(i>0)out.push(i);fr.forEach(f=>out.push(i+f))}return out.map(p=>p*dur/q)}
 function clicksFor(s,blocks,barsOf){const ev=[];let t=0;const rate=S.prefs.mRate||1;
-  for(const bl of blocks)for(const bi of barsOf(bl)){const bar=bl.bars[bi];const {n,d}=barBeats(bl,bar,s);const dur=60/(blockBpm(bl,s)*rate)*4/d;
-    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}
+  for(const bl of blocks)for(const bi of barsOf(bl)){const bar=bl.bars[bi];const {n,d}=barBeats(bl,bar,s);const dur=60/(blockBpm(bl,s)*rate)*4/d;const subs=subOffs(s,d,dur);
+    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1,subs});t+=dur}}
   return {ev,total:t}}
 function metroOpts(){const r=S.prefs.mRate||1;
   return `<label class="sub">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label>
@@ -750,7 +757,8 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
     <select id="mFrom" class="m-from">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select></div>
     <div class="m-row"><button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button><span class="spacer"></span>
       <label class="sub m-rate">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label></div>
-    <div class="m-row"><label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label></div>
+    <div class="m-row"><label class="sub">刻み <select data-change="mSub">${MSUB.map(([v,l])=>`<option value="${v}" ${(s.mSub||'')===v?'selected':''}>${l}</option>`).join('')}</select></label>
+      <label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label></div>
     ${songMedia(s)?`<div class="m-sync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 🎵 音源に合わせて鳴らす</label>
       ${s.mSync?`<div class="sub m-offlab">1小節目の位置(秒)</div>
       <div class="m-off"><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
@@ -762,10 +770,10 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
 // 音源同期: 「1小節目の位置」から、曲の構成(テンポ・拍子・小節数)だけで拍の時刻を並べる。ブロックの頭では合わせ直さない
 const MS={ev:null,evKey:'',last:null,lastMt:null};
 function syncEvents(s){const off=+s.mOffset||0;const ev=[];let t=off;
-  s.blocks.forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;
-    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1});t+=dur}}));
+  s.blocks.forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;const subs=subOffs(s,d,dur);
+    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1,subs});t+=dur}}));
   return ev}
-function syncEv(s){const key=s.id+JSON.stringify(s.blocks.map(b=>[b.id,b.bpm,b.meter,b.bars.map(x=>x.n+(x.m||''))]))+s.bpm+s.meter+s.mOffset;
+function syncEv(s){const key=s.id+JSON.stringify(s.blocks.map(b=>[b.id,b.bpm,b.meter,b.bars.map(x=>x.n+(x.m||''))]))+s.bpm+s.meter+s.mOffset+(s.mSub||'');
   if(!MS.ev||MS.evKey!==key){MS.ev=syncEvents(s);MS.evKey=key}return MS.ev}
 const syncOn=s=>!!(s&&s.mSync&&songMedia(s));
 // ブロックの頭の時刻: 同期モードなら拍の並びから計算、それ以外は ⏱ で登録した位置
@@ -779,12 +787,13 @@ function syncTick(){const s=playerSong();
   syncEv(s);const mt=M.time(),pr=mediaRate();
   if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6)MS.last=mt-0.001;
   MS.lastMt=mt;const horizon=mt+0.12*pr;let cur=null;
-  for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc)}
+  for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc);(e.subs||[]).forEach(o=>clickAt(ctx.currentTime+Math.max(0,(e.t+o-mt)/pr),-1))}
   MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur,false,cur?(mt-cur.t)/cur.dur:0)}
 setInterval(syncTick,20);
 function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ensureCtx();M.seek(Math.max(0,(t||0)-0.05));M.play()}
-function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:880;
-  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(acc?0.9:0.5,at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+0.06);
+// acc: 2=小節の頭 1=中くらいの強拍 0=拍 -1=刻み(拍の間の小さい音)
+function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:acc<0?660:880;
+  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(acc>0?0.9:acc<0?0.22:0.5,at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+0.06);
   o.connect(g).connect(c.destination);o.start(at);o.stop(at+0.07)}
 function mNext(){if(MT.i<MT.pre.length){const e=MT.pre[MT.i];return Object.assign({},e,{at:MT.start+e.t,count:true})}
   const j=MT.i-MT.pre.length,L=MT.pass.ev.length,cyc=Math.floor(j/L);if(cyc>0&&!MT.loop)return null;
@@ -794,7 +803,7 @@ function mStart(s,blocks,loopId){mStop();const Ctx=window.AudioContext||window.w
   MT.pass=clicksFor(s,blocks,bl=>bl.bars.map((_,i)=>i));if(!MT.pass.ev.length)return;
   const pre=S.prefs.mCount!==false?clicksFor(s,[blocks[0]],()=>[0]):{ev:[],total:0};
   Object.assign(MT,{pre:pre.ev,preDur:pre.total,i:0,start:MT.ctx.currentTime+0.12,vis:[],playing:true,songId:s.id,loop:loopId||null});
-  MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15){clickAt(e.at,e.acc);MT.vis.push(e);MT.i++}
+  MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15){clickAt(e.at,e.acc);if(!e.count)(e.subs||[]).forEach(o=>clickAt(e.at+o,-1));MT.vis.push(e);MT.i++}
     if(!e&&MT.vis.length&&MT.ctx.currentTime>MT.vis[MT.vis.length-1].at+0.6)mStop()},25);
   const draw=()=>{if(!MT.playing)return;const now=MT.ctx.currentTime;let cur=null;while(MT.vis.length>1&&MT.vis[1].at<=now)MT.vis.shift();if(MT.vis[0]&&MT.vis[0].at<=now)cur=MT.vis[0];
     mPaint(cur,false,cur?(now-cur.at)/cur.dur:0);MT.raf=requestAnimationFrame(draw)};draw()}
@@ -1513,7 +1522,7 @@ const TOUR=[
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songInfo',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songAudio',h:'音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
-  {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。',need:tourSong},
+  {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。「刻み」で、拍の間に8分・8分ハネ(スウィング)・3連・16分の小さい音も足せます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
   {on:'song',r:tSong,sel:'.lyr-open',h:'歌詞をまとめて入れる',t:'「🎤 歌詞をまとめて入れる」に曲の歌詞を貼り付けると、空行で区切ったまとまりごとにブロックへ、1行ずつ小節へ振り分けます。どのまとまりをどのブロックに入れるか、1行を何小節にするかは、入れる前に選び直せます。入れた歌詞は構成表やコード譜にも載ります。',need:tourSong},
@@ -1614,7 +1623,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1881,6 +1890,7 @@ const CHG={
   blockType(t){curBlock().type=t.value;render()},
   mRate(t){S.prefs.mRate=+t.value;save();if(MT.playing)toast('次に再生したときから反映されます')},
   mCount(t){S.prefs.mCount=t.checked;save()},
+  mSub(t){const s=curSong();s.mSub=t.value;save();if(MT.playing)toast('次に再生したときから反映されます')},
   mSync(t){const s=curSong();s.mSync=t.checked;if(t.checked){mStop();ensureCtx()}render()},
   mOffset(t){const s=curSong();const v=parseFloat(String(t.value).replace(/[－−]/,'-'));s.mOffset=isNaN(v)?0:Math.round(v*100)/100;t.value=s.mOffset.toFixed(2);MS.last=null;save()},
   mkColor(t){S.markers[+t.dataset.i].color=t.value;render()},
