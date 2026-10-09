@@ -182,6 +182,7 @@ h1{font-size:24px;margin:4px 0 6px}
 #pmSeek{flex:1;min-width:0;accent-color:var(--accent);height:28px}
 .pm-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pm-more{font-size:20px;padding:4px 8px}
+.m-vol{gap:10px}.m-vol label{display:flex;align-items:center;gap:4px;flex:1;min-width:0}.m-vol input[type=range]{flex:1;min-width:60px;accent-color:var(--accent)}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .m-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}.m-head{margin-top:0}.m-from{flex:1;min-width:0}
 .m-rate{display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -760,6 +761,8 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
     <select id="mFrom" class="m-from">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select></div>
     <div class="m-row"><button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button><span class="spacer"></span>
       <label class="sub m-rate">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label></div>
+    <div class="m-row m-vol"><span class="sub">音量</span><label class="sub" title="メトロノームの音量">🥁<input type="range" min="0" max="1" step="0.05" value="${S.prefs.mVol??1}" data-input="mVol"></label>
+      ${songMedia(s)?`<label class="sub" title="音源の音量">🎵<input type="range" min="0" max="1" step="0.05" value="${S.prefs.aVol??1}" data-input="aVol"></label>`:''}</div>
     <div class="m-row"><label class="sub">刻み <select data-change="mSub">${MSUB.map(([v,l])=>`<option value="${v}" ${(s.mSub||'')===v?'selected':''}>${l}</option>`).join('')}</select></label>
       <label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label></div>
     ${songMedia(s)?`<div class="m-sync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 🎵 音源に合わせて鳴らす</label>
@@ -796,7 +799,8 @@ setInterval(syncTick,20);
 function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ensureCtx();M.seek(Math.max(0,(t||0)-0.05));M.play()}
 // acc: 2=小節の頭 1=中くらいの強拍 0=拍 -1=刻み(拍の間の小さい音)
 function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:acc<0?660:880;
-  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(acc>0?0.9:acc<0?0.22:0.5,at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+0.06);
+  const vol=S.prefs.mVol??1;if(vol<=0.001)return;
+  g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(Math.max(0.0002,(acc>0?0.9:acc<0?0.22:0.5)*vol),at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+0.06);
   o.connect(g).connect(c.destination);o.start(at);o.stop(at+0.07)}
 function mNext(){if(MT.i<MT.pre.length){const e=MT.pre[MT.i];return Object.assign({},e,{at:MT.start+e.t,count:true})}
   const j=MT.i-MT.pre.length,L=MT.pass.ev.length,cyc=Math.floor(j/L);if(cyc>0&&!MT.loop)return null;
@@ -885,12 +889,20 @@ const M={kind:null,yt:null,
   pause(){if(this.kind==='yt'){if(this.ok())this.yt.pauseVideo()}else $('#pa').pause()},
   paused(){return this.kind==='yt'?!(this.ok()&&this.yt.getPlayerState()===1):$('#pa').paused},
   rate(r){if(this.kind==='yt'){if(this.ok())this.yt.setPlaybackRate(r)}else $('#pa').playbackRate=r}};
+// 音源の音量。iPhone・iPadは音声の音量をページから変えられないので、音を一度 Web Audio に通して小さくする(音量を下げたときだけ)
+const IS_IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function applyAVol(){const v=S.prefs.aVol??1,a=$('#pa');
+  try{if(M.yt&&M.yt.setVolume)M.yt.setVolume(Math.round(v*100))}catch(_){}
+  if(!a)return;
+  if(IS_IOS){if(!M.g&&v<0.999){const ctx=ensureCtx();if(!ctx)return;const src=ctx.createMediaElementSource(a);M.g=ctx.createGain();src.connect(M.g).connect(ctx.destination)}
+    if(M.g)M.g.gain.value=v}
+  else a.volume=v}
 function loadYT(id){
   if(M.yt&&M.yt.cueVideoById){M.yt.cueVideoById(id);return}
   const make=()=>{M.yt=new YT.Player('yt',{width:'240',height:'135',videoId:id,playerVars:{playsinline:1,rel:0},
-    events:{onReady(){M.yt.setPlaybackRate(+$('#plRate').value)},onError(e){toast('YouTubeを再生できませんでした(コード '+e.data+')。公開版のページで開くと再生できます')}}})};
+    events:{onReady(){M.yt.setPlaybackRate(+$('#plRate').value);applyAVol()},onError(e){toast('YouTubeを再生できませんでした(コード '+e.data+')。公開版のページで開くと再生できます')}}})};
   if(window.YT&&window.YT.Player)make();else{window.onYouTubeIframeAPIReady=make;if(!$('#ytapi')){const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.appendChild(sc)}}}
-function syncPlayer(){
+function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<0.999)applyAVol()}
   const s=(R.name==='song'||R.name==='block')?songById(R.a):null;const kind=songMedia(s);const show=!!kind;
   document.body.classList.toggle('has-player',show);$('#player').style.display=show?'':'none';
   const a=$('#pa');
@@ -1525,7 +1537,7 @@ const TOUR=[
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songInfo',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songAudio',h:'音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
-  {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。「刻み」で、拍の間に8分・8分ハネ(スウィング)・3連・16分・16分ハネの小さい音も足せます。',need:tourSong},
+  {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。「刻み」で、拍の間に8分・8分ハネ(スウィング)・3連・16分・16分ハネの小さい音も足せます。「音量」で、メトロノームと音源の音の大きさのバランスを変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
   {on:'song',r:tSong,sel:'.lyr-open',h:'歌詞をまとめて入れる',t:'「🎤 歌詞をまとめて入れる」に曲の歌詞を貼り付けると、空行で区切ったまとまりごとにブロックへ、1行ずつ小節へ振り分けます。どのまとまりをどのブロックに入れるか、1行を何小節にするかは、入れる前に選び直せます。入れた歌詞は構成表やコード譜にも載ります。',need:tourSong},
@@ -1626,7 +1638,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1931,6 +1943,8 @@ const INP={
   blockField(t){curBlock()[t.dataset.k]=t.value},
   lyric(t){curBlock().bars[+t.dataset.bar].lyric=t.value},
   lyrText(t){LYR.text=t.value;lyrPrev()},
+  mVol(t){S.prefs.mVol=+t.value},
+  aVol(t){S.prefs.aVol=+t.value;applyAVol()},
   memoName(t){findMemo(t.dataset.id).m.name=t.value},
   memoText(t){findMemo(t.dataset.id).m.text=t.value},
   bandName(t){band().name=t.value},
