@@ -794,6 +794,17 @@ const preAnchor=(s,b)=>syncOn(s)&&s.blocks.indexOf(b)<s.blocks.indexOf(syncAncho
 function blockTime(s,b){if(syncOn(s)&&!preAnchor(s,b)){const e=syncEv(s).find(x=>x.bid===b.id);return e?e.t:null}return b.start}
 function ensureCtx(){const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return null;MT.ctx=MT.ctx||new Ctx();if(MT.ctx.state!=='running')MT.ctx.resume();return MT.ctx}
 ['pointerdown','keydown'].forEach(t=>document.addEventListener(t,()=>{if(MT.ctx&&MT.ctx.state!=='running')MT.ctx.resume()},true));
+// 再生ボタンを押したときに、音を鳴らす準備を確実にする。
+// iPhoneでは音源を読み込み直したりすると音の出口(AudioContext)が止まったまま戻らないことがあるので、
+// 戻らなければ作り直す(音源の音量調整でこの出口を使っているときは作り直せないので、戻すのを試すだけ)。
+// 最後に無音を1回鳴らして、iPhoneで音が出る状態にしておく
+async function ctxReady(){const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return null;
+  if(MT.ctx&&MT.ctx.state==='closed')MT.ctx=null;
+  if(!MT.ctx)MT.ctx=new Ctx();
+  if(MT.ctx.state!=='running'){try{await Promise.race([MT.ctx.resume(),new Promise(r=>setTimeout(r,300))])}catch(_){}}
+  if(MT.ctx.state!=='running'&&!M.g){try{MT.ctx.close()}catch(_){}MT.ctx=new Ctx();try{await Promise.race([MT.ctx.resume(),new Promise(r=>setTimeout(r,300))])}catch(_){}}
+  try{const c=MT.ctx,b=c.createBuffer(1,1,22050),src=c.createBufferSource();src.buffer=b;src.connect(c.destination);src.start(0)}catch(_){}
+  return MT.ctx}
 function mediaRate(){try{return M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
 function syncTick(){const s=playerSong();
   if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
@@ -804,7 +815,7 @@ function syncTick(){const s=playerSong();
   for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc);(e.subs||[]).forEach(o=>clickAt(ctx.currentTime+Math.max(0,(e.t+o-mt)/pr),-1))}
   MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur,false,cur?(mt-cur.t)/cur.dur:0)}
 setInterval(syncTick,20);
-function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ensureCtx();M.seek(Math.max(0,(t||0)-0.05));M.play()}
+function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ctxReady();MS.last=null;M.seek(Math.max(0,(t||0)-0.05));M.play()}
 // acc: 2=小節の頭 1=中くらいの強拍 0=拍 -1=刻み(拍の間の小さい音)
 function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=acc===2?1600:acc===1?1200:acc<0?660:880;
   const vol=S.prefs.mVol??1;if(vol<=0.001)return;
@@ -813,8 +824,8 @@ function clickAt(at,acc){const c=MT.ctx,o=c.createOscillator(),g=c.createGain();
 function mNext(){if(MT.i<MT.pre.length){const e=MT.pre[MT.i];return Object.assign({},e,{at:MT.start+e.t,count:true})}
   const j=MT.i-MT.pre.length,L=MT.pass.ev.length,cyc=Math.floor(j/L);if(cyc>0&&!MT.loop)return null;
   const e=MT.pass.ev[j%L];return Object.assign({},e,{at:MT.start+MT.preDur+cyc*MT.pass.total+e.t})}
-function mStart(s,blocks,loopId){mStop();const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return toast('このブラウザでは鳴らせません');
-  MT.ctx=MT.ctx||new Ctx();MT.ctx.resume();
+async function mStart(s,blocks,loopId){mStop();const tok=MT.tok;const ctx=await ctxReady();if(tok!==MT.tok)return;if(!ctx)return toast('このブラウザでは鳴らせません');
+  if(ctx.state!=='running')toast('音が出ないときは、もう一度 ▶ 再生 を押してください');
   MT.pass=clicksFor(s,blocks,bl=>bl.bars.map((_,i)=>i));if(!MT.pass.ev.length)return;
   const pre=S.prefs.mCount!==false?clicksFor(s,[blocks[0]],()=>[0]):{ev:[],total:0};
   Object.assign(MT,{pre:pre.ev,preDur:pre.total,i:0,start:MT.ctx.currentTime+0.12,vis:[],playing:true,songId:s.id,loop:loopId||null});
@@ -822,7 +833,7 @@ function mStart(s,blocks,loopId){mStop();const Ctx=window.AudioContext||window.w
     if(!e&&MT.vis.length&&MT.ctx.currentTime>MT.vis[MT.vis.length-1].at+0.6)mStop()},25);
   const draw=()=>{if(!MT.playing)return;const now=MT.ctx.currentTime;let cur=null;while(MT.vis.length>1&&MT.vis[1].at<=now)MT.vis.shift();if(MT.vis[0]&&MT.vis[0].at<=now)cur=MT.vis[0];
     mPaint(cur,false,cur?(now-cur.at)/cur.dur:0);MT.raf=requestAnimationFrame(draw)};draw()}
-function mStop(){clearInterval(MT.timer);cancelAnimationFrame(MT.raf);const was=MT.playing;MT.playing=false;MT.loop=null;if(was)mPaint(null,true)}
+function mStop(){MT.tok=(MT.tok||0)+1;clearInterval(MT.timer);cancelAnimationFrame(MT.raf);const was=MT.playing;MT.playing=false;MT.loop=null;if(was)mPaint(null,true)}
 // 再生中のマス: 拍の中の進み具合(sub 0〜1)から、小節のマス数に割り当てる
 function mCell(e,sub){const want=e&&!e.count&&R.name==='block'&&R.b===e.bid;let el=null;
   if(want){const bar=$('#bar-'+e.bar);const n=bar?bar.querySelectorAll('.cell').length:0;
@@ -1658,7 +1669,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
@@ -1868,7 +1879,7 @@ const ACT={
   mStop(){mStop();const s=curSong();if(s&&s.mSync&&M.kind)M.pause()},
   mOff(t){const s=curSong();s.mOffset=Math.round(((+s.mOffset||0)+ +t.dataset.v)*100)/100;const i=$('#mOffIn');if(i)i.value=s.mOffset.toFixed(2);MS.last=null;save()},
   bZoom(t){const v=+t.dataset.v;setBZ(v===0?1:BZ*(v>0?1.25:0.8))},
-  pmPlay(){ensureCtx();M.paused()?M.play():M.pause()},
+  pmPlay(){ctxReady();MS.last=null;M.paused()?M.play():M.pause()},
   pmMore(){$('#player').classList.toggle('more')},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
     try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「☰ メニュー → 共有コードを読み込む」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
@@ -1890,7 +1901,7 @@ const ACT={
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
   audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
-  bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);const st=blockTime(s,b);if(st==null)return;ensureCtx();M.seek(st);M.play()},
+  bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);const st=blockTime(s,b);if(st==null)return;ctxReady();MS.last=null;M.seek(st);M.play()},
   uiToggle(t){S.prefs.ui=S.prefs.ui||{};const k=t.dataset.k;S.prefs.ui[k]=!S.prefs.ui[k];render()},
   mOffNow(){const s=curSong();if(!M.kind)return;s.mOffset=Math.round(M.time()*100)/100;MS.last=null;save();render();toast(`「${syncAnchor(s).name}」の頭を ${s.mOffset.toFixed(2)} 秒にしました`)},
   bLoop(t){const id=t.dataset.id;PL.loop=PL.loop===id?null:id;if(PL.loop){const r=blockRange(curSong(),id);if(r){M.seek(r.start);M.play()}}render()},
