@@ -1489,7 +1489,7 @@ const TOUR=[
   {core:1,on:'block',r:tBlk,sel:'#bquick',h:'ブロックの画面',t:'1つのブロックの中身です。小節数・メモ・マーカー(キメ・テンポ注意などの目印)を書いておけます。',need:tourBlock,before:tNoCell},
   {core:1,r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'コードも書いておきたいときは、マスをタップすると専用のキーボードが出ます。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。空いているマスは「前のコードが続く」という意味です。',
     g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
-  {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'「⚙ 詳しい設定」を開くと、ブロックの種類・拍子・テンポ・キーを曲と違うものにできます。転調や拍子が変わる部分で使います。',need:tourBlock,before:tNoCell},
+  {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'途中で転調する・拍子が変わる・テンポが変わるなど、曲の一部だけ変化があるときは、「⚙ 詳しい設定」でそのブロックだけ拍子・テンポ・キーを変えられます。ブロックの種類(イントロ・Aメロなど)もここで変えられます。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
