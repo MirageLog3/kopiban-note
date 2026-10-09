@@ -195,6 +195,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
 #ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
 @media screen and (max-width:700px){#ytWrap iframe{width:160px;height:90px}}
+#spWrap iframe{display:block;border-radius:12px;width:280px;height:80px;border:0}
+@media screen and (max-width:700px){#spWrap iframe{width:200px}}
 .board-tools{margin-bottom:6px;gap:6px}.board-tools button{padding:3px 10px}
 .board-wrap{position:relative;overflow:auto;border-radius:10px;background:var(--panel);border:1px solid var(--line);max-height:80vh}
 .board-sizer{position:relative}
@@ -459,6 +461,7 @@ body.has-player #sheet .sheet{bottom:54px}
   .pl-mini{display:flex}
   .pl-rate-t{display:none}.pl-rate select{font-size:13px;padding:4px 2px}
   #ytWrap iframe{width:96px!important;height:54px!important}
+  #spWrap{flex-basis:100%}#spWrap iframe{width:100%!important}
   /* ⋯ を押したとき: 1行目は再生バーのまま、2行目に曲名・速さ・差し替え・外す */
   #player.more .pl-mini{flex-basis:100%}
   #player.more .pl-name{display:block!important;flex:1 1 0;min-width:0;max-width:none;font-size:12px;order:1}
@@ -720,7 +723,7 @@ function viewSong(){
     <label>キー(調)<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
   </div>
   <div class="card song-audio" id="songAudio"><b>🎵 音源</b>
-    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTubeのリンクを貼り付け"></label>
+    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTube・YouTube Music・Spotifyのリンクを貼り付け"></label>
       <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a></div>
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     ${s.audio?`<p class="sub" style="margin:8px 0 0">🎵 ${esc(s.audio.name)} を入れてあります。下のプレーヤーで再生・差し替えできます。</p>`
@@ -805,7 +808,7 @@ async function ctxReady(){const Ctx=window.AudioContext||window.webkitAudioConte
   if(MT.ctx.state!=='running'&&!M.g){try{MT.ctx.close()}catch(_){}MT.ctx=new Ctx();try{await Promise.race([MT.ctx.resume(),new Promise(r=>setTimeout(r,300))])}catch(_){}}
   try{const c=MT.ctx,b=c.createBuffer(1,1,22050),src=c.createBufferSource();src.buffer=b;src.connect(c.destination);src.start(0)}catch(_){}
   return MT.ctx}
-function mediaRate(){try{return M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
+function mediaRate(){try{return M.kind==='sp'?1:M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
 function syncTick(){const s=playerSong();
   if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
   const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
@@ -873,7 +876,7 @@ function timeBtns(b){const s=curSong()||playerSong();const t=blockTime(s,b),sync
   <button class="${PL.loop===b.id?'on':''}" data-act="bLoop" data-id="${b.id}" title="このブロックを繰り返す" ${t==null?'disabled':''}>🔁</button>
   ${sync&&!preAnchor(s,b)?'':`<button data-act="bMark" data-id="${b.id}" title="今の再生位置をこのブロックの頭にする">⏱</button>`}</span>`}
 function initPlayer(){
-  $('#player').innerHTML=`<div class="pl-in"><span id="plName" class="pl-name"></span><div id="ytWrap" style="display:none"><div id="yt"></div></div><audio id="pa" controls preload="metadata"></audio>
+  $('#player').innerHTML=`<div class="pl-in"><span id="plName" class="pl-name"></span><div id="ytWrap" style="display:none"><div id="yt"></div></div><div id="spWrap" style="display:none"><div id="sp"></div></div><audio id="pa" controls preload="metadata"></audio>
   <div class="pl-mini"><button class="pm-play" id="pmPlay" data-act="pmPlay" aria-label="再生/一時停止">▶</button>
     <input type="range" id="pmSeek" min="0" max="1000" value="0" aria-label="再生位置"><span class="pm-time" id="pmTime">0:00</span>
     <button class="ghost pm-more" data-act="pmMore" aria-label="その他">⋯</button></div>
@@ -882,7 +885,7 @@ function initPlayer(){
   <button class="ghost" data-act="audioPick" id="plPick" title="音源ファイルを入れる・差し替える">差し替え</button><button class="ghost" data-act="audioRemove" id="plRemove" title="この曲から音源を外す">外す</button></div>`;
   const a=$('#pa');a.preservesPitch=true;
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
-  setInterval(()=>{if(M.kind==='yt'&&$('#player').style.display!=='none')onTime()},250);
+  setInterval(()=>{if((M.kind==='yt'||M.kind==='sp')&&$('#player').style.display!=='none')onTime()},250);
   // スマホ用のコンパクトな再生バー(1行): 再生ボタン・シークバー・時間
   const sk=$('#pmSeek');let dragging=false;
   sk.addEventListener('input',()=>{dragging=true;const d=M.dur();if(d)$('#pmTime').textContent=fmtS(sk.value/1000*d)});
@@ -902,25 +905,42 @@ function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
-const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':null);
+// Spotifyは曲(トラック)のリンクだけ。open.spotify.com/intl-ja/track/… や spotify:track:… の形も読む
+const spId=u=>{const m=String(u||'').match(/(?:open\.spotify\.com\/(?:intl-[\w-]+\/)?(?:embed\/)?track\/|spotify:track:)([A-Za-z0-9]{22})/);return m?m[1]:null};
+const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':spId(s.url)?'sp':null);
 // 参考音源URLを入れたときの状態表示。貼り付けただけで読み込まれる(ボタンを押す必要はない)ことが分かるようにする
 function urlStatHTML(s){const u=(s&&s.url||'').trim();if(!u)return '';
-  if(!ytId(u))return `<span class="ng">このリンクはここでは再生できません(YouTubeのリンクだけ再生できます)。「開く ↗」でリンク先を開けます。</span>`;
+  if(spId(u))return spStatHTML(s);
+  if(!ytId(u))return `<span class="ng">${/spotify\.link|spotify\.app\.link/.test(u)?'Spotifyの短いリンクはここでは読めません。一度リンクを開いて、アドレス欄の「open.spotify.com/track/…」のリンクを貼ってください。'
+    :/spotify\.com/.test(u)?'Spotifyは曲のリンクだけ再生できます(アルバムやプレイリストのリンクは不可)。曲の「共有」→「リンクをコピー」で貼ってください。'
+    :'このリンクはここでは再生できません(YouTube・YouTube Music・Spotifyのリンクだけ再生できます)。'}「開く ↗」でリンク先を開けます。</span>`;
   if(s.audio)return `<span class="sub">YouTubeのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとYouTubeで再生します)。</span>`;
   const st=M.ytState;
   return st==='error'?`<span class="ng">✕ ${M.ytErr===100?'動画が見つかりませんでした(削除されたか非公開かもしれません)。':M.ytErr===2?'リンクの形が正しくないようです。YouTubeの「共有」からコピーしたリンクを貼ってみてください。':M.ytErr===101||M.ytErr===150?'この動画はYouTube以外での再生が許可されていないため、ここでは再生できません。「開く ↗」でYouTubeを開いて聴いてください。':'YouTubeを読み込めませんでした。「開く ↗」でYouTubeを開いて聴いてください。'}</span>`
     :st==='ready'?`<span class="ok">✓ 読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`
     :`<span class="sub">YouTubeを読み込んでいます…</span>`}
+function spStatHTML(s){
+  if(s.audio)return `<span class="sub">Spotifyのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとSpotifyで再生します)。</span>`;
+  const st=M.spState,note='<br>Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴だけ再生されます。速さは変えられません。';
+  return st==='error'?`<span class="ng">✕ Spotifyを読み込めませんでした。通信状態を確かめるか、「開く ↗」でSpotifyを開いて聴いてください。</span>`
+    :st==='ready'?`<span class="ok">✓ 読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>${M.spDur>0&&M.spDur<=31?'<br><span class="ng">今は30秒の試聴になっています。最後まで聴くには、このブラウザでSpotifyにログインしてからページを開き直してください。</span>':''}<span class="sub">${note}</span>`
+    :`<span class="sub">Spotifyを読み込んでいます…</span>`}
 function updUrlStat(){const el=$('#urlStat'),s=curSong();if(el&&s)el.innerHTML=urlStatHTML(s)}
-const M={kind:null,yt:null,
-  ok(){return this.kind==='yt'?!!(this.yt&&this.yt.getCurrentTime):true},
-  time(){return this.kind==='yt'?(this.ok()?this.yt.getCurrentTime():0):$('#pa').currentTime},
-  dur(){return this.kind==='yt'?(this.ok()?this.yt.getDuration():0):$('#pa').duration},
-  seek(t){if(this.kind==='yt'){if(this.ok())this.yt.seekTo(t,true)}else $('#pa').currentTime=t},
-  play(){if(this.kind==='yt'){if(this.ok())this.yt.playVideo()}else $('#pa').play()},
-  pause(){if(this.kind==='yt'){if(this.ok())this.yt.pauseVideo()}else $('#pa').pause()},
-  paused(){return this.kind==='yt'?!(this.ok()&&this.yt.getPlayerState()===1):$('#pa').paused},
-  rate(r){if(this.kind==='yt'){if(this.ok())this.yt.setPlaybackRate(r)}else $('#pa').playbackRate=r}};
+// Spotifyの埋め込みは再生位置を0.5秒おきくらいにしか教えてくれないので、最後に届いた位置からの経過時間で今の位置を補う
+const SPM={
+  time(){const p=M.spPos||0;return M.spPaused?p:Math.min(p+(performance.now()-M.spAt)/1000,M.spDur||Infinity)},
+  seek(t){if(!M.sp)return;M.sp.seek(t);M.spPos=t;M.spAt=performance.now();M.spSeek={t,at:M.spAt}},
+  play(){if(!M.sp)return;M.spStarted?M.sp.resume():M.sp.play();M.spStarted=1},
+  pause(){if(M.sp)M.sp.pause()}};
+const M={kind:null,yt:null,sp:null,spPaused:true,spPos:0,spAt:0,spDur:0,
+  ok(){return this.kind==='yt'?!!(this.yt&&this.yt.getCurrentTime):this.kind==='sp'?!!this.sp:true},
+  time(){return this.kind==='sp'?SPM.time():this.kind==='yt'?(this.ok()?this.yt.getCurrentTime():0):$('#pa').currentTime},
+  dur(){return this.kind==='sp'?this.spDur:this.kind==='yt'?(this.ok()?this.yt.getDuration():0):$('#pa').duration},
+  seek(t){if(this.kind==='sp')SPM.seek(t);else if(this.kind==='yt'){if(this.ok())this.yt.seekTo(t,true)}else $('#pa').currentTime=t},
+  play(){if(this.kind==='sp')SPM.play();else if(this.kind==='yt'){if(this.ok())this.yt.playVideo()}else $('#pa').play()},
+  pause(){if(this.kind==='sp')SPM.pause();else if(this.kind==='yt'){if(this.ok())this.yt.pauseVideo()}else $('#pa').pause()},
+  paused(){return this.kind==='sp'?this.spPaused:this.kind==='yt'?!(this.ok()&&this.yt.getPlayerState()===1):$('#pa').paused},
+  rate(r){if(this.kind==='sp')return;if(this.kind==='yt'){if(this.ok())this.yt.setPlaybackRate(r)}else $('#pa').playbackRate=r}};
 // 音源の音量。iPhone・iPadは音声の音量をページから変えられないので、音を一度 Web Audio に通して小さくする(音量を下げたときだけ)
 const IS_IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function applyAVol(){const v=S.prefs.aVol??1,a=$('#pa');
@@ -937,16 +957,32 @@ function loadYT(id){
       onStateChange(e){if(e.data===5||e.data===1){if(M.ytState!=='error'||e.data===1)M.ytState='ready';updUrlStat()}},
       onError(e){M.ytState='error';M.ytErr=e.data;updUrlStat();toast('YouTubeを再生できませんでした(コード '+e.data+')。公開版のページで開くと再生できます')}}})};
   if(window.YT&&window.YT.Player)make();else{window.onYouTubeIframeAPIReady=make;if(!$('#ytapi')){const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.appendChild(sc)}}}
+function loadSP(id){
+  const uri='spotify:track:'+id;M.spState='loading';M.spPaused=true;M.spPos=0;M.spAt=performance.now();M.spDur=0;M.spStarted=0;updUrlStat();
+  if(M.sp){M.sp.loadUri(uri);return}
+  const make=api=>{const el=$('#sp');if(!el)return;
+    api.createController(el,{uri,width:'100%',height:80},c=>{M.sp=c;
+      c.addListener('ready',()=>{if(M.spState!=='error')M.spState='ready';updUrlStat()});
+      c.addListener('playback_update',e=>{const d=e.data||{},pos=(d.position||0)/1000,now=performance.now();
+        // シーク直後は古い位置が届くことがあるので、少しのあいだは飛んだ先から離れた位置を無視する
+        if(M.spSeek&&now-M.spSeek.at<900&&Math.abs(pos-M.spSeek.t)>1.5)return;
+        const dur=(d.duration||0)/1000,was=M.spDur;M.spPos=pos;M.spAt=now;M.spPaused=!!d.isPaused||!!d.isBuffering;if(dur)M.spDur=dur;
+        if(!d.isPaused)M.spStarted=1;M.spState='ready';if((was>0&&was<=31)!==(M.spDur>0&&M.spDur<=31)||!was&&dur)updUrlStat();onTime()})})};
+  if(window.SPAPI)make(window.SPAPI);else{window.onSpotifyIframeApiReady=api=>{window.SPAPI=api;make(api)};
+    if(!$('#spapi')){const sc=document.createElement('script');sc.id='spapi';sc.src='https://open.spotify.com/embed/iframe-api/v1';
+      sc.onerror=()=>{M.spState='error';updUrlStat()};document.head.appendChild(sc)}}}
 function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<0.999)applyAVol()}
   const s=(R.name==='song'||R.name==='block')?songById(R.a):null;const kind=songMedia(s);const show=!!kind;
   document.body.classList.toggle('has-player',show);$('#player').style.display=show?'':'none';
   const a=$('#pa');
-  if(!show){if(!a.paused)a.pause();if(M.kind==='yt')M.pause();return}
-  const key=kind==='audio'?'a:'+s.audio.blobId:'y:'+ytId(s.url);
+  if(!show){if(!a.paused)a.pause();if(M.kind==='yt'||M.kind==='sp')M.pause();return}
+  const key=kind==='audio'?'a:'+s.audio.blobId:kind==='sp'?'s:'+spId(s.url):'y:'+ytId(s.url);
   if(PL.songId!==s.id||PL.blobId!==key){if(M.kind)M.pause();PL.songId=s.id;PL.blobId=key;PL.loop=null;M.kind=kind;
-    $('#ytWrap').style.display=kind==='yt'?'':'none';a.style.display=kind==='audio'?'':'none';
-    if(kind==='audio')blobURL(s.audio.blobId).then(u=>{a.src=u});else loadYT(ytId(s.url))}
-  $('#plName').textContent=kind==='audio'?'🎵 '+s.audio.name:'▶ YouTube(参考音源URL)';
+    $('#ytWrap').style.display=kind==='yt'?'':'none';$('#spWrap').style.display=kind==='sp'?'':'none';a.style.display=kind==='audio'?'':'none';
+    // Spotifyは速さを変えられないので100%に固定
+    const rt=$('#plRate');rt.disabled=kind==='sp';rt.title=kind==='sp'?'Spotifyの音源は速さを変えられません':'';if(kind==='sp')rt.value='1';
+    if(kind==='audio')blobURL(s.audio.blobId).then(u=>{a.src=u});else if(kind==='sp')loadSP(spId(s.url));else loadYT(ytId(s.url))}
+  $('#plName').textContent=kind==='audio'?'🎵 '+s.audio.name:kind==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
   $('#plRemove').style.display=kind==='audio'?'':'none';$('#plPick').textContent=kind==='audio'?'差し替え':'音源ファイルを入れる';
   const lb=PL.loop&&s.blocks.find(b=>b.id===PL.loop);$('#plLoop').innerHTML=lb?`🔁 ${esc(lb.name)} をループ中 <button class="ghost" data-act="bLoop" data-id="${lb.id}">解除</button>`:'';
   onTime()}
@@ -1527,7 +1563,7 @@ const TUT=[
   ['曲を追加する','上の「曲」から「＋ 曲を追加」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
   ['コードを入れる','追加したブロックを開くと、さらに<b>グリッド付きのボックス</b>が現れます。<b>1グリッド = 8分音符1つ分</b>、<b>グリッドで区切られたボックス = 1小節</b>です。ボックスの空白部分をタップ・クリックすると、専用のキーボードが現れます。<b>小節の頭やコードが変わる部分</b>にメモをしていきましょう。<br>コード名がわからない場合は「🎹 コード判定」で鍵盤から探せます。',
     ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。当ツールではこの記法に慣れていない人のためにキーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すことで、コード名入力や和音でのコード名判定の際にドレミ表記のまま入力することができるので、慣れるまで活用するとよいでしょう。また、楽曲分析を目的としていたり、移調を考えていたりする方向けに「ディグリー」ボタンもあるので是非ご活用ください。']],
-  ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)やYouTubeのURLを入れると、各ブロックの頭から再生・ループ再生もできます。適切に拍子とテンポを設定することで、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
+  ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)や、YouTube・YouTube Music・SpotifyのURLを入れると、各ブロックの頭から再生・ループ再生もできます。適切に拍子とテンポを設定することで、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
   ['メンバーに共有','曲やセトリの「共有」ボタンを押すと共有用URL・共有コードが生成されます。受け取ったリンクや「☰ メニュー」から入力したコードにより曲構成データやセトリデータを自分の端末に取り込んで、自由に書き込むことができます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
     ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。この場合、再び同じセトリを編集したり、内容を確認したりしたい場合はそのアプリ内のブラウザから見る必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー」から共有コードを読み込むことでセトリなどを受け取ることができます。']],
   ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
@@ -1571,7 +1607,7 @@ const TOUR=[
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songInfo',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
-  {on:'song',r:tSong,sel:'#songAudio',h:'音源',t:'音源ファイル(wav・mp3など)やYouTubeのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
+  {on:'song',r:tSong,sel:'#songAudio',h:'音源',t:'音源ファイル(wav・mp3など)や、YouTube・YouTube Music・SpotifyのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。拍子とテンポを正しく入れておけば、音源の展開に合わせて鳴らすこともできます。「刻み」で、拍の間に8分・8分ハネ(スウィング)・3連・16分・16分ハネの小さい音も足せます。「音量」で、メトロノームと音源の音の大きさのバランスを変えられます。テンポのない前奏がある曲は、「音源に合わせて鳴らす」の「メトロノームを始めるブロック」で、鳴らし始めるブロックを選べます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
@@ -1673,7 +1709,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-09',items:['メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
+  {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
 function newsCard(){const open=UI('newsAll'),list=open?NEWS:NEWS.slice(0,1);
