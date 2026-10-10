@@ -412,6 +412,9 @@ body.has-player #sheet .sheet{bottom:54px}
 .tsel{display:flex;align-items:center;gap:2px;color:var(--text)}.tsel select{padding:6px 4px}
 .stplace{flex:1;min-width:160px}.stplace input{width:100%}
 .handle{touch-action:none;padding:8px 4px;font-size:16px;cursor:grab}
+/* 並べ替えられる一覧は、1つずつ独立したカードにする(ブロックを並べて構成を作る見た目) */
+.list.cards{background:none;border:none;border-radius:0;overflow:visible;display:flex;flex-direction:column;gap:8px}
+.list.cards>.row{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 3px var(--shadow)}
 .row.lifting{position:relative;z-index:5;background:var(--panel);border-radius:10px;box-shadow:0 12px 30px var(--shadow),0 3px 8px var(--shadow);transition:box-shadow .15s}
 .row.lifting .handle{cursor:grabbing;color:var(--accent)}
 .list.drag-list{overflow:visible}
@@ -697,7 +700,7 @@ function viewSetlist(){
   <h1>${esc(sl.name)}</h1>
   ${evSection(sl)}
   <div class="sec">曲 (${songs.length})</div>
-  <div class="list">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
+  <div class="list cards">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
       <span class="handle">⋮⋮</span><span class="num">${i+1}</span>
       <a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}${tagChips(s)}</a>
       <div class="rowbtns"><button data-act="slRemove" data-i="${i}" title="セトリから外す(曲は消えません)">外す</button></div></div>`).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
@@ -736,7 +739,7 @@ function viewSong(){
   ${metroCard(s)}
   <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
   <div class="lyr-open"><button class="foldbtn" data-act="lyrOpen">🎤 歌詞をまとめて入れる</button></div>
-  <div class="list">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
+  <div class="list cards">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
     <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
     <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
@@ -1469,8 +1472,10 @@ function songData(s){const sd=meterSlots(songMeterDefault(s));
       tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text))}})}}
 // 共有データ v2: 項目名を省いた配列にしてから圧縮する。リンクは英数字(1文字6bit)、共有コードは漢字(1文字14bit)で書く
 const trimA=a=>{a=a.map(x=>x===undefined?null:x);while(a.length&&a[a.length-1]==null)a.pop();return a};
-function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx]))])}
-function arrSong(a){return {t:a[0],bpm:a[1]||undefined,m:a[2]||undefined,k:a[3]||undefined,u:a[4]||undefined,
+// 7番目: 参考音源に合わせてメトロノームを鳴らす設定 [合わせる?1:0, 始めるブロックの頭の秒, 始めるブロックの番号, 刻み]
+const syncArr=s=>{const ai=s.mAnchor?s.blocks.findIndex(b=>b.id===s.mAnchor):-1;const a=trimA([s.mSync?1:undefined,+s.mOffset||undefined,ai>0?ai:undefined,U(s.mSub)]);return a.length?a:undefined};
+function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx])),syncArr(s)])}
+function arrSong(a){return {t:a[0],bpm:a[1]||undefined,m:a[2]||undefined,k:a[3]||undefined,u:a[4]||undefined,sy:a[6]||undefined,
   b:(a[5]||[]).map(b=>({ty:b[0],n:b[1]??undefined,no:b[2]||undefined,tg:b[3]||undefined,st:b[4]??undefined,bm:b[5]||undefined,bb:b[6]||undefined,bk:b[7]||undefined,bars:b[8]??0,tx:b[9]||undefined}))}}
 async function packBytes(d){const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(cs).arrayBuffer())}
@@ -1499,7 +1504,10 @@ function songFromShared(d,bandId){const sd=meterSlots(songMeterDefault({meter:d.
   blocks:d.b.map(b=>{const ty=TYPES[b.ty]?b.ty:'X',dn=meterSlots(b.bm)||sd;const raw=typeof b.bars==='number'?Array(b.bars).fill(0):b.bars;
    return {id:uid(),type:ty,name:b.n??TYPES[ty].label,note:b.no||'',tags:b.tg||[],start:b.st??null,meter:b.bm||'',bpm:b.bb||'',key:b.bk||'',
     bars:raw.map(x=>{const [n0,c,l,m]=x===0?[0,[],'']:x;const n=n0||dn;return Object.assign({n,cells:Array.from({length:n},(_,i)=>c[i]||''),lyric:l||''},m?{m}:{})}),
-    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()}))}})}}
+    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()}))}}),
+  ...(d.sy?{mSync:!!d.sy[0],mOffset:d.sy[1]||0,mSub:d.sy[3]||''}:{})}}
+// 始めるブロックは番号で送っているので、ブロックを作ったあとでidに直す
+function songFromSharedFull(d,bandId){const s=songFromShared(d,bandId);if(d.sy&&d.sy[2]&&s.blocks[d.sy[2]])s.mAnchor=s.blocks[d.sy[2]].id;return s}
 async function isgd(url){const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),10000);
   try{const r=await fetch('https://da.gd/s?url='+encodeURIComponent(url),{signal:ac.signal});const x=(await r.text()).trim();
     if(!r.ok||!/^https:\/\/da\.gd\/\S+$/.test(x))throw new Error(x.slice(0,60)||('HTTP '+r.status));return x}
@@ -1517,7 +1525,7 @@ async function openShare(kind){
   code=b64u(bytes);const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-  <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置が入ります。音源・写真・録音は入りません。</p>
+  <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置・参考音源のリンク(YouTube・Spotifyなど)と、それに合わせてメトロノームを鳴らす設定が入ります。音源ファイル・写真・録音は入りません。</p>
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> スタジオ・本番の予定も入れる <span class="sub">(${evSorted(curSetlist()).filter(e=>!(e.date&&e.date<todayStr())&&(e.date||e.place)).length}件)</span></label>`:''}
   ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">📤 LINEなどのアプリで送る</button>`:''}
   <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
@@ -1543,7 +1551,7 @@ function viewImport(){
 let impTab='map';
 async function fillImport(){
   const el=$('#impBody');if(!el)return;
-  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromShared(x,band().id));PENDING={setlist:d.setlist,songs,events:(d.events||[]).map(e=>Object.assign({id:uid()},e))};
+  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromSharedFull(x,band().id));PENDING={setlist:d.setlist,songs,events:(d.events||[]).map(e=>Object.assign({id:uid()},e))};
     const isSl=!!d.setlist;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
     const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
@@ -1712,7 +1720,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-11',items:['構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
+  {d:'2026-10-11',items:['曲の構成とセトリの曲を、1つずつ独立したカードの見た目に','共有に、参考音源に合わせてメトロノームを鳴らす設定(始めるブロック・位置・刻み)も入るように','構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
@@ -2048,7 +2056,9 @@ let pdrag=null;
 document.addEventListener('pointerdown',e=>{const h=e.target.closest('.handle');const row=h&&h.closest('[data-drag]');if(!row)return;
   e.preventDefault();const k=row.dataset.drag,list=row.parentElement,rows=[...list.children].filter(r=>r.dataset&&r.dataset.drag===k);
   const rc=rows.map(r=>r.getBoundingClientRect()),from=rows.indexOf(row);if(from<0)return;
-  pdrag={k,from,to:from,row,rows,list,h:rc[from].height,y0:e.clientY+scrollY,lastY:e.clientY,
+  // ほかの行がよける幅 = つかんだ行の高さ + 行と行のすき間(カード表示のとき)
+  const gap=rc.length>1?Math.max(0,rc[1].top-rc[0].bottom):0;
+  pdrag={k,from,to:from,row,rows,list,h:rc[from].height+gap,y0:e.clientY+scrollY,lastY:e.clientY,
     mids:rc.map(r=>r.top+r.height/2+scrollY),minDy:rc[0].top-rc[from].top-rc[from].height/2,maxDy:rc[rc.length-1].bottom-rc[from].bottom+rc[from].height/2};
   list.classList.add('drag-list');document.body.classList.add('dragging-row');
   rows.forEach(r=>{if(r!==row)r.style.transition='transform .18s ease'});row.classList.add('lifting');
