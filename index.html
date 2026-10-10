@@ -412,7 +412,10 @@ body.has-player #sheet .sheet{bottom:54px}
 .tsel{display:flex;align-items:center;gap:2px;color:var(--text)}.tsel select{padding:6px 4px}
 .stplace{flex:1;min-width:160px}.stplace input{width:100%}
 .handle{touch-action:none;padding:8px 4px;font-size:16px;cursor:grab}
-.row.dragging{opacity:.5}
+.row.lifting{position:relative;z-index:5;background:var(--panel);border-radius:10px;box-shadow:0 12px 30px var(--shadow),0 3px 8px var(--shadow);transition:box-shadow .15s}
+.row.lifting .handle{cursor:grabbing;color:var(--accent)}
+.list.drag-list{overflow:visible}
+body.dragging-row{user-select:none;-webkit-user-select:none}
 @media (hover:none){.rowbtns{opacity:1}}
 @media screen and (max-width:700px){
   .brand-t,.th-t,.kbd{display:none}
@@ -1709,6 +1712,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
+  {d:'2026-10-11',items:['構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「🎤 歌詞をまとめて入れる」、ブロックの画面の「🎤 歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
 const newsUnseen=()=>(S.prefs.newsSeen||'')<NEWS[0].d;
@@ -2038,18 +2042,29 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowRight'){e.preventDefault();const s=S.prefs.step;S.prefs.step=1;move(1);S.prefs.step=s}
     else if(e.key==='ArrowLeft'){e.preventDefault();const s=S.prefs.step;S.prefs.step=1;move(-1);S.prefs.step=s}
     else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();ACT.pDel()}}});
-// reorder by dragging the ⋮⋮ handle (mouse and touch)
+// ⋮⋮ をつかんで並べ替える(マウス・タッチ共通)。つかんだ行は影をつけて浮かせ、指について動く。
+// ほかの行は、つかんだ行が通り過ぎたぶんだけすっと上下にずれて、置く場所を空けて見せる
 let pdrag=null;
 document.addEventListener('pointerdown',e=>{const h=e.target.closest('.handle');const row=h&&h.closest('[data-drag]');if(!row)return;
-  e.preventDefault();pdrag={k:row.dataset.drag,from:+row.dataset.idx,to:+row.dataset.idx};row.classList.add('dragging');
+  e.preventDefault();const k=row.dataset.drag,list=row.parentElement,rows=[...list.children].filter(r=>r.dataset&&r.dataset.drag===k);
+  const rc=rows.map(r=>r.getBoundingClientRect()),from=rows.indexOf(row);if(from<0)return;
+  pdrag={k,from,to:from,row,rows,list,h:rc[from].height,y0:e.clientY+scrollY,lastY:e.clientY,
+    mids:rc.map(r=>r.top+r.height/2+scrollY),minDy:rc[0].top-rc[from].top,maxDy:rc[rc.length-1].bottom-rc[from].bottom};
+  list.classList.add('drag-list');document.body.classList.add('dragging-row');
+  rows.forEach(r=>{if(r!==row)r.style.transition='transform .18s ease'});row.classList.add('lifting');
+  try{navigator.vibrate&&navigator.vibrate(8)}catch(_){}
+  // 指を画面の端で止めていても、そのままスクロールし続ける
+  pdrag.timer=setInterval(()=>{if(!pdrag)return;const y=pdrag.lastY;
+    if(y<80)window.scrollBy(0,-Math.ceil((80-y)/6));else if(y>innerHeight-80)window.scrollBy(0,Math.ceil((y-innerHeight+80)/6));pdragMove()},16);
   try{h.setPointerCapture(e.pointerId)}catch(_){}});
-document.addEventListener('pointermove',e=>{if(!pdrag)return;e.preventDefault();
-  const el=document.elementFromPoint(e.clientX,e.clientY);const r=el&&el.closest(`[data-drag="${pdrag.k}"]`);
-  document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'));
-  if(r){pdrag.to=+r.dataset.idx;if(pdrag.to!==pdrag.from)r.classList.add('dragover')}
-  if(e.clientY<70)window.scrollBy(0,-14);else if(e.clientY>innerHeight-70)window.scrollBy(0,14)},{passive:false});
-function endPdrag(){if(!pdrag)return;const {k,from,to}=pdrag;pdrag=null;
-  document.querySelectorAll('.dragover,.dragging').forEach(x=>x.classList.remove('dragover','dragging'));
+function pdragMove(){const d=pdrag;if(!d)return;const dy=Math.max(d.minDy,Math.min(d.maxDy,d.lastY+scrollY-d.y0));
+  d.row.style.transform=`translateY(${dy}px) scale(1.02)`;
+  const c=d.mids[d.from]+dy;let to=d.from;
+  d.mids.forEach((m,i)=>{if(i<d.from&&c<m&&i<to)to=i;if(i>d.from&&c>m&&i>to)to=i});d.to=to;
+  d.rows.forEach((r,i)=>{if(r===d.row)return;const sh=d.from<i&&i<=to?-d.h:to<=i&&i<d.from?d.h:0;r.style.transform=sh?`translateY(${sh}px)`:''})}
+document.addEventListener('pointermove',e=>{if(!pdrag)return;e.preventDefault();pdrag.lastY=e.clientY;pdragMove()},{passive:false});
+function endPdrag(){if(!pdrag)return;const {k,from,to,rows,row,list,timer}=pdrag;pdrag=null;clearInterval(timer);
+  rows.forEach(r=>{r.style.transform='';r.style.transition=''});row.classList.remove('lifting');list.classList.remove('drag-list');document.body.classList.remove('dragging-row');
   if(from!==to){const arr=k==='sl'?curSetlist().songIds:curSong().blocks;const [x]=arr.splice(from,1);arr.splice(to,0,x);render()}}
 document.addEventListener('pointerup',endPdrag);document.addEventListener('pointercancel',endPdrag);
 let drag=null;
