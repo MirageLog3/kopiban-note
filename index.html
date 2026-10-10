@@ -2049,7 +2049,7 @@ document.addEventListener('pointerdown',e=>{const h=e.target.closest('.handle');
   e.preventDefault();const k=row.dataset.drag,list=row.parentElement,rows=[...list.children].filter(r=>r.dataset&&r.dataset.drag===k);
   const rc=rows.map(r=>r.getBoundingClientRect()),from=rows.indexOf(row);if(from<0)return;
   pdrag={k,from,to:from,row,rows,list,h:rc[from].height,y0:e.clientY+scrollY,lastY:e.clientY,
-    mids:rc.map(r=>r.top+r.height/2+scrollY),minDy:rc[0].top-rc[from].top,maxDy:rc[rc.length-1].bottom-rc[from].bottom};
+    mids:rc.map(r=>r.top+r.height/2+scrollY),minDy:rc[0].top-rc[from].top-rc[from].height/2,maxDy:rc[rc.length-1].bottom-rc[from].bottom+rc[from].height/2};
   list.classList.add('drag-list');document.body.classList.add('dragging-row');
   rows.forEach(r=>{if(r!==row)r.style.transition='transform .18s ease'});row.classList.add('lifting');
   try{navigator.vibrate&&navigator.vibrate(8)}catch(_){}
@@ -2060,7 +2060,8 @@ document.addEventListener('pointerdown',e=>{const h=e.target.closest('.handle');
 function pdragMove(){const d=pdrag;if(!d)return;const dy=Math.max(d.minDy,Math.min(d.maxDy,d.lastY+scrollY-d.y0));
   d.row.style.transform=`translateY(${dy}px) scale(1.02)`;
   const c=d.mids[d.from]+dy;let to=d.from;
-  d.mids.forEach((m,i)=>{if(i<d.from&&c<m&&i<to)to=i;if(i>d.from&&c>m&&i>to)to=i});d.to=to;
+  // 端の行とも入れ替えられるよう、行の真ん中に届いた時点で入れ替える(つかんだ行はリストの端から半分はみ出すところまで動かせる)
+  d.mids.forEach((m,i)=>{if(i<d.from&&c<=m&&i<to)to=i;if(i>d.from&&c>=m&&i>to)to=i});d.to=to;
   d.rows.forEach((r,i)=>{if(r===d.row)return;const sh=d.from<i&&i<=to?-d.h:to<=i&&i<d.from?d.h:0;r.style.transform=sh?`translateY(${sh}px)`:''})}
 document.addEventListener('pointermove',e=>{if(!pdrag)return;e.preventDefault();pdrag.lastY=e.clientY;pdragMove()},{passive:false});
 function endPdrag(){if(!pdrag)return;const {k,from,to,rows,row,list,timer}=pdrag;pdrag=null;clearInterval(timer);
