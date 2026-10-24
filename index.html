@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:52';
+const APP_VER='10/25 7:54';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -712,7 +712,7 @@ function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.ban
 const AUP={busy:false,get:{},have:{}};
 async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO||S.prefs.audioUp===false)return;if(!(await ensureToken()))return;AUP.busy=true;
   try{for(const s of S.songs){const a=s.audio;if(!a||a.drv)continue;const b=await getBlob(a.blobId);if(!b)continue;
-      const ty=b.type||'application/octet-stream',meta={name:'kopiban-audio-'+a.name,appProperties:{kbAudio:a.blobId}};let id=null;
+      const ty=b.type||'application/octet-stream',meta={name:'kopiban-audio-'+a.name,appProperties:{kbAudio:a.blobId}};try{meta.parents=[await kbFolder()]}catch(e){}let id=null;
       try{const ini=await gapi_('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':ty},body:JSON.stringify(meta)});
         const loc=ini.headers.get('Location');
         if(loc){const r=await fetch(loc,{method:'PUT',headers:{'Content-Type':ty},body:b});if(r.ok)id=(await r.json()).id}}catch(e){if(e.message==='auth')throw e}
@@ -750,13 +750,13 @@ async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!(await ensureT
       else syncApply(data,ap)}
     else if(syncDirty()){SY.busy=false;return syncPush(true)}
     SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
-  SY.busy=false;syncUI();audioUp()}
+  SY.busy=false;syncUI();audioUp();if(SY.meta.on&&!SY.err)kbTidy()}
 // 保存: 送る前に、ほかの端末が先に保存していないか確かめる
 async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!(await ensureToken()))return syncUI();if(SY.busy){clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),3000);return}
   if(!now&&!syncDirty())return;SY.busy=true;syncUI();
   try{let f=SY.meta.fileId?await syncFind():null;const ap=f&&f.appProperties||{};
     if(f&&ap.savedAt&&SY.meta.at&&ap.savedAt!==SY.meta.at){SY.busy=false;return syncPull()}
-    const savedAt=String(Date.now()),meta={appProperties:{savedAt,device:devName()}};if(!f)meta.name=SYNC_NAME,meta.mimeType='application/json';
+    const savedAt=String(Date.now()),meta={appProperties:{savedAt,device:devName()}};if(!f){meta.name=SYNC_NAME;meta.mimeType='application/json';try{meta.parents=[await kbFolder()]}catch(e){}}
     const bd='kb'+Math.random().toString(36).slice(2);const body=`--${bd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${bd}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(syncData())}\r\n--${bd}--`;
     const r=await (await gapi_(f?`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart&fields=id`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
       {method:f?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json();
@@ -791,11 +791,28 @@ function syncAsk(ap,lo){return new Promise(ok=>{const dev=ap.device||'ほかの�
 /* 控え: どちらかを上書きする前に、消える側を必ず残しておく。
    ドライブのデータ → ドライブに日付つきのコピー(kopiban-note-backup-…json)、この端末のデータ → この端末の中(syncPrev) */
 const bkStamp=t=>{const d=new Date(t);return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')};
+/* ドライブの直下を散らかさない: このアプリが作るファイル(同期・控え・音源)は「コピバン練習ノート」フォルダにまとめる。
+   控えは新しい10個だけ残す。前の版で直下に作ったファイルは、1回だけフォルダへ移す */
+const KB_FOLDER='コピバン練習ノート',BK_KEEP=10;
+async function kbFolder(){if(SY.meta.folder)return SY.meta.folder;
+  const q=encodeURIComponent(`name='${KB_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const j=await (await gapi_(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`)).json();
+  let id=j.files&&j.files[0]&&j.files[0].id;
+  if(!id)id=(await (await gapi_('https://www.googleapis.com/drive/v3/files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:KB_FOLDER,mimeType:'application/vnd.google-apps.folder'})})).json()).id;
+  SY.meta.folder=id;syncSave();return id}
+async function bkPrune(){try{const fs_=await syncBackups(50);for(const f of fs_.slice(BK_KEEP))await gapi_(`https://www.googleapis.com/drive/v3/files/${f.id}`,{method:'DELETE'}).catch(()=>{})}catch(e){}}
+async function kbTidy(){if(SY.meta.tidy===2||SY.tidying)return;SY.tidying=true;
+  try{const fo=await kbFolder();const q=encodeURIComponent("name contains 'kopiban-' and trashed=false");
+    const j=await (await gapi_(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,parents)&pageSize=200`)).json();
+    for(const f of j.files||[]){const ps=f.parents||[];if(ps.includes(fo))continue;
+      await gapi_(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${fo}${ps.length?'&removeParents='+ps.join(','):''}&fields=id`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:'{}'}).catch(()=>{})}
+    await bkPrune();SY.meta.tidy=2;syncSave()}catch(e){}
+  SY.tidying=false}
 async function syncKeep(fileId,ap){try{await idb('kv','readwrite',s=>s.put({at:Date.now(),device:devName(),data:JSON.parse(JSON.stringify(syncData()))},'syncPrev'))}catch(e){}
   try{await gapi_(`https://www.googleapis.com/drive/v3/files/${fileId}/copy?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name:`kopiban-note-backup-${bkStamp(+ap.savedAt||Date.now())}.json`,appProperties:{backup:'1',savedAt:String(ap.savedAt||''),device:ap.device||''}})})}catch(e){}}
-async function syncBackups(){const q=encodeURIComponent("name contains 'kopiban-note-backup-' and trashed=false");
-  const j=await (await gapi_(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,appProperties)&pageSize=15`)).json();return j.files||[]}
+    body:JSON.stringify({name:`kopiban-note-backup-${bkStamp(+ap.savedAt||Date.now())}.json`,parents:[await kbFolder()],appProperties:{backup:'1',savedAt:String(ap.savedAt||''),device:ap.device||''}})});bkPrune()}catch(e){}}
+async function syncBackups(n){const q=encodeURIComponent("name contains 'kopiban-note-backup-' and trashed=false");
+  const j=await (await gapi_(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,appProperties)&pageSize=${n||15}`)).json();return j.files||[]}
 // 控えから戻す: 選んだ控えをこの端末に入れて、ドライブにも保存する(戻す前の今のドライブも控えに残す)
 async function syncRestoreOpen(){let list=[];const prev=await idb('kv','readonly',s=>s.get('syncPrev')).catch(()=>null);
   if(syncReady())try{list=await syncBackups()}catch(e){}
@@ -2426,7 +2443,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2461,7 +2478,7 @@ function settingCards(){return {news:newsCard(),
     </div>`,
   sync:`<div class="card"><b>Googleで自動バックアップ・同期</b><p class="note">Googleでログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
     ・同期するのは曲・構成・曲順・予定などの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
-    ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
+    ・ドライブの「${KB_FOLDER}」フォルダに、同期のファイルと控え(新しい10個)ができます。このアプリはほかのファイルを見ることはできません<br>
     ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
     <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}
