@@ -53,7 +53,8 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range])
 header.top{padding-top:max(8px,env(safe-area-inset-top))}
 /* iPadのホーム画面アプリでは、画面の上の端にOSのガラスの効果がかかって文字がにじむ(「透明度を下げる」で消えることで確認)。上のバーの文字をその帯より下に置く */
 html.ipadapp header.top{padding-top:36px}
-.brand{font-weight:700}
+.brand{font-weight:700;display:flex;align-items:center;gap:6px}
+.brand-i{width:22px;height:22px;border-radius:5px;flex:none}
 .bandsel{color:var(--sub);font-size:13px}
 .bandsel select{margin-left:4px}
 .top nav{margin-left:auto;display:flex;gap:4px}
@@ -845,7 +846,7 @@ document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('.m-
 const ICON_UNDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>';
 const ICON_REDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>';
 function topbar(tab){
-  return `<header class="top"><div class="brand">🎸<span class="brand-t"> コピバン練習ノート</span></div>
+  return `<header class="top"><div class="brand"><img class="brand-i" src="icon-192.png" alt=""><span class="brand-t"> コピバン練習ノート</span></div>
   <nav><a href="#/" class="${tab==='setlist'?'on':''}">イベント</a><a href="#/songs" class="${tab==='songs'?'on':''}">曲</a></nav>
   <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
   <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・バックアップなど)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
