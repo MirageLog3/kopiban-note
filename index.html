@@ -411,6 +411,9 @@ h1{font-size:24px;margin:4px 0 6px}
 .la-b.next{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.la-b:disabled{opacity:.55}
 .place-bar{position:sticky;top:var(--toph,52px);z-index:6;margin:6px 0 8px;padding:10px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);box-shadow:0 4px 14px var(--shadow)}
 .place-now{font-size:18px;font-weight:700;margin:2px 0}
+.stars{display:flex;flex:none;margin-right:2px}.stars button{padding:4px 3px;font-size:17px;color:var(--line);line-height:1}.stars button.on{color:#e69f00}.stars-t{color:#e69f00;font-size:11px;margin-left:4px;letter-spacing:-1px}
+.gig-sorthd{margin:14px 0 6px}.gig-sorthd select{font-size:13px;padding:4px 6px}.pinmk{font-size:12px;margin-right:4px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}.swatch{display:flex;align-items:center;gap:8px;text-align:left}.swatch span{width:18px;height:18px;border-radius:50%;flex:none}.swatch.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .home-sec{margin:14px 2px 6px;font-size:15px}.card.orig{display:block;color:inherit;border-left:4px solid var(--accent);padding:10px 14px}.gband.origb{box-shadow:inset 3px 0 0 var(--accent)}
 #syncBar{position:fixed;left:12px;right:12px;z-index:16;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--panel);box-shadow:0 4px 16px var(--shadow);font-size:14px}
 #syncBar span{flex:1;min-width:0}
@@ -797,11 +800,28 @@ function ensureGigs(){if(!S.gigs)S.gigs=[];
 const gigById=id=>S.gigs.find(g=>g.id===id);
 const gigOf=sl=>gigById(sl.gigId)||{name:sl.name,events:[]};
 const gigSets=g=>S.setlists.filter(x=>x.gigId===g.id);
+/* イベントのカスタマイズ
+   ・色: g.color(色の見え方が違う人にも区別しやすい6色から)
+   ・ピン: g.pin でイベント一覧の上に固定(いくつでも)
+   ・バンドの星: セトリごとに stars(0〜3)
+   ・バンドの並び: g.sort = 'studio'(スタジオが近い順・はじめ) / 'star'(星の多い順) / 'custom'(ドラッグで並べた順 g.order) */
+const GIG_COLORS=[['#d55e00','朱'],['#e69f00','オレンジ'],['#009e73','緑'],['#0072b2','青'],['#56b4e9','水色'],['#cc79a7','ピンク']];
+const GIG_SORTS=[['studio','スタジオが近い順'],['star','星の多い順'],['custom','自分で並べる']];
+function gigOrder(g){const ids=gigSets(g).map(x=>x.id);g.order=(g.order||[]).filter(id=>ids.includes(id));ids.forEach(id=>{if(!g.order.includes(id))g.order.push(id)});return g.order}
+const nextStudio=x=>{const e=evSorted(x).find(e=>e.date&&e.date>=todayStr());return e?e.date:'9999'};
+function gigSetsSorted(g){const sets=gigSets(g),m=g.sort||'studio';
+  if(m==='custom'){const o=gigOrder(g);return sets.slice().sort((a,b)=>o.indexOf(a.id)-o.indexOf(b.id))}
+  const byStudio=(a,b)=>nextStudio(a)<nextStudio(b)?-1:nextStudio(a)>nextStudio(b)?1:0,bySt=(a,b)=>(b.stars||0)-(a.stars||0);
+  return sets.slice().sort(m==='star'?(a,b)=>bySt(a,b)||byStudio(a,b):(a,b)=>byStudio(a,b)||bySt(a,b))}
+// ドラッグで動かすのは、いま画面に出ている並び(=自分で並べた順)
+function gigDragArr(){const g=gigById(R.a);g.order=gigSetsSorted(g).map(x=>x.id);return g.order}
+const starTxt=n=>n?'<span class="stars-t">'+'★'.repeat(n)+'</span>':'';
 // イベントの日付 = 最初の本番の日付(なければ空)
 const gigDate=g=>{const e=evSorted(g).find(x=>x.date);return e?e.date:''};
-function gigSorted(){const t=todayStr(),reg=S.gigs.filter(g=>g.regular),rest=S.gigs.filter(g=>!g.regular);
+function gigSorted(){const t=todayStr(),reg=S.gigs.filter(g=>g.regular),pinned=S.gigs.filter(g=>!g.regular&&g.pin),rest=S.gigs.filter(g=>!g.regular&&!g.pin);
   const up=rest.filter(g=>!gigDate(g)||gigDate(g)>=t).sort((a,b)=>(gigDate(a)||'9999')<(gigDate(b)||'9999')?-1:1),past=rest.filter(g=>gigDate(g)&&gigDate(g)<t).sort((a,b)=>gigDate(a)>gigDate(b)?-1:1);
-  return {reg,up,past}}
+  pinned.sort((a,b)=>(gigDate(a)||'9999')<(gigDate(b)||'9999')?-1:1);
+  return {reg,up:pinned.concat(up),past}}
 const songById=id=>S.songs.find(s=>s.id===id);
 const bandSongs=()=>S.songs.filter(s=>s.bandId===band().id);
 const bandSetlists=()=>S.setlists.filter(x=>x.bandId===band().id);
@@ -941,10 +961,10 @@ const bandLives=bid=>{const t=todayStr();return S.setlists.filter(x=>x.bandId===
 function origCard(sl){const n=sl.songIds.filter(songById).length,t=todayStr(),st=evSorted(sl).find(e=>e.date&&e.date>=t),lv=bandLives(sl.bandId).find(o=>gigDate(o.g));
   const nx=[st&&'次のスタジオ '+md(st.date),lv&&'ライブ '+md(gigDate(lv.g))+' '+lv.g.name].filter(Boolean).join(' ・ ');
   return `<a class="card orig" href="#/setlist/${sl.id}"><div class="hstack"><b>${esc(bandNameOf(sl.bandId))}</b><span class="sub">${n}曲</span><span class="spacer"></span><span class="sub">›</span></div><div class="sub" style="margin-top:2px">${esc(nx||'予定はまだありません')}</div></a>`}
-function gigCard(g){const sets=gigSets(g),d=gigDate(g);
-  return `<div class="card gig ${g.regular?'':'studio live'}"><a class="ghd" href="#/gig/${g.id}"><span class="gn">${esc(g.name)}</span>${g.regular?'<span class="gd">ライブの予定がないバンド</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
+function gigCard(g){const sets=gigSetsSorted(g),d=gigDate(g);
+  return `<div class="card gig ${g.regular?'':'studio live'}"${g.color?` style="--bc:${g.color};--live:${g.color}"`:''}><a class="ghd" href="#/gig/${g.id}"><span class="gn">${g.pin?'<span class="pinmk" title="ピン留め">📌</span>':''}${esc(g.name)}</span>${g.regular?'<span class="gd">ライブの予定がないバンド</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
   <div class="gbands">${sets.map(x=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
-    return `<a class="gband ${!g.regular&&isOrigBand(x.bandId)?'origb':''}" href="#/setlist/${x.id}">${esc(bandNameOf(x.bandId))}<span class="sub">${n}曲${nx?' ・ 次のスタジオ '+nx.date.slice(5).replace('-','/'):''}</span></a>`}).join('')||`<div class="gempty">まだバンドがありません</div>`}</div></div>`}
+    return `<a class="gband ${!g.regular&&isOrigBand(x.bandId)?'origb':''}" href="#/setlist/${x.id}">${esc(bandNameOf(x.bandId))}${starTxt(x.stars)}<span class="sub">${n}曲${nx?' ・ 次のスタジオ '+nx.date.slice(5).replace('-','/'):''}</span></a>`}).join('')||`<div class="gempty">まだバンドがありません</div>`}</div></div>`}
 // Googleにログインしていない人に、自動バックアップを一度だけ勧める(「今はしない」で消える。強制はしない)
 const syncNudge=()=>GCLIENT&&!SY.meta.on&&!DEMO&&S.prefs.tutDone&&!S.prefs.syncNudgeOff?`<div class="card sync-nudge"><b>☁ データを自動でバックアップ</b><p class="note" style="margin:4px 0 8px">Googleでログインしておくと、データが自分のGoogleドライブに自動で保存されます。スマホを替えたときや、PCで使いたいときも安心です。</p><div class="hstack"><button class="primary" data-act="syncLogin">Googleでログイン</button><button class="ghost" data-act="syncNudgeOff">今はしない</button></div></div>`:'';
 function viewHome(){const {reg,up,past}=gigSorted();const os=origSets(),rg=reg[0];
@@ -955,13 +975,15 @@ function viewHome(){const {reg,up,past}=gigSorted();const os=origSets(),rg=reg[0
   ${up.map(gigCard).join('')}${!up.length&&os.length?'<div class="empty">まだ予定しているイベントはありません</div>':''}
   ${past.length?`<button class="foldbtn" data-act="uiToggle" data-k="pastGig" style="margin:4px 0 8px">終わったイベント (${past.length}) ${UI('pastGig')?'▾':'▸'}</button>${UI('pastGig')?past.map(gigCard).join(''):''}`:''}</main>`}
 function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
-  const sets=gigSets(g);
+  const sets=gigSetsSorted(g),cust=(g.sort||'studio')==='custom';
   return topbar('setlist')+`<main><a class="back" href="#/">‹ イベント一覧</a>
   <div class="slhead"><h1>${esc(g.name)}</h1><button class="ghost slmore" data-act="gigMore" data-id="${g.id}" title="名前の変更・削除" aria-label="イベントのメニュー">⋯</button></div>
-  ${g.regular?'<p class="sub gigsub">ライブが決まっていないバンドの、曲とスタジオ練習をまとめる場所です。</p>':evSection(g,'live')}
-  <div class="sec">${g.regular?'バンド':'出るバンド'} (${sets.length})</div>
-  <div class="list">${sets.map(x=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
-    return `<div class="row"><a class="body" href="#/setlist/${x.id}"><div class="title">${esc(bandNameOf(x.bandId))}</div><div class="sub">${n}曲${nx?' ・ 次のスタジオ '+studioSum(nx).replace(/<[^>]+>/g,''):''}</div></a><span class="sub">›</span></div>`}).join('')||(g.regular?'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、ライブが決まっていないバンドを入れてください</div>':'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、このイベントに出るバンドを入れてください</div>')}</div>
+  ${g.regular?'<p class="sub gigsub">ライブが決まっていないバンドの、曲とスタジオ練習をまとめる場所です。</p>':g.color?`<div style="--live:${g.color}">${evSection(g,'live')}</div>`:evSection(g,'live')}
+  <div class="hstack gig-sorthd"><div class="sec" style="margin:0">${g.regular?'バンド':'出るバンド'} (${sets.length})</div><span class="spacer"></span>${sets.length>1?`<select data-change="gigSort" data-id="${g.id}" aria-label="バンドの並び">${GIG_SORTS.map(([k,l])=>`<option value="${k}" ${(g.sort||'studio')===k?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
+  ${cust&&sets.length>1?'<p class="sub" style="margin:0 0 6px">左の ⋮⋮ をつかんで並べ替えられます</p>':''}
+  <div class="list">${sets.map((x,i)=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
+    return `<div class="row" ${cust?`data-drag="gb" data-idx="${i}"`:''}>${cust?'<span class="handle">⋮⋮</span>':''}<a class="body" href="#/setlist/${x.id}"><div class="title">${esc(bandNameOf(x.bandId))}</div><div class="sub">${n}曲${nx?' ・ 次のスタジオ '+studioSum(nx).replace(/<[^>]+>/g,''):''}</div></a>
+      <span class="stars" role="group" aria-label="優先度">${[1,2,3].map(k=>`<button class="ghost ${(x.stars||0)>=k?'on':''}" data-act="setStar" data-id="${x.id}" data-n="${k}" aria-label="星${k}つ">★</button>`).join('')}</span></div>`}).join('')||(g.regular?'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、ライブが決まっていないバンドを入れてください</div>':'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、このイベントに出るバンドを入れてください</div>')}</div>
   <div class="adds"><button class="primary" data-act="gigAddBand" data-id="${g.id}">＋ バンドを追加</button></div></main>`}
 function viewSetlist(){
   if(!R.a)return viewHome();
@@ -2053,7 +2075,7 @@ const TOUR=[
   {core:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
     g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
   {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
-  {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、その中に出るバンドを追加します。コピバンを何組か掛け持ちするときは、同じイベントにバンドを並べます。'},
+  {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、その中に出るバンドを追加します。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、出るバンドには星(1〜3)をつけて並び順を選べます。コピバンを何組か掛け持ちするときは、同じイベントにバンドを並べます。'},
   {r:tSl,sel:'main',whole:true,h:'セトリ画面',t:'1つのイベントに1つのバンドで出るときの、曲順とスタジオの予定をまとめる画面です。いちばん上の「‹」でイベントに戻れます。',need:hasSl},
   {on:'songs',r:()=> '#/songs',sel:'.bandbar',kw:'バンド 移す 曲一覧',h:'バンドごとの曲',t:'「曲」の画面では、曲がバンドごとに分かれて並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲は「移す」で別のバンドへ移せます。'},
   {on:'setlist',r:tSl,sel:'.sec.hstack',adv:1,kw:'練習 日程 カレンダー',h:'スタジオの予定',t:'バンドのスタジオ練習の日程を入れておけます。本番の日時はイベントの画面で1回だけ入れます。カレンダーへの追加やメンバーへの共有もできます。',need:hasSl},
@@ -2205,7 +2227,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2368,7 +2390,7 @@ const ACT={
   liveForBand(t){const bid=t.dataset.b;nameModal('出るライブ','<b>ライブの名前</b>をつけてください。日時や曲順は、このあとライブの画面で入れられます。',['「春の対バンライブ」','「11月定例ライブ」'],'',name=>{
     const g={id:uid(),name,events:[]};S.gigs.push(g);const sl={id:uid(),bandId:bid,gigId:g.id,name,songIds:[],events:[]};S.setlists.push(sl);save();location.hash='#/setlist/'+sl.id})},
   slMore(t){popMenu(t,[['renameBand','バンドの名前を変更'],['shareSetlist','セトリを共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
-  gigMore(t){const g=gigById(t.dataset.id);popMenu(t,`<button data-act="popDo" data-v="renameGig" data-id="${g.id}">名前を変更</button>`+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
+  gigMore(t){const g=gigById(t.dataset.id);popMenu(t,`<button data-act="popDo" data-v="renameGig" data-id="${g.id}">名前を変更</button>`+(g.regular?'':`<button data-act="popDo" data-v="gigColorOpen" data-id="${g.id}">色を変える</button><button data-act="popDo" data-v="pinGig" data-id="${g.id}">${g.pin?'ピン留めを外す':'一覧の上にピン留め'}</button>`)+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
   newGig,
   // バンドの名前を変える。どの画面から呼んでも、いま見ているバンド(セトリのバンド → 曲一覧のバンド)の名前を変える
   renameBand(t){const id=(t&&t.dataset&&t.dataset.id)||(R.name==='setlist'&&curSetlist()?curSetlist().bandId:band().id);const b=S.bands.find(x=>x.id===id);if(!b)return;
@@ -2394,6 +2416,11 @@ const ACT={
     let g;if(gs.value==='__new'){g={id:uid(),name:gn,events:[]};S.gigs.push(g)}else g=gigById(gs.value);
     if(gigSets(g).some(x=>x.bandId===sl.bandId))return toast('移す先にもう同じバンドが入っています');
     ACT.lbClose();sl.gigId=g.id;sl.name=g.name;render();toast(`「${g.name}」へ移しました`)},
+  gigColorOpen(t){const g=gigById(t.dataset.id);$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal"><div class="hstack"><b>「${esc(g.name)}」の色</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <p class="note" style="margin:6px 0 10px">イベント一覧のカードの左の線の色になります。</p><div class="swatches">${[['','いつもの色']].concat(GIG_COLORS).map(([c,l])=>`<button class="swatch ${(g.color||'')===c?'on':''}" data-act="setGigColor" data-id="${g.id}" data-c="${c}"><span style="background:${c||'var(--live)'}"></span>${l}</button>`).join('')}</div></div>`},
+  setGigColor(t){const g=gigById(t.dataset.id);g.color=t.dataset.c||undefined;ACT.lbClose();render()},
+  pinGig(t){const g=gigById(t.dataset.id);g.pin=!g.pin||undefined;render();toast(g.pin?'一覧の上にピン留めしました':'ピン留めを外しました')},
+  setStar(t){const x=S.setlists.find(y=>y.id===t.dataset.id),n=+t.dataset.n;if(!x)return;x.stars=(x.stars||0)===n?n-1:n;if(!x.stars)delete x.stars;render()},
   popDo(t){ACT.lbClose();ACT[t.dataset.v](t)},
   pickBand(t){S.cur.band=t.dataset.id;location.hash='#/songs';render()},
   bpOk(){const bs=$('#nmBand'),bn=(($('#nmBandNew')||{}).value||'').trim();if(!bs)return;if(bs.value==='__new'&&!bn)return toast('新しいバンドの名前を入れてください');
@@ -2721,6 +2748,7 @@ const CHG={
   mkName(t){const m=S.markers[+t.dataset.i],n=t.value.trim();if(!n||n===m.name){render();return}
     if(S.markers.some(x=>x.name===n)){toast('同じ名前があります');render();return}
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.map(x=>x===m.name?n:x)));m.name=n;render()},
+  gigSort(t){const g=gigById(t.dataset.id);if(t.value==='custom')g.order=gigSetsSorted(g).map(x=>x.id);g.sort=t.value==='studio'?undefined:t.value;render()},
   shareBandSongs(t){S.prefs.shareBandSongs=t.checked;save();openShare('band')},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
   studioTime(t){const {e:st}=evFind(t.dataset.id);if(!st)return;const k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
@@ -2806,7 +2834,7 @@ function pdragMove(){const d=pdrag;if(!d)return;const dy=Math.max(d.minDy,Math.m
 document.addEventListener('pointermove',e=>{if(!pdrag)return;e.preventDefault();pdrag.lastY=e.clientY;pdragMove()},{passive:false});
 function endPdrag(){if(!pdrag)return;const {k,from,to,rows,row,list,timer}=pdrag;pdrag=null;clearInterval(timer);
   rows.forEach(r=>{r.style.transform='';r.style.transition=''});row.classList.remove('lifting');list.classList.remove('drag-list');document.body.classList.remove('dragging-row');
-  if(from!==to){const arr=k==='sl'?curSetlist().songIds:curSong().blocks;const [x]=arr.splice(from,1);arr.splice(to,0,x);render()}}
+  if(from!==to){const arr=k==='gb'?gigDragArr():k==='sl'?curSetlist().songIds:curSong().blocks;const [x]=arr.splice(from,1);arr.splice(to,0,x);render()}}
 document.addEventListener('pointerup',endPdrag);document.addEventListener('pointercancel',endPdrag);
 let drag=null;
 document.addEventListener('dragstart',e=>{const t=e.target.closest&&e.target.closest('[data-drag]');if(t){drag={k:t.dataset.drag,i:+t.dataset.idx};e.dataTransfer.effectAllowed='move'}});
@@ -2819,7 +2847,7 @@ document.addEventListener('drop',e=>{
   const z=e.target.closest&&e.target.closest('#drop');
   if(z&&!drag&&e.dataTransfer.files.length){e.preventDefault();handleFiles([...e.dataTransfer.files]);return}
   const t=e.target.closest&&e.target.closest('[data-drag]');
-  if(drag&&t&&t.dataset.drag===drag.k){e.preventDefault();const arr=drag.k==='sl'?curSetlist().songIds:curSong().blocks;const to=+t.dataset.idx;
+  if(drag&&t&&t.dataset.drag===drag.k){e.preventDefault();const arr=drag.k==='gb'?gigDragArr():drag.k==='sl'?curSetlist().songIds:curSong().blocks;const to=+t.dataset.idx;
     const [x]=arr.splice(drag.i,1);arr.splice(to,0,x);render()}
   drag=null});
 document.addEventListener('dragend',()=>{drag=null;document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'))});
