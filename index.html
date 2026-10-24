@@ -649,7 +649,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:15';
+const APP_VER='10/25 8:40';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -706,7 +706,7 @@ function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.ban
 // 取ってくる: ドライブのほうが新しければ読み込む。この端末でも変えていたら、どちらを残すか聞く
 /* 音源ファイルもドライブに置く: 入れた端末で上げておき、ほかの端末では、手元にないときだけドライブから取ってくる */
 const AUP={busy:false,get:{},have:{}};
-async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO)return;if(!(await ensureToken()))return;AUP.busy=true;
+async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO||S.prefs.audioUp===false)return;if(!(await ensureToken()))return;AUP.busy=true;
   try{for(const s of S.songs){const a=s.audio;if(!a||a.drv)continue;const b=await getBlob(a.blobId);if(!b)continue;
       const ty=b.type||'application/octet-stream',meta={name:'kopiban-audio-'+a.name,appProperties:{kbAudio:a.blobId}};let id=null;
       try{const ini=await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':ty},body:JSON.stringify(meta)});
@@ -729,7 +729,7 @@ function audioStatHTML(s){const a=s.audio,id=a.blobId;
     if(a.drv&&AUP.get[id]==='ng')return `<span class="ng">${esc(a.name)} をGoogleドライブから読み込めませんでした。通信を確かめて、曲を開き直してください。</span>`;
     if(a.drv)return `<span class="ng">${esc(a.name)} は別の端末で入れた音源です。メニューの「Googleで自動バックアップ・同期」でログインすると、この端末でも聴けます。</span>`;
     return `<span class="ng">${esc(a.name)} は別の端末で入れた音源で、この端末には入っていません。入れた端末でGoogleの同期をオンにしてアプリを開くと、ほかの端末でも聴けるようになります。下のプレーヤーの「⋯」から入れ直すこともできます。</span>`}
-  return `${esc(a.name)} を入れてあります。${SY.meta.on?(a.drv?'Googleドライブにも置いてあるので、ほかの端末でも聴けます。':'Googleドライブに上げています…'):''}`}
+  return `${esc(a.name)} を入れてあります。${SY.meta.on&&S.prefs.audioUp!==false?(a.drv?'Googleドライブにも置いてあるので、ほかの端末でも聴けます。':'Googleドライブに上げています…'):''}`}
 function updAudioStat(){const el=$('#audioStat'),s=R.name==='song'&&curSong();if(el&&s&&s.audio)el.innerHTML=audioStatHTML(s)}
 async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!(await ensureToken()))return syncUI();SY.busy=true;SY.lastPull=Date.now();syncUI();
   try{const f=await syncFind();
@@ -1148,7 +1148,7 @@ function viewSong(){
     <label>キー(調)<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
   </div>
   <div class="card song-audio" id="songAudio"><b>音源</b>
-    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTube・YouTube Music・Spotifyのリンクを貼り付け"></label>
+    <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTube・Spotify・Googleドライブのリンクを貼り付け"></label>
       <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a>
       <a class="back" id="ytFind" href="https://www.youtube.com/results?search_query=${encodeURIComponent(s.title)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;white-space:nowrap;${s.url?'display:none':''}">YouTubeで探す ↗</a></div>
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
@@ -1331,6 +1331,7 @@ function initPlayer(){
   <button class="ghost" data-act="audioPick" id="plPick" title="音源ファイルを入れる・差し替える">差し替え</button><button class="ghost" data-act="audioRemove" id="plRemove" title="この曲から音源を外す">外す</button></div>`;
   document.body.appendChild($('#ytWrap'));
   const a=$('#pa');a.preservesPitch=true;
+  a.addEventListener('loadedmetadata',()=>{if(M.kind==='gd'){M.gdState='ready';updUrlStat()}});a.addEventListener('error',()=>{if(M.kind==='gd'&&a.getAttribute('src')){M.gdState='error';updUrlStat()}});
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
   setInterval(()=>{if((M.kind==='yt'||M.kind==='sp')&&$('#player').style.display!=='none')onTime()},250);
   // スマホ用のコンパクトな再生バー(1行): 再生ボタン・シークバー・時間
@@ -1353,16 +1354,21 @@ function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('playing',!!cur&&r.dataset.bid===cur.id&&now>0));
   if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
+const gdId=u=>{const t=String(u||'');if(!/(drive|docs)\.google\.com/.test(t))return null;const m=t.match(/\/file\/d\/([\w-]{20,})/)||t.match(/[?&]id=([\w-]{20,})/);return m?m[1]:null};
+const gdSrc=id=>'https://drive.google.com/uc?export=download&id='+id;
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
 // Spotifyは曲(トラック)のリンクだけ。open.spotify.com/intl-ja/track/… や spotify:track:… の形も読む
 const spId=u=>{const m=String(u||'').match(/(?:open\.spotify\.com\/(?:intl-[\w-]+\/)?(?:embed\/)?track\/|spotify:track:)([A-Za-z0-9]{22})/);return m?m[1]:null};
-const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':spId(s.url)?'sp':null);
+const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':spId(s.url)?'sp':gdId(s.url)?'gd':null);
 // 参考音源URLを入れたときの状態表示。貼り付けただけで読み込まれる(ボタンを押す必要はない)ことが分かるようにする
 function urlStatHTML(s){const u=(s&&s.url||'').trim();if(!u)return '';
   if(spId(u))return spStatHTML(s);
+  if(gdId(u)){if(s.audio)return `<span class="sub">Googleドライブのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとドライブのリンクで再生します)。</span>`;
+    return M.gdState==='error'?`<span class="ng">✕ 読み込めませんでした。ドライブで、そのファイルの共有が「リンクを知っている全員」になっているか確かめてください。とても大きいファイル(100MBくらいより上)は読めないことがあります。</span>`
+      :M.gdState==='ready'?`<span class="ok">✓ Googleドライブの音源を読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`:`<span class="sub">Googleドライブの音源を読み込んでいます…</span>`}
   if(!ytId(u))return `<span class="ng">${/spotify\.link|spotify\.app\.link/.test(u)?'Spotifyの短いリンクはここでは読めません。一度リンクを開いて、アドレス欄の「open.spotify.com/track/…」のリンクを貼ってください。'
     :/spotify\.com/.test(u)?'Spotifyは曲のリンクだけ再生できます(アルバムやプレイリストのリンクは不可)。曲の「共有」→「リンクをコピー」で貼ってください。'
-    :'このリンクはここでは再生できません(YouTube・YouTube Music・Spotifyのリンクだけ再生できます)。'}「開く ↗」でリンク先を開けます。</span>`;
+    :'このリンクはここでは再生できません(YouTube・YouTube Music・Spotify・Googleドライブのリンクだけ再生できます)。'}「開く ↗」でリンク先を開けます。</span>`;
   if(s.audio)return `<span class="sub">YouTubeのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとYouTubeで再生します)。</span>`;
   const st=M.ytState;
   return st==='error'?`<span class="ng">✕ ${M.ytErr===100?'動画が見つかりませんでした(削除されたか非公開かもしれません)。':M.ytErr===2?'リンクの形が正しくないようです。YouTubeの「共有」からコピーしたリンクを貼ってみてください。':M.ytErr===101||M.ytErr===150?'この動画はYouTube以外での再生が許可されていないため、ここでは再生できません。「開く ↗」でYouTubeを開いて聴いてください。':'YouTubeを読み込めませんでした。「開く ↗」でYouTubeを開いて聴いてください。'}</span>`
@@ -1395,7 +1401,7 @@ const IS_IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==
 function applyAVol(){const v=S.prefs.aVol??1,a=$('#pa');
   try{if(M.yt&&M.yt.setVolume)M.yt.setVolume(Math.round(v*100))}catch(_){}
   if(!a)return;
-  if(IS_IOS){if(!M.g&&v<0.999){const ctx=ensureCtx();if(!ctx)return;const src=ctx.createMediaElementSource(a);M.g=ctx.createGain();src.connect(M.g).connect(ctx.destination)}
+  if(IS_IOS){if(!M.g&&v<0.999&&M.kind!=='gd'){const ctx=ensureCtx();if(!ctx)return;const src=ctx.createMediaElementSource(a);M.g=ctx.createGain();src.connect(M.g).connect(ctx.destination)}
     if(M.g)M.g.gain.value=v}
   else a.volume=v}
 function loadYT(id){
@@ -1432,14 +1438,14 @@ function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<
   document.body.classList.toggle('has-player',show);$('#player').style.display=show?'':'none';
   const a=$('#pa');
   if(!show){if(!a.paused)a.pause();if(M.kind==='yt'||M.kind==='sp')M.pause();ytPosSoon();return}
-  const key=kind==='audio'?'a:'+s.audio.blobId:kind==='sp'?'s:'+spId(s.url):'y:'+ytId(s.url);
+  const key=kind==='audio'?'a:'+s.audio.blobId:kind==='sp'?'s:'+spId(s.url):kind==='gd'?'g:'+gdId(s.url):'y:'+ytId(s.url);
   if(PL.songId!==s.id||PL.blobId!==key){if(M.kind)M.pause();PL.songId=s.id;PL.blobId=key;PL.loop=null;M.kind=kind;
-    $('#ytWrap').style.display=kind==='yt'?'':'none';$('#spWrap').style.display=kind==='sp'?'':'none';a.style.display=kind==='audio'?'':'none';
+    $('#ytWrap').style.display=kind==='yt'?'':'none';$('#spWrap').style.display=kind==='sp'?'':'none';a.style.display=kind==='audio'||kind==='gd'?'':'none';
     // Spotifyは速さを変えられないので100%に固定
     const rt=$('#plRate');rt.disabled=kind==='sp';rt.title=kind==='sp'?'Spotifyの音源は速さを変えられません':'';if(kind==='sp')rt.value='1';
     if(kind==='audio'){const bid=s.audio.blobId;blobURL(bid).then(async u=>{AUP.have[bid]=!!u;if(!u){updAudioStat();if(await audioFetch(s))u=await blobURL(bid)}
-      if(PL.blobId!=='a:'+bid)return;if(u)a.src=u;else a.removeAttribute('src');updAudioStat()})}else if(kind==='sp')loadSP(spId(s.url));else loadYT(ytId(s.url))}
-  $('#plName').textContent=kind==='audio'?'🎵 '+s.audio.name:kind==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
+      if(PL.blobId!=='a:'+bid)return;if(u)a.src=u;else a.removeAttribute('src');updAudioStat()})}else if(kind==='gd'){M.gdState='loading';a.src=gdSrc(gdId(s.url));updUrlStat()}else if(kind==='sp')loadSP(spId(s.url));else loadYT(ytId(s.url))}
+  $('#plName').textContent=kind==='audio'?'🎵 '+s.audio.name:kind==='gd'?'▶ Googleドライブ(参考音源URL)':kind==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
   $('#plRemove').style.display=kind==='audio'?'':'none';$('#plPick').textContent=kind==='audio'?'差し替え':'音源ファイルを入れる';
   const lb=PL.loop&&s.blocks.find(b=>b.id===PL.loop);$('#plLoop').innerHTML=lb?`🔁 ${esc(lb.name)} をループ中 <button class="ghost" data-act="bLoop" data-id="${lb.id}">解除</button>`:'';
   onTime();ytPos();setTimeout(ytPos,400)}
@@ -2355,7 +2361,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2389,11 +2395,13 @@ function settingCards(){return {news:newsCard(),
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     </div>`,
   sync:`<div class="card"><b>Googleで自動バックアップ・同期</b><p class="note">Googleでログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
-    ・同期するのは曲・構成・曲順・予定などの文字のデータです。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります<br>
+    ・同期するのは曲・構成・曲順・予定などの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
     ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
     ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
     <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}
+    <label class="sub" style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" data-change="audioUpPref" ${S.prefs.audioUp!==false?'checked':''}> 曲に入れた音源ファイルもドライブに上げる</label>
+    <p class="note" style="margin:2px 0 0">オンだと、ほかの端末でもファイルのまま聴けます。mp3なら1曲5〜10MBくらい、wavだと50MBくらいドライブを使います。オフにするときは、ドライブに置いた音源の共有リンク(リンクを知っている全員)を参考音源URLに貼ると、どの端末でも聴けます。</p>
     <details class="filebk"><summary>Googleを使わずに、ファイルで保存する</summary><p class="note" style="margin:6px 0 8px">データを1つのファイルに書き出して、あとで読み込めます。写真と録音も入ります。Googleにログインしないで機種変更するときなどに使います。</p>
       <div class="hstack"><button data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></details></div>`,
   backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">データはこの端末のブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
@@ -2828,7 +2836,7 @@ const ACT={
   lyrTap(t){const s=curSong();if(S.prefs.lyrHide){t.classList.toggle('open');return}
     if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===t.dataset.bid&&x.bar===+t.dataset.bar);if(e){ctxReady();MS.last=null;M.seek(Math.max(0,e.t-0.05));M.play()}}},
   pmPlay(){ctxReady();MS.last=null;M.paused()?M.play():M.pause()},
-  pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?'🎵 '+s.audio.name:k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
+  pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?'🎵 '+s.audio.name:k==='gd'?'▶ Googleドライブ(参考音源URL)':k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
     popMenu(t,`<div class="sub" style="padding:8px 12px;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</div><hr>
       <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
@@ -2931,6 +2939,7 @@ const CHG={
   slLive(t){const sl=curSetlist();if(sl){sl.liveId=t.value;render()}},
   gigSort(t){const g=gigById(t.dataset.id);if(t.value==='custom')g.order=gigSetsSorted(g).map(x=>x.id);g.sort=t.value==='studio'?undefined:t.value;render()},
   shareBandSongs(t){S.prefs.shareBandSongs=t.checked;save();openShare('band')},
+  audioUpPref(t){S.prefs.audioUp=t.checked;save();if(t.checked)audioUp()},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
   studioTime(t){const {e:st}=evFind(t.dataset.id);if(!st)return;const k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
     st[k]=h?h+':'+m:'';const s=$('#evSum-'+st.id);if(s)s.innerHTML=studioSum(st);save()},
