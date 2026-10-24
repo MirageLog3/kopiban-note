@@ -862,6 +862,9 @@ function gigSorted(){const t=todayStr(),reg=S.gigs.filter(g=>g.regular),pinned=S
   return {reg,up:pinned.concat(up),past}}
 const songById=id=>S.songs.find(s=>s.id===id);
 const bandSongs=()=>S.songs.filter(s=>s.bandId===band().id);
+// バンドなしの曲: バンドを消すときに「曲は残す」を選んだ曲。曲のタブの「バンドなし」に並ぶ
+const NOBAND='__none';
+const orphanSongs=()=>S.songs.filter(s=>!S.bands.some(b=>b.id===s.bandId));
 const bandSetlists=()=>S.setlists.filter(x=>x.bandId===band().id);
 const totalBars=song=>song.blocks.reduce((a,b)=>a+b.bars.length,0);
 function tagCounts(song){const c={};song.blocks.forEach(b=>b.tags.forEach(t=>c[t]=(c[t]||0)+1));return c}
@@ -910,7 +913,7 @@ function topbar(tab){
   <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
   <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・同期など)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
 /* ---------- バンドの切り替え(セトリと曲の画面のいちばん上)。曲もセトリもバンドごとに分かれる ---------- */
-function bandBar(){return `<div class="bandbar" aria-label="バンド">${S.bands.map(b=>`<button class="${b.id===band().id?'on':''}" data-act="pickBand" data-id="${b.id}">${esc(b.name)}</button>`).join('')}<button class="ghost addband" data-act="newBand" title="バンドを追加">＋ バンド</button></div>`}
+function bandBar(){const on=S.cur.band===NOBAND?NOBAND:band().id,orf=orphanSongs().length;return `<div class="bandbar" aria-label="バンド">${S.bands.map(b=>`<button class="${b.id===on?'on':''}" data-act="pickBand" data-id="${b.id}">${esc(b.name)}</button>`).join('')}${orf?`<button class="${on===NOBAND?'on':''}" data-act="pickBand" data-id="${NOBAND}">バンドなし (${orf})</button>`:''}<button class="ghost addband" data-act="newBand" title="バンドを追加">＋ バンド</button></div>`}
 function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
@@ -1069,7 +1072,8 @@ function viewBands(){const og=S.bands.filter(b=>isOrigBand(b.id)),cp=S.bands.fil
   return topbar('bands')+`<main><div class="slhead"><h1>バンド</h1><span class="spacer"></span><button class="primary" data-act="newBandHere">＋ バンド</button></div>
   <p class="sub" style="margin:0 0 6px">イベントが決まる前でも、バンドと曲を先に作っておけます。日程が決まったら、バンドを開いて「＋ イベントに出る」で入れます。</p>
   ${og.length?`<div class="home-sec"><b>オリジナル</b></div>${og.map(bandCard).join('')}`:''}
-  <div class="home-sec"><b>コピバン</b></div>${cp.map(bandCard).join('')||'<div class="empty">まだコピバンのバンドはありません</div>'}</main>`}
+  <div class="home-sec"><b>コピバン</b></div>${cp.map(bandCard).join('')||'<div class="empty">まだコピバンのバンドはありません</div>'}
+  ${orphanSongs().length?`<a class="card bandcard" href="#/songs" data-act="pickBand" data-id="${NOBAND}"><b>バンドなしの曲</b> <span class="sub">${orphanSongs().length}曲 ・ どのバンドにも入っていない曲</span></a>`:''}</main>`}
 function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace('#/bands');return ''}
   S.cur.band=b.id;const songs=S.songs.filter(s=>s.bandId===b.id),t=todayStr(),gs=bandGigs(b.id),og=isOrigBand(b.id),osl=origSets().find(x=>x.bandId===b.id);
   return topbar('bands')+`<main><a class="back" href="#/bands">‹ バンド</a>
@@ -1082,6 +1086,10 @@ function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace(
   <div class="list cards">${songs.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}</a></div>`).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
   <div class="adds"><button class="primary" data-act="newSong">＋ 新しい曲</button></div></main>`}
 function viewSongs(){
+  if(S.cur.band===NOBAND){const os=orphanSongs();if(os.length)return topbar('songs')+`<main>${bandBar()}<h1>バンドなしの曲</h1>
+    <p class="sub">バンドを消したときに残した曲です。「移す」でどれかのバンドに入れられます。</p>
+    <div class="list">${os.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}</a>
+    <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`).join('')}</div></main>`;S.cur.band=S.bands[0].id}
   const songs=bandSongs();
   return topbar('songs')+`<main>${bandBar()}<div class="slhead"><h1>${esc(band().name)} の曲</h1><button class="ghost" data-act="renameBand" data-id="${band().id}" style="margin-left:auto">名前を変更</button></div><p class="sub">ここには「${esc(band().name)}」の曲だけが並びます。同じ曲をいくつかのイベントで使っても、中身は1つなので直せば全部に反映されます。</p>
   <div class="list">${songs.map(s=>{const n=bandSetlists().filter(x=>x.songIds.includes(s.id)).length;
@@ -2841,9 +2849,15 @@ const ACT={
     window.print();document.title=t},
   export:doExport,
   import(){const f=$('#importPick');f.value='';f.click()},
-  delBand(){const b=band();if(S.bands.length<=1)return toast('バンドが1つしかないので消せません');if(!confirm(`バンド「${b.name}」と、その曲・曲順・予定を全部削除しますか？`))return;
-    const songs=S.songs.filter(s=>s.bandId===b.id);songBlobIds(songs).forEach(delBlob);
-    S.songs=S.songs.filter(s=>s.bandId!==b.id);S.setlists=S.setlists.filter(x=>x.bandId!==b.id);S.bands=S.bands.filter(x=>x!==b);S.cur.band=S.bands[0].id;S.cur.setlist=null;location.hash=R.name==='bands'?'#/bands':'#/songs';render();toast('バンドを削除しました')},
+  delBand(){const b=band();if(S.bands.length<=1)return toast('バンドが1つしかないので消せません');const n=S.songs.filter(s=>s.bandId===b.id).length;
+    if(!n){if(!confirm(`バンド「${b.name}」と、その曲順・予定を削除しますか？`))return;return ACT.delBandGo({dataset:{keep:'1'}})}
+    $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal"><div class="hstack"><b>バンド「${esc(b.name)}」を削除</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+      <p class="note" style="margin:6px 0 12px">このバンドの曲順とスタジオの予定は消えます。${n}曲の曲はどうしますか？</p>
+      <div class="sync-pick"><button class="sync-row" data-act="delBandGo" data-keep="1"><b>曲は残す</b><small class="sub" style="display:block">曲のタブの「バンドなし」に残ります。あとで別のバンドへ移せます</small></button>
+      <button class="sync-row danger" data-act="delBandGo" data-keep=""><b>曲もまとめて消す</b><small class="sub" style="display:block">曲の写真と録音も消えます</small></button></div></div>`},
+  delBandGo(t){const b=band(),keep=!!t.dataset.keep;ACT.lbClose();
+    if(!keep){const songs=S.songs.filter(s=>s.bandId===b.id);songBlobIds(songs).forEach(delBlob);S.songs=S.songs.filter(s=>s.bandId!==b.id)}
+    S.setlists=S.setlists.filter(x=>x.bandId!==b.id);S.bands=S.bands.filter(x=>x!==b);S.cur.band=S.bands[0].id;S.cur.setlist=null;location.hash=R.name==='bands'?'#/bands':'#/songs';render();toast(keep?'バンドを削除しました(曲は「バンドなし」に残しました)':'バンドを削除しました')},
 };
 const CHG={
   band(t){if(t.value==='__new'){newBand();if(t.value==='__new')render();return}S.cur.band=t.value;S.cur.setlist=null;location.hash='#/';render()},
