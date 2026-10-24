@@ -1255,7 +1255,10 @@ function cjRender(first){const e=$('#cjBody');if(!e)return;const k=$('#cjKbw'),x
    曲全体の歌詞をブロック順に大きく表示する。メトロノームか「音源に合わせて鳴らす」で再生しているあいだは、
    今の小節にいちばん近い行(そのブロックの中で、今の小節以前で最後に歌詞がある小節)を光らせて、画面の真ん中に寄せる。
    「かくす」にすると各行の頭の文字だけ見せて、残りはぼかす(タップで見える)。覚えたかの確認用 */
-const songHasLyr=s=>!!s&&s.blocks.some(b=>b.bars.some(x=>x.lyric));
+// ブロックの歌詞: 小節に置いてあればその並び、まだ置いていなければ割り当てた行(lyrLines)をそのまま使う
+function blockLyr(b){const placed=b.bars.map((x,i)=>({t:x.lyric,bar:i})).filter(x=>x.t&&x.t.trim());if(placed.length)return placed;
+  return (b.lyrLines||[]).filter(l=>l&&l.trim()).map(t=>({t,bar:null}))}
+const songHasLyr=s=>!!s&&s.blocks.some(b=>blockLyr(b).length);
 const lyrHead=(l,n)=>{const a=Array.from(String(l||'').trim());return [a.slice(0,n).join(''),a.slice(n).join('')]};
 function viewLyrics(){const s=curSong();if(!s)return topbar('')+`<main><div class="empty">曲が見つかりません</div></main>`;
   const hide=!!S.prefs.lyrHide,fs=S.prefs.lyrFs||22,sync=syncOn(s);
@@ -1266,14 +1269,14 @@ function viewLyrics(){const s=curSong();if(!s)return topbar('')+`<main><div clas
     <button data-act="lyrFs" data-v="-2" title="文字を小さく">A−</button><button data-act="lyrFs" data-v="2" title="文字を大きく">A＋</button></div>
   <p class="sub lyr-hint">${hide?'頭の文字だけ見せています。行をタップすると全部見えます。':sync?'▶ で音源を流すと、今歌っている行が光ります。行をタップするとそこから再生します。':'▶ でメトロノームを鳴らすと、今の行が光ります。(参考音源に合わせて鳴らす設定にすると、音源と一緒に流れます)'}</p>
   <h1 class="lyr-title">${esc(s.title)}</h1>
-  ${s.blocks.map(b=>{const ls=b.bars.map((x,i)=>[x.lyric,i]).filter(([l])=>l&&l.trim());
+  ${s.blocks.map(b=>{const ls=blockLyr(b).map(x=>[x.t,x.bar==null?-1:x.bar]);
     return `<section class="lyb" data-bid="${b.id}"><div class="lyb-h"><span class="pc" style="background:${TYPES[b.type].color}"></span>${esc(b.name)}<span class="sub">${b.bars.length}小節</span></div>
     ${ls.length?ls.map(([l,i])=>{const [h,t]=lyrHead(l,2);return `<p class="lyl" data-act="lyrTap" data-bid="${b.id}" data-bar="${i}"><span class="lh">${esc(h)}</span><span class="lt">${esc(t)}</span></p>`}).join('')
       :`<p class="lyr-none">♪</p>`}</section>`}).join('')}
   </main>`}
 let LYRNOW='';
 function lyrFollow(e){if(R.name!=='lyrics')return;const sec=document.querySelector(`.lyb[data-bid="${e.bid}"]`);
-  let el=null;if(sec)sec.querySelectorAll('.lyl').forEach(p=>{if(+p.dataset.bar<=e.bar)el=p});
+  let el=null;if(sec)sec.querySelectorAll('.lyl').forEach(p=>{const b=+p.dataset.bar;if(b>=0&&b<=e.bar)el=p});
   const key=e.bid+':'+(el?el.dataset.bar:'-');if(key===LYRNOW)return;LYRNOW=key;
   document.querySelectorAll('.lyb.now,.lyl.now').forEach(x=>x.classList.remove('now'));
   if(sec)sec.classList.add('now');if(el)el.classList.add('now');
@@ -1281,8 +1284,8 @@ function lyrFollow(e){if(R.name!=='lyrics')return;const sec=document.querySelect
     window.scrollBy({top:r.top+r.height/2-(innerHeight-pb)/2,behavior:'smooth'})}}
 /* ---------- 歌詞をまとめて入れる ----------
    曲全体: 歌詞の全文を貼る → 行の一覧から行を選んで、下のブロックをタップして割り当てる → 「入れる」。
-   割り当てた行は、そのブロックの小節に仮で頭から順に入る(1行=何小節かは選べる)。歌い出しの小節は、ブロックの画面の
-   「歌詞を小節に置く」でタップして決め直す。貼った全文と割り当ては曲に覚えておき、次に開いたときに続きからできる */
+   割り当てた行は、まだ小節には置かずにブロックに覚えておく(歌詞カードや構成表にはそのまま載る)。歌い出しの小節は、ブロックの画面の
+   「歌詞を小節に置く」でタップして決める。貼った全文と割り当ては曲に覚えておき、次に開いたときに続きからできる */
 let LYR={per:2,assign:[],text:''};
 const SING=b=>!['In','I','Out'].includes(b.type);
 function lyrAssignHTML(){const s=curSong(),A=LYR.A;const used={};Object.entries(A.map).forEach(([bid,ix])=>ix.forEach(i=>(used[i]=used[i]||[]).push(bid)));
@@ -1293,7 +1296,7 @@ function lyrAssignHTML(){const s=curSong(),A=LYR.A;const used={};Object.entries(
     <div class="la-h sub">${selN?`選んだ${selN}行を入れるブロックをタップ`:'行をタップして選ぶ(1行目と最後の行をタップすると、そのあいだをまとめて選べます)'}</div>
     <div class="la-blocks">${s.blocks.map(b=>{const n=(A.map[b.id]||[]).length;return `<button class="la-b ${b.id===A.next?'next':''}" data-act="laBlock" data-b="${b.id}" ${selN?'':'disabled'}>
       <span class="la-c" style="background:${TYPES[b.type].color}"></span><b>${esc(b.name)}</b><small>${n?`${n}行 / ${b.bars.length}小節`:SING(b)?`空き / ${b.bars.length}小節`:'歌なし'}</small></button>`}).join('')}</div>
-    <div class="lyr-opts"><button data-act="laClear" ${selN?'':'disabled'}>選んだ行を外す</button><span class="spacer"></span><span class="sub">1行 =</span><select data-change="lyrPer">${[1,2,4].map(n=>`<option value="${n}" ${n===LYR.per?'selected':''}>${n}小節</option>`).join('')}</select></div>
+    <div class="lyr-opts"><button data-act="laClear" ${selN?'':'disabled'}>選んだ行を外す</button></div>
     <div class="hstack"><button class="ghost" data-act="laBack">← 歌詞を貼り直す</button><span class="spacer"></span><button class="primary" data-act="laApply" ${Object.values(A.map).some(x=>x.length)?'':'disabled'}>入れる</button></div>`}
 // 選ぶたびに中身を作り直すので、行の一覧と画面のスクロール位置を覚えておいて戻す(戻さないと毎回いちばん上に飛ぶ)
 function laRender(){const el=$('#laBody');if(!el)return;const m=el.closest('.modal'),L=el.querySelector('.la-lines');const mt=m?m.scrollTop:0,lt=L?L.scrollTop:0;
@@ -1329,10 +1332,9 @@ function lyrPlan(){const s=curSong();const paras=lyrParas();if(LYR.bid)return pa
 function lyrPrev(){const el=$('#lyrPrev');if(!el)return;const s=curSong(),paras=lyrParas();lyrPlan();
   const go=$('#lyrGo');if(go)go.disabled=!paras.length;
   if(!paras.length){el.innerHTML='';return}
-  el.innerHTML=paras.map((lines,k)=>{const bl=LYR.bid?blockById(s,LYR.bid):blockById(s,LYR.assign[k]);const need=lines.length*LYR.per;
-    const over=bl&&need>bl.bars.length?Math.ceil((need-bl.bars.length)/LYR.per):0;
+  el.innerHTML=paras.map((lines,k)=>{const bl=LYR.bid?blockById(s,LYR.bid):blockById(s,LYR.assign[k]);const over=0;
     return `<div class="lyr-p"><div class="hstack">${LYR.bid?`<b>${esc(bl.name)}</b>`:`<select data-change="lyrSel" data-p="${k}"><option value="">入れない</option>${s.blocks.map(b=>`<option value="${b.id}" ${b.id===LYR.assign[k]?'selected':''}>${esc(b.name)}(${b.bars.length}小節)</option>`).join('')}</select>`}
-      <span class="sub">${lines.length}行 → ${need}小節分</span></div>
+      <span class="sub">${lines.length}行</span></div>
       <div class="l1">${esc(lines[0])}${lines.length>1?' …':''}</div>
       ${bl&&over?`<div class="warn">ブロックは${bl.bars.length}小節なので、入りきらない${over}行は最後の小節にまとめて入れます</div>`:''}
       ${!bl&&!LYR.bid?'<div class="sub">このまとまりは入れません</div>':''}</div>`}).join('')}
@@ -1580,7 +1582,7 @@ function viewPrint(){
   ${chordSheetHTML(s,withNotes,withPhotos,true)}</main>`}
 function chordSheetHTML(s,withNotes,withPhotos,showBand){
   const blocks=s.blocks.map(b=>{
-    const hasLyr=b.bars.some(x=>x.lyric);
+    const hasLyr=b.bars.some(x=>x.lyric),loose=!hasLyr&&(b.lyrLines||[]).length?`<div class="pnotes plyrs">${b.lyrLines.map(esc).join('<br>')}</div>`:'';
     const bars=b.bars.map((bar,bi)=>`<div class="pbar"><span class="pn">${bi+1}</span>
       <div class="pcells" style="grid-template-columns:repeat(${bar.n},1fr)">${bar.cells.map((c,i)=>`<div class="pcell ${c?'start':''} ${i===0?'first':''}">${esc(drm(c))}</div>`).join('')}</div>
       ${hasLyr?`<div class="plyr">${esc(bar.lyric)}</div>`:''}</div>`).join('');
@@ -1588,14 +1590,14 @@ function chordSheetHTML(s,withNotes,withPhotos,showBand){
     const photos=withPhotos?b.memos.filter(m=>m.kind==='photo'):[];
     return `<div class="pblk"><div class="pblk-h"><span class="pc" style="background:${TYPES[b.type].color}"></span>${esc(b.name)}
       <span class="ps">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</span>${b.tags.map(t=>tagHTML(t,'ptag')).join('')}</div>
-      <div class="pgrid">${bars}</div>${texts}
+      ${loose}<div class="pgrid">${bars}</div>${texts}
       ${photos.length?`<div class="pphotos">${photos.map(m=>`<img data-blob="${m.blobId}" alt="">`).join('')}</div>`:''}</div>`}).join('');
   return `<div class="pv"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}${showBand&&band()?' ・ '+esc(band().name):''}</div>
     <div style="margin-top:10px">${strip(s,true)}</div>${blocks}</div>`}
 
 function printTabs(s,on){return `<span class="ptabs"><a href="#/print/${s.id}/map" class="${on==='map'?'on':''}">構成表(1枚)</a><a href="#/print/${s.id}" class="${on==='chord'?'on':''}">コード譜</a></span>`}
 function viewMap(s){
-  const withNotes=S.prefs.printNotes!==false,hasLyr=s.blocks.some(b=>b.bars.some(x=>x.lyric)),withLyr=hasLyr&&S.prefs.printLyrics!==false?(S.prefs.printLyrHead?'head':true):false;
+  const withNotes=S.prefs.printNotes!==false,hasLyr=songHasLyr(s),withLyr=hasLyr&&S.prefs.printLyrics!==false?(S.prefs.printLyrHead?'head':true):false;
   return topbar('')+`<main>
   <div class="pbar-actions noprint"><a class="back" href="#/song/${s.id}">‹ 構成に戻る</a>${printTabs(s,'map')}<span class="spacer"></span>
     ${hasLyr?`<label class="sub"><input type="checkbox" data-change="printOpt" data-k="printLyrics" ${withLyr?'checked':''}> 歌詞</label>`:''}
@@ -1610,7 +1612,7 @@ function mapHTML(s,withNotes,withLyr){let pos=1;
     const memo=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>esc(m.text)).join(' / '):'';
     return `<tr><td class="mi">${i+1}</td><td class="mc" style="background:${TYPES[b.type].color}"></td>
       <td class="mn">${esc(b.name)}</td><td class="mb"><b>${b.bars.length}</b><span>小節</span></td>
-      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${withLyr&&b.bars.some(x=>x.lyric)?`<div class="mlyr">${b.bars.filter(x=>x.lyric).map(x=>{if(withLyr!=='head')return esc(x.lyric);const [h,t]=lyrHead(x.lyric,3);return esc(h)+(t?'…':'')}).join(' / ')}</div>`:''}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
+      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${withLyr&&blockLyr(b).length?`<div class="mlyr">${blockLyr(b).map(({t:l})=>{if(withLyr!=='head')return esc(l);const [h,t]=lyrHead(l,3);return esc(h)+(t?'…':'')}).join(' / ')}</div>`:''}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
       <td class="mp">${from}–${pos-1}</td></tr>`}).join('');
   return `<div class="pv map"><div class="mhead"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}</div></div>
     <div style="margin:10px 0 12px">${strip(s,true)}</div>
@@ -1640,14 +1642,14 @@ function songData(s){const sd=meterSlots(songMeterDefault(s));
       if(!c.length&&!x.lyric&&!x.m&&x.n===dn)return 0;const a=[x.n===dn&&!x.m?0:x.n,c];if(x.lyric||x.m)a.push(x.lyric||'');if(x.m)a.push(x.m);return a});
     if(bars.every(x=>x===0))bars=bars.length;
     return {ty:b.type,n:b.name===TYPES[b.type].label?undefined:b.name,no:U(b.note),tg:U(b.tags),st:b.start??undefined,bm:U(b.meter),bb:U(b.bpm),bk:U(b.key),bars,
-      tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text))}})}}
+      tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text)),ly:b.bars.some(x=>x.lyric)?undefined:U(b.lyrLines||[])}})}}
 // 共有データ v2: 項目名を省いた配列にしてから圧縮する。リンクは英数字(1文字6bit)、共有コードは漢字(1文字14bit)で書く
 const trimA=a=>{a=a.map(x=>x===undefined?null:x);while(a.length&&a[a.length-1]==null)a.pop();return a};
 // 7番目: 参考音源に合わせてメトロノームを鳴らす設定 [合わせる?1:0, 始めるブロックの頭の秒, 始めるブロックの番号, 刻み]
 const syncArr=s=>{const ai=s.mAnchor?s.blocks.findIndex(b=>b.id===s.mAnchor):-1;const a=trimA([s.mSync?1:undefined,+s.mOffset||undefined,ai>0?ai:undefined,U(s.mSub)]);return a.length?a:undefined};
-function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx])),syncArr(s)])}
+function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx,b.ly])),syncArr(s)])}
 function arrSong(a){return {t:a[0],bpm:a[1]||undefined,m:a[2]||undefined,k:a[3]||undefined,u:a[4]||undefined,sy:a[6]||undefined,
-  b:(a[5]||[]).map(b=>({ty:b[0],n:b[1]??undefined,no:b[2]||undefined,tg:b[3]||undefined,st:b[4]??undefined,bm:b[5]||undefined,bb:b[6]||undefined,bk:b[7]||undefined,bars:b[8]??0,tx:b[9]||undefined}))}}
+  b:(a[5]||[]).map(b=>({ty:b[0],n:b[1]??undefined,no:b[2]||undefined,tg:b[3]||undefined,st:b[4]??undefined,bm:b[5]||undefined,bb:b[6]||undefined,bk:b[7]||undefined,bars:b[8]??0,tx:b[9]||undefined,ly:b[10]||undefined}))}}
 async function packBytes(d){const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(cs).arrayBuffer())}
 function b64u(u8){let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode(...u8.subarray(i,i+8192));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
@@ -1675,7 +1677,7 @@ function songFromShared(d,bandId){const sd=meterSlots(songMeterDefault({meter:d.
   blocks:d.b.map(b=>{const ty=TYPES[b.ty]?b.ty:'X',dn=meterSlots(b.bm)||sd;const raw=typeof b.bars==='number'?Array(b.bars).fill(0):b.bars;
    return {id:uid(),type:ty,name:b.n??TYPES[ty].label,note:b.no||'',tags:b.tg||[],start:b.st??null,meter:b.bm||'',bpm:b.bb||'',key:b.bk||'',
     bars:raw.map(x=>{const [n0,c,l,m]=x===0?[0,[],'']:x;const n=n0||dn;return Object.assign({n,cells:Array.from({length:n},(_,i)=>c[i]||''),lyric:l||''},m?{m}:{})}),
-    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()}))}}),
+    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()})),...(b.ly?{lyrLines:b.ly}:{})}}),
   ...(d.sy?{mSync:!!d.sy[0],mOffset:d.sy[1]||0,mSub:d.sy[3]||''}:{})}}
 // 始めるブロックは番号で送っているので、ブロックを作ったあとでidに直す
 function songFromSharedFull(d,bandId){const s=songFromShared(d,bandId);if(d.sy&&d.sy[2]&&s.blocks[d.sy[2]])s.mAnchor=s.blocks[d.sy[2]].id;return s}
@@ -1894,7 +1896,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-24',items:['歌詞をブロックに割り当てる画面で、行を選ぶたびに一番上までスクロールが戻ってしまうのを修正','バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。1行は分けずに、歌い出しの小節にまるごと置く)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
+  {d:'2026-10-24',items:['歌詞をブロックに入れたとき、勝手に「1行=2小節」で小節に並べないように。小節に置くのは「歌詞を小節に置く」で歌い出しをタップしたときだけ','歌詞をブロックに割り当てる画面で、行を選ぶたびに一番上までスクロールが戻ってしまうのを修正','バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。1行は分けずに、歌い出しの小節にまるごと置く)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
   {d:'2026-10-11',items:['歌詞カード: 曲の歌詞を大きく表示して、メトロノームや音源に合わせて今の行が光るように。「かくす」で頭の文字だけにして覚えたかの確認も','構成表に歌詞を「頭の文字だけ」載せて印刷できるように(本番のカンペ用)','曲の構成とセトリの曲を、1つずつ独立したカードの見た目に','共有に、参考音源に合わせてメトロノームを鳴らす設定(始めるブロック・位置・刻み)も入るように','構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「歌詞をまとめて入れる」、ブロックの画面の「歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
@@ -2113,9 +2115,10 @@ const ACT={
   laApply(){const s=curSong(),A=LYR.A;const targets=s.blocks.filter(b=>(A.map[b.id]||[]).length);if(!targets.length)return;
     const filled=targets.filter(b=>b.bars.some(x=>x.lyric)).map(b=>b.name);
     if(filled.length&&!confirm(`${filled.join('・')} に入っている歌詞を置き換えます。よろしいですか？`))return;
-    targets.forEach(b=>{const lines=A.map[b.id].map(i=>A.lines[i]);b.lyrLines=lines;lyrPlaceDefault(b,lines,LYR.per)});
+    // 小節にはまだ置かない(1行が何小節かは曲によって違うので、決めつけない)。歌い出しはブロックの画面で1行ずつタップして決める
+    targets.forEach(b=>{b.lyrLines=A.map[b.id].map(i=>A.lines[i]);b.bars.forEach(x=>x.lyric='')});
     s.lyrText=LYR.text;s.lyrMap=A.map;save();ACT.lbClose();render();
-    toast(`${targets.length}ブロックに歌詞を入れました。歌い出しの小節は、ブロックの画面の「歌詞を小節に置く」で決められます`)},
+    toast(`${targets.length}ブロックに歌詞を入れました。小節への置き方は、ブロックの画面の「歌詞を小節に置く」で歌い出しをタップして決めます`)},
   // ブロックの中: 歌い出しの小節をタップして、行を1つずつ置いていく
   // 歌詞は1行まるごと、歌い出しの小節に置く(小節の途中では分けない)。全文から割り当てた行があれば、いつもその元の1行で置き直す
   lyrPlaceStart(){const bl=curBlock();if(!bl)return;const orig=lyrOrigLines(curSong(),bl);
@@ -2132,7 +2135,6 @@ const ACT={
     <div class="hstack"><b>歌詞を${LYR.bid?'貼る':'まとめて入れる'}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
     <p class="sub" style="margin:4px 0 8px">${LYR.bid?`歌詞を貼り付けると、このブロック(${esc(blockById(s,LYR.bid).name)})の小節に1行ずつ入れます。`:'曲の歌詞をまとめて貼り付けると、<b>空行で区切ったまとまりごとにブロックへ</b>、<b>1行ずつ小節へ</b>振り分けます。歌詞サイトからコピーした文をそのまま貼ってOKです。'}</p>
     <textarea id="lyrIn" data-input="lyrText" placeholder="ここに歌詞を貼り付け"></textarea>
-    <div class="lyr-opts"><span class="sub">1行 =</span><select data-change="lyrPer">${[1,2,4].map(n=>`<option value="${n}" ${n===LYR.per?'selected':''}>${n}小節</option>`).join('')}</select><span class="sub">(歌詞は行の最初の小節に入ります)</span></div>
     <div class="lyr-prev" id="lyrPrev"></div>
     <div class="hstack"><span class="spacer"></span><button class="ghost" data-act="lbClose">やめる</button><button class="primary" data-act="lyrApply" id="lyrGo" disabled>入れる</button></div></div>`;
     $('#lyrIn').focus()},
@@ -2141,7 +2143,7 @@ const ACT={
     if(filled.length&&!confirm(`${[...new Set(filled)].join('・')} に入っている歌詞を、貼り付けた歌詞で置き換えます。よろしいですか？`))return;
     const done=new Set();
     plan.forEach(({bl,lines})=>{if(!done.has(bl.id)){bl.bars.forEach(x=>x.lyric='');done.add(bl.id)}
-      bl.lyrLines=lines;lyrPlaceDefault(bl,lines,LYR.per)});
+      bl.lyrLines=lines;bl.bars.forEach(x=>x.lyric='')});
     save();ACT.lbClose();
     // ブロック1つに貼ったときは、そのまま歌い出しの小節を決める画面に進む
     if(LYR.bid){const bl=blockById(s,LYR.bid);bl.bars.forEach(x=>x.lyric='');if(P)ACT.pClose();PLACE={bid:bl.id,i:0,at:[]};save();render();toast('歌い出しの小節を、1行ずつタップしてください');return}
