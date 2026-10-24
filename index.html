@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:43';
+const APP_VER='10/25 7:45';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1479,7 +1479,7 @@ async function drivePickGo(){const s=curSong();if(!s)return;
   let pk=null;const close=()=>{const b=$('#pkClose');if(b)b.remove();try{pk&&pk.setVisible(false);pk&&pk.dispose()}catch(e){}};
   const bd=new P.PickerBuilder().setDeveloperKey(GPICKER_KEY).setAppId(GAPP_ID).setOAuthToken(SY.meta.tok).setLocale('ja').setTitle('音源を選ぶ')
     .addView(view).enableFeature(P.Feature.SUPPORT_DRIVES)
-    .setCallback(d=>{const a=d[P.Response.ACTION];if(a===P.Action.CANCEL){close();return}if(a!==P.Action.PICKED)return;close();const f=d[P.Response.DOCUMENTS][0];if(f)drivePickDone(s,f[P.Document.ID],f[P.Document.NAME])});
+    .setCallback(d=>{const a=d[P.Response.ACTION];if(a===P.Action.CANCEL){close();return}if(a!==P.Action.PICKED)return;close();const f=d[P.Response.DOCUMENTS][0];if(f)driveShareAsk(s,f[P.Document.ID],f[P.Document.NAME])});
   // スマホでは画面に収まる大きさにする
   if(innerWidth<700)bd.setSize(innerWidth-8,Math.round(innerHeight*0.72));
   pk=bd.build();pk.setVisible(true);
@@ -1487,6 +1487,18 @@ async function drivePickGo(){const s=curSong();if(!s)return;
   const b=document.createElement('button');b.id='pkClose';b.textContent='✕ 選択画面を閉じる';
   b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483647;padding:10px 18px;border-radius:999px;background:var(--panel);color:var(--fg,inherit);border:1px solid var(--line);box-shadow:0 6px 20px #0004;font-size:15px';
   b.onclick=close;document.body.appendChild(b)}
+// 選んだあと: メンバーにも聴けるようにするか聞く。するなら「リンクを知っている全員」にして、参考音源URLに共有リンクを入れる(ファイルは取り込まない)
+let DSA=null;
+function driveShareAsk(s,id,name){DSA={s,id,name};
+  $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal"><div class="hstack"><b>メンバーにも聴けるようにする？</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <p class="note" style="margin:6px 0 12px">「${esc(String(name||''))}」</p>
+    <div class="sync-pick"><button class="sync-row" data-act="dsaShare"><b>共有する</b><small class="sub" style="display:block">ドライブでこのファイルを「リンクを知っている全員」にして、共有リンクを参考音源URLに入れます。曲を共有コードで送ると、メンバーもそのまま聴けます</small></button>
+    <button class="sync-row" data-act="dsaFile"><b>共有しない</b><small class="sub" style="display:block">自分の端末で聴くだけ。共有の設定は変えません</small></button></div></div>`}
+async function driveShareLink(s,id){toast('共有の設定をしています…');let ok=true;
+  try{await gapi_(`https://www.googleapis.com/drive/v3/files/${id}/permissions?supportsAllDrives=true`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})})}catch(e){ok=false}
+  if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio);s.audio=null}
+  s.url='https://drive.google.com/file/d/'+id+'/view?usp=sharing';PL.songId=null;save();render();
+  toast(ok?'共有して、リンクを入れました':'共有の設定は変えられませんでした(自分のファイルではないかも)。リンクは入れたので、ドライブで「リンクを知っている全員」になっているか確かめてください')}
 async function drivePickDone(s,id,name){toast('ドライブから読み込んでいます…');
   try{const b=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`)).blob();
     if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio)}const bid=uid();await putBlob(bid,b);AUP.have[bid]=true;
@@ -2412,7 +2424,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2892,6 +2904,8 @@ const ACT={
       <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button><button data-act="pmDrive">Googleドライブから選ぶ</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
   pmDrive(){ACT.lbClose();drivePick()},
+  dsaShare(){const d=DSA;ACT.lbClose();if(d)driveShareLink(d.s,d.id)},
+  dsaFile(){const d=DSA;ACT.lbClose();if(d)drivePickDone(d.s,d.id,d.name)},
   drivePick(){drivePick()},
   pickerOkGo(){S.prefs.pickerOk=true;save();ACT.lbClose();drivePickGo()},
   pickerFiles(){ACT.lbClose();ACT.audioPick()},
