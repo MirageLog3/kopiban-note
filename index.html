@@ -815,7 +815,7 @@ function viewSetlist(){
 
 function viewSongs(){
   const songs=bandSongs();
-  return topbar('songs')+`<main>${bandBar()}<h1>${esc(band().name)} の曲</h1><p class="sub">ここには「${esc(band().name)}」の曲だけが並びます。同じ曲をいくつかのイベントで使っても、中身は1つなので直せば全部に反映されます。</p>
+  return topbar('songs')+`<main>${bandBar()}<div class="slhead"><h1>${esc(band().name)} の曲</h1><button class="ghost" data-act="renameBand" data-id="${band().id}" style="margin-left:auto">名前を変更</button></div><p class="sub">ここには「${esc(band().name)}」の曲だけが並びます。同じ曲をいくつかのイベントで使っても、中身は1つなので直せば全部に反映されます。</p>
   <div class="list">${songs.map(s=>{const n=bandSetlists().filter(x=>x.songIds.includes(s.id)).length;
     return `<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)} ・ イベント${n}件</div>${strip(s)}${tagChips(s)}</a>
     <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}" title="この曲を別のバンドへ移す">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`}).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
@@ -1889,7 +1889,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-24',items:['いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。小節をまたぐ行は「分ける」で途中で分けて置ける)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
+  {d:'2026-10-24',items:['バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。小節をまたぐ行は「分ける」で途中で分けて置ける)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
   {d:'2026-10-11',items:['歌詞カード: 曲の歌詞を大きく表示して、メトロノームや音源に合わせて今の行が光るように。「かくす」で頭の文字だけにして覚えたかの確認も','構成表に歌詞を「頭の文字だけ」載せて印刷できるように(本番のカンペ用)','曲の構成とセトリの曲を、1つずつ独立したカードの見た目に','共有に、参考音源に合わせてメトロノームを鳴らす設定(始めるブロック・位置・刻み)も入るように','構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「歌詞をまとめて入れる」、ブロックの画面の「歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
@@ -1907,8 +1907,8 @@ function viewSettings(){const k=R.a;
   return topbar('settings')+`<main><a class="backlink" href="javascript:void 0" data-act="goBack">‹ 戻る</a><h1>${m[1]} ${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
 function settingCards(){return {news:newsCard(),
   band:`<div class="card"><b>バンド</b><p class="note">メンバーが違えば別のバンドにします。オリジナルバンドはそのバンド名、サークルのコピバンは「軽音サークル OBライブ」のように組むバンドごとに分けると、曲一覧が混ざりません。切り替えはセトリと曲の画面のいちばん上でできます。</p>
-    <div class="hstack" style="margin-top:8px"><input value="${esc(band().name)}" data-input="bandName" style="width:220px">
-    <button data-act="newBand">＋ 追加</button>${S.bands.length>1?'<button class="ghost" data-act="delBand">これを削除</button>':''}</div></div>`,
+    ${S.bands.map(b=>`<div class="hstack" style="margin-top:8px"><input value="${esc(b.name)}" data-input="bandNameId" data-id="${b.id}" style="flex:1;min-width:0" aria-label="バンドの名前">${S.bands.length>1?`<button class="ghost" data-act="delBandId" data-id="${b.id}">削除</button>`:''}</div>`).join('')}
+    <div class="hstack" style="margin-top:8px"><button data-act="newBand">＋ バンドを追加</button></div></div>`,
   app:`<div class="card"><b>スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ ホーム画面のアプリとして開いています。':''}
     ホーム画面に追加すると、アイコンから全画面で開けて、電波がないスタジオでも使えます。<br>
     ・iPhone: Safariで開いて、下の共有ボタン → 「ホーム画面に追加」<br>
@@ -1980,9 +1980,13 @@ const ACT={
   goBlock:t=>location.hash=`#/block/${R.a}/${t.dataset.id}`,
   newSetlist,newBand,
   // ⋯ の下に出す小さいメニュー
-  slMore(t){popMenu(t,[['shareSetlist','セトリを共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
+  slMore(t){popMenu(t,[['renameBand','バンドの名前を変更'],['shareSetlist','セトリを共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
   gigMore(t){const g=gigById(t.dataset.id);popMenu(t,`<button data-act="popDo" data-v="renameGig" data-id="${g.id}">名前を変更</button>`+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
   newGig,
+  // バンドの名前を変える。どの画面から呼んでも、いま見ているバンド(セトリのバンド → 曲一覧のバンド)の名前を変える
+  renameBand(t){const id=(t&&t.dataset&&t.dataset.id)||(R.name==='setlist'&&curSetlist()?curSetlist().bandId:band().id);const b=S.bands.find(x=>x.id===id);if(!b)return;
+    nameModal('バンドの名前を変更','メンバーが違えば別のバンドです。<b>オリジナルバンドはそのバンド名</b>、<b>サークルのコピバンは組ごとの名前</b>にしておくと分かりやすいです。',['オリジナル: 「(自分のバンド名)」','コピバン: 「軽音サークル OBライブ」'],b.name,n=>{b.name=n;render();toast('バンドの名前を変えました')})},
+  delBandId(t){S.cur.band=t.dataset.id;ACT.delBand()},
   renameGig(t){const g=gigById(t.dataset.id);nameModal('イベントの名前を変更','<b>ライブや企画の名前</b>をつけておくと探しやすいです。',['「11月定例ライブ」「OBライブ」'],g.name,n=>{g.name=n;gigSets(g).forEach(x=>x.name=n);render()})},
   delGig(t){const g=gigById(t.dataset.id);if(!g||g.regular)return;const n=gigSets(g).length;
     if(!confirm(`イベント「${g.name}」を削除しますか？`+(n?`\n出るバンド${n}組のセトリと予定も消えます(曲そのものは残ります)`:'')))return;
@@ -2318,6 +2322,7 @@ const INP={
   memoName(t){findMemo(t.dataset.id).m.name=t.value},
   memoText(t){findMemo(t.dataset.id).m.text=t.value},
   bandName(t){band().name=t.value},
+  bandNameId(t){const b=S.bands.find(x=>x.id===t.dataset.id);if(b)b.name=t.value},
   studio(t){const st=curSetlist().studio;st[t.dataset.k]=t.value;$('#stSum').innerHTML=studioSum(st);$('#stDays').textContent=daysLeft(st.date)},
   shareBase(t){S.prefs.shareBase=t.value.trim()},
 };
