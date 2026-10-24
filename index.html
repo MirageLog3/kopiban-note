@@ -655,7 +655,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:25';
+const APP_VER='10/25 8:29';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1391,9 +1391,12 @@ function initPlayer(){
 function playerSong(){return songById(PL.songId)}
 function blockRange(s,bid){const i=s.blocks.findIndex(b=>b.id===bid);const b=s.blocks[i];const st=b&&blockTime(s,b);if(st==null)return null;
   const nx=s.blocks.slice(i+1).map(x=>blockTime(s,x)).find(x=>x!=null&&x>st);return {start:st,end:nx!=null?nx:(M.dur()||Infinity)}}
+function loopCheck(s,now){const lead=M.kind==='yt'?0.12:0.03;if(performance.now()-(M.loopAt||0)<300)return false;
+  if(PL.loop){const r=blockRange(s,PL.loop);if(r&&(now>=r.end-lead||now<r.start-0.5)){M.loopAt=performance.now();M.seek(r.start);MS.last=null;return true}}
+  if(LOOPR&&LOOPR.st!=null&&!M.paused()&&(now>=LOOPR.en-lead||now<LOOPR.st-0.5)){M.loopAt=performance.now();M.seek(LOOPR.st);MS.last=null;return true}return false}
+setInterval(()=>{if(!(PL.loop||(LOOPR&&LOOPR.st!=null))||!M.kind||$('#player').style.display==='none')return;try{if(M.paused())return;const s=playerSong();if(s)loopCheck(s,M.time())}catch(_){}},20);
 function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
-  if(PL.loop){const r=blockRange(s,PL.loop);if(r&&(now>=r.end-0.03||now<r.start-0.5)){M.seek(r.start)}}
-  if(LOOPR&&LOOPR.st!=null&&!M.paused()&&(now>=LOOPR.en-0.03||now<LOOPR.st-0.5)){M.seek(LOOPR.st);MS.last=null}
+  loopCheck(s,now);
   let cur=null,ct=-1;for(const b of s.blocks){const t=blockTime(s,b);if(t!=null&&t<=now+0.05&&t>=ct){cur=b;ct=t}}
   document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('playing',!!cur&&r.dataset.bid===cur.id&&now>0));
   if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
