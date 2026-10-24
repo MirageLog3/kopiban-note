@@ -2365,7 +2365,7 @@ const ACT={
   goBlock:t=>location.hash=`#/block/${R.a}/${t.dataset.id}`,
   newSetlist,newBand,
   // ⋯ の下に出す小さいメニュー
-  liveForBand(t){const bid=t.dataset.b;nameModal('出るライブ','<b>ライブの名前</b>をつけてください。日時や曲順は、このあとライブの画面で入れられます。',['「おがきよライブ」','「11月定例ライブ」'],'',name=>{
+  liveForBand(t){const bid=t.dataset.b;nameModal('出るライブ','<b>ライブの名前</b>をつけてください。日時や曲順は、このあとライブの画面で入れられます。',['「春の対バンライブ」','「11月定例ライブ」'],'',name=>{
     const g={id:uid(),name,events:[]};S.gigs.push(g);const sl={id:uid(),bandId:bid,gigId:g.id,name,songIds:[],events:[]};S.setlists.push(sl);save();location.hash='#/setlist/'+sl.id})},
   slMore(t){popMenu(t,[['renameBand','バンドの名前を変更'],['shareSetlist','セトリを共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
   gigMore(t){const g=gigById(t.dataset.id);popMenu(t,`<button data-act="popDo" data-v="renameGig" data-id="${g.id}">名前を変更</button>`+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
