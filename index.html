@@ -53,6 +53,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range])
 header.top{padding-top:max(8px,env(safe-area-inset-top))}
 /* iPhone・iPadのホーム画面アプリでは、画面の上の端にOSのガラスの効果がかかって文字がにじむ(「透明度を下げる」で消えることで確認)。上のバーの文字をその帯より下に置く */
 html.ipadapp header.top{padding-top:36px}
+html.ipadapp .drawer-bg{background:linear-gradient(transparent 0 36px,#0007 36px)}html.ipadapp .modal-bg{background:linear-gradient(transparent 0 36px,#0008 36px)}
 html.iphoneapp header.top{padding-top:max(22px,calc(env(safe-area-inset-top) + 4px))}
 .brand{font-weight:700;display:flex;align-items:center;gap:6px}
 .brand-i{width:22px;height:22px;border-radius:5px;flex:none}
@@ -648,7 +649,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:00';
+const APP_VER='10/25 8:15';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1096,10 +1097,12 @@ function bandCard(b){const n=S.songs.filter(s=>s.bandId===b.id).length,t=todaySt
   return `<a class="card bandcard ${isOrigBand(b.id)?'orig':''}" href="#/bands/${b.id}"><div class="hstack"><b>${esc(b.name)}</b><span class="sub">${n}曲</span><span class="spacer"></span><span class="sub">›</span></div>
     <div class="sub" style="margin-top:2px">${gs.length?gs.map(o=>esc(o.g.name)+(slDate(o)?' '+md(slDate(o)):'')).join(' ・ '):'出るイベントはまだありません'}</div></a>`}
 let SFQ='';
-const sfNorm=t=>String(t||'').toLowerCase().replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/\s+/g,'');
+const sfNorm=t=>String(t||'').normalize('NFKC').toLowerCase().replace(/[、。,.!?！？「」『』()（）・…〜~-]/g,'').replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/\s+/g,'');
 function songFindList(){const q=sfNorm(SFQ);if(!q)return '';const hits=[];
-  S.songs.forEach(s=>{let why='';if(!sfNorm(s.title).includes(q)){for(const b of s.blocks||[]){
-      const f=[[b.name,'ブロック'],[b.note,'メモ'],[(b.lyrLines||[]).join(' '),'歌詞']].find(([v])=>sfNorm(v).includes(q));if(f){why=(f[1]?f[1]+': ':'')+String(f[0]).replace(/\s+/g,' ').slice(0,40);break}}
+  S.songs.forEach(s=>{let why='';if(!sfNorm(s.title).includes(q)){
+    const ll=String(s.lyrText||'').split(String.fromCharCode(10)).find(l=>sfNorm(l).includes(q));if(ll)why='歌詞: '+ll.trim().slice(0,40);
+    if(!why)for(const b of s.blocks||[]){
+      const f=[[b.name,'ブロック'],[b.note,'メモ'],[(b.lyrLines||[]).join(' '),'歌詞'],[(b.bars||[]).map(x=>x.lyric||'').join(' '),'歌詞']].find(([v])=>sfNorm(v).includes(q));if(f){why=(f[1]?f[1]+': ':'')+String(f[0]).replace(/\s+/g,' ').slice(0,40);break}}
       if(!why)return}hits.push({s,why})});
   if(!hits.length)return '<div class="empty">見つかりませんでした</div>';
   return `<div class="list cards">${hits.slice(0,40).map(({s,why})=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${S.bands.some(b=>b.id===s.bandId)?esc(bandNameOf(s.bandId)):'バンドなし'} ・ ${songMeta(s)}</div>${why?`<div class="sub">${esc(why)}</div>`:''}${strip(s)}</a></div>`).join('')}</div>`}
