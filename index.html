@@ -850,7 +850,7 @@ function viewSong(){
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     ${s.audio?`<p class="sub" style="margin:8px 0 0">${esc(s.audio.name)} を入れてあります。下のプレーヤーで再生・差し替えできます。</p>`
       :`<div class="hstack" id="audioDrop" style="margin-top:8px"><button class="primary" data-act="audioPick">音源ファイルを入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
-  <div class="hstack song-acts" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
+  <div class="hstack song-acts" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><button data-act="midiPick" title="Cubaseなどから書き出したMIDIファイルで、テンポ・拍子・マーカー(ブロック分け)を読み込む">MIDIを読み込む</button><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${metroCard(s)}
   <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
@@ -1961,7 +1961,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-24',items:['再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
+  {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を入れられるように','元に戻す・やり直す','共有コードで曲やセトリを取り込めるように','使い方ガイドとお知らせを追加','コード判定ツール','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・ブロックを自動で移動']}];
@@ -2009,6 +2009,68 @@ function toast(t){const e=document.createElement('div');e.className='toast';e.te
 
 /* ---------- actions ---------- */
 function curSetlist(){return S.setlists.find(x=>x.id===S.cur.setlist)}
+/* ---------- MIDI(SMF)から構成を読み込む ----------
+   読むのはテンポ・拍子・調号・マーカーだけ(音符は読まない)。マーカーの位置でブロックを分けて、
+   テンポがなめらかに変わるところは「テンポをだんだん変える」、急に変わるところはその小節からのテンポにする */
+function readSMF(buf){const d=new DataView(buf);let p=0;const str=n=>{let s='';for(let i=0;i<n;i++)s+=String.fromCharCode(d.getUint8(p+i));return s};
+  if(str(4)!=='MThd')throw new Error('MIDIファイルではありません');const hl=d.getUint32(4);const ntr=d.getUint16(10),div=d.getUint16(12);
+  if(div&0x8000)throw new Error('このMIDIの時間の形式(SMPTE)には対応していません');p=8+hl;
+  const ev={tempo:[],ts:[],key:[],mk:[],name:'',end:0};
+  const dec=bytes=>{try{return new TextDecoder('utf-8',{fatal:true}).decode(bytes)}catch(e){try{return new TextDecoder('shift_jis').decode(bytes)}catch(_){return String.fromCharCode(...bytes)}}};
+  for(let t=0;t<ntr&&p+8<=buf.byteLength;t++){const id=str(4),len=d.getUint32(p+4);p+=8;const end=Math.min(buf.byteLength,p+len);if(id!=='MTrk'){p=end;continue}
+    let tick=0,rs=0;const vlq=()=>{let v=0,b;do{b=d.getUint8(p++);v=(v<<7)|(b&0x7f)}while(b&0x80&&p<end);return v};
+    while(p<end){tick+=vlq();let st=d.getUint8(p);if(st<0x80){st=rs}else p++;
+      if(st===0xff){const ty=d.getUint8(p++),l=vlq(),q=p;p+=l;const by=new Uint8Array(buf,q,Math.max(0,Math.min(l,end-q)));
+        if(ty===0x51&&l>=3)ev.tempo.push({tick,bpm:60e6/((by[0]<<16)|(by[1]<<8)|by[2])});
+        else if(ty===0x58&&l>=2)ev.ts.push({tick,n:by[0],d:2**by[1]});
+        else if(ty===0x59&&l>=2)ev.key.push({tick,sf:(by[0]<<24)>>24,mi:by[1]});
+        else if(ty===0x06||(ty===0x07&&!ev.mk.some(m=>m.tick===tick)))ev.mk.push({tick,t:dec(by).trim()});
+        else if(ty===0x03&&t===0&&!ev.name)ev.name=dec(by).trim();
+        if(ty===0x2f&&t>0)ev.end=Math.max(ev.end,tick);continue}
+      if(st===0xf0||st===0xf7){p+=vlq();continue}
+      rs=st;const hi=st&0xf0;p+=(hi===0xc0||hi===0xd0)?1:2;ev.end=Math.max(ev.end,tick)}
+    p=end}
+  ['tempo','ts','key','mk'].forEach(k=>ev[k].sort((a,b)=>a.tick-b.tick));return {ppq:div,...ev}}
+const MIDI_TYPES=[[/大サビ|last ?chorus/i,'D'],[/イントロ|intro/i,'In'],[/アウトロ|エンディング|outro|ending/i,'Out'],[/間奏|ソロ|inter|solo|break/i,'I'],
+  [/サビ|chorus|hook/i,'S'],[/^c|cメロ|bridge/i,'C'],[/^a|aメロ|verse/i,'A'],[/^b|bメロ|pre/i,'B']];
+const midiType=n=>(MIDI_TYPES.find(([r])=>r.test(n))||[0,'X'])[1];
+const KEY_MAJ=['C♭','G♭','D♭','A♭','E♭','B♭','F','C','G','D','A','E','B','F#','C#'],KEY_MIN=['A♭','E♭','B♭','F','C','G','D','A','E','B','F#','C#','G#','D#','A#'];
+const keyName=k=>k&&k.sf>=-7&&k.sf<=7?(k.mi?KEY_MIN[k.sf+7]+'m':KEY_MAJ[k.sf+7]):'';
+function midiToSong(m,s){const r1=x=>Math.round(x*10)/10;
+  const tempoAt=tk=>{let b=120;for(const e of m.tempo){if(e.tick>tk)break;b=e.bpm}return b};
+  const tsAt=tk=>{let x={n:4,d:4};for(const e of m.ts){if(e.tick>tk)break;x=e}return x};
+  // 小節の頭の位置を、拍子の変化に合わせて曲の終わりまで並べる
+  const lastMk=m.mk.length?m.mk[m.mk.length-1].tick:0,end=Math.max(m.end,lastMk+1),bars=[];
+  for(let tk=0;tk<end&&bars.length<2000;){const t=tsAt(tk);const len=Math.round(t.n*4/t.d*m.ppq);bars.push({tick:tk,len,meter:t.n+'/'+t.d});tk+=len}
+  if(!bars.length){const t=tsAt(0);bars.push({tick:0,len:t.n*4/t.d*m.ppq,meter:t.n+'/'+t.d})}
+  const barOf=tk=>{let i=0;for(let k=0;k<bars.length;k++){if(bars[k].tick<=tk+m.ppq/8)i=k;else break}return i};
+  // マーカーの小節でブロックを分ける。最初のマーカーより前があれば、そこもブロックにする
+  const cuts=[];m.mk.filter(x=>x.tick<end).forEach(x=>{const b=barOf(x.tick);const c=cuts.find(c=>c.bar===b);if(c)c.name=x.t||c.name;else cuts.push({bar:b,name:x.t})});
+  if(!cuts.length||cuts[0].bar>0)cuts.unshift({bar:0,name:cuts.length?'イントロ':''});
+  const sBpm=r1(tempoAt(0)),k0=m.key.find(k=>k.tick===0)||m.key[0];
+  s.bpm=String(sBpm);const meters=[...new Set(bars.map(b=>b.meter).filter(meterSlots))];s.meter=meters.join(', ')||'4/4';if(k0)s.key=keyName(k0);
+  const songMeter=songMeterDefault(s);
+  s.blocks=cuts.map((c,i)=>{const from=c.bar,to=(i+1<cuts.length?cuts[i+1].bar:bars.length)-1;const type=c.name?midiType(c.name):'X';
+    const bl=newBlock(type,c.name||(cuts.length===1?'全体':TYPES[type].label),Math.max(1,to-from+1));const bm=meterSlots(bars[from].meter)?bars[from].meter:songMeter;
+    if(bm!==songMeter)bl.meter=bm;
+    bl.bars=bars.slice(from,to+1).map(b=>{const mt=meterSlots(b.meter)?b.meter:bm;const bar=newBar(meterSlots(mt));if(mt!==bm)bar.m=mt;return bar});
+    if(!bl.bars.length)bl.bars=[newBar(meterSlots(bm))];
+    // テンポ: 小節ごとに頭と終わりのテンポを見て、ずっと同じ・急に変わる・だんだん変わるを見分ける
+    const st=r1(tempoAt(bars[from].tick));if(st!==sBpm)bl.bpm=String(st);let cur=st,ramp=null;const ramps=[];
+    for(let bi=0;bi<bl.bars.length;bi++){const b=bars[from+bi];if(!b)break;const a=r1(tempoAt(b.tick)),e0=r1(tempoAt(b.tick+b.len-1)),nx=r1(tempoAt(b.tick+b.len)),e=Math.abs(nx-e0)<=Math.max(2,e0*0.03)?nx:e0;
+      const inside=m.tempo.some(x=>x.tick>b.tick&&x.tick<b.tick+b.len&&Math.abs(r1(x.bpm)-a)>=0.5);
+      if(inside){if(!ramp)ramp={from:bi,to:bi,a:Math.abs(a-cur)<0.5?cur:a,b:e};else{ramp.to=bi;ramp.b=e}continue}
+      if(ramp){ramps.push(ramp);cur=ramp.b;ramp=null}
+      if(Math.abs(a-cur)>=0.5){if(bi===0){bl.bpm=String(a)}else ramps.push({from:bi,to:bi,a,b:a});cur=a}}
+    if(ramp)ramps.push(ramp);if(ramps.length)bl.ramps=ramps;
+    const kc=m.key.filter(k=>k.tick>0&&barOf(k.tick)>=from&&barOf(k.tick)<=to).pop();if(kc&&keyName(kc)!==s.key)bl.key=keyName(kc);
+    return bl});
+  return {blocks:s.blocks.length,bars:bars.length,marks:m.mk.length,ramps:s.blocks.reduce((n,b)=>n+(b.ramps||[]).filter(r=>r.a!==r.b).length,0),meters,key:s.key}}
+async function loadMidi(file){const s=curSong();if(!s||!file)return;let m;try{m=readSMF(await file.arrayBuffer())}catch(e){return alert('読み込めませんでした: '+e.message)}
+  const has=s.blocks.some(b=>b.bars.some(x=>x.cells.some(Boolean)||x.lyric)||(b.memos||[]).length||(b.lyrLines||[]).length);
+  if(has&&!confirm('今の構成(コード・歌詞・メモも)を、MIDIの内容で置き換えます。あとで「元に戻す」で戻せます。よろしいですか？'))return;
+  const r=midiToSong(m,s);save();render();
+  alert(`MIDIから読み込みました\n・ブロック ${r.blocks}個(マーカー ${r.marks}個)\n・${r.bars}小節 / 拍子 ${r.meters.join(', ')||'4/4'}\n・テンポ ♩${s.bpm}${r.ramps?` ・ だんだん変わるところ ${r.ramps}か所`:''}${r.key?`\n・キー ${r.key}`:''}${r.marks?'':'\n\nマーカーがなかったので、1つのブロックにまとめました'}`)}
 function createSong(addToSetlist){const t=prompt('曲名');if(!t)return;const s=newSong(band().id,t);S.songs.push(s);
   if(addToSetlist&&curSetlist())curSetlist().songIds.push(s.id);location.hash='#/song/'+s.id}
 // 名前を決める画面: 何を入れればいいかの説明と例を添える(prompt だと説明が出せないため)
@@ -2332,6 +2394,7 @@ const ACT={
     toast('追加しました')},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
+  midiPick(){pickMode='midi';const f=$('#filePick');f.accept='.mid,.midi,audio/midi,audio/x-midi';f.value='';f.click()},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
   audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
   bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);const st=blockTime(s,b);if(st==null)return;ctxReady();MS.last=null;M.seek(st);M.play()},
@@ -2482,7 +2545,7 @@ window.addEventListener('dragover',e=>{if(!drag)e.preventDefault()});
 window.addEventListener('drop',e=>{if(!drag)e.preventDefault()});
 document.addEventListener('paste',e=>{if(R.name!=='block'||/INPUT|TEXTAREA/.test(e.target.tagName))return;
   const files=[...e.clipboardData.files];if(files.length){e.preventDefault();handleFiles(files)}});
-$('#filePick').addEventListener('change',e=>{const fs=[...e.target.files];if(pickMode==='song')setSongAudio(curSong(),fs[0]);else handleFiles(fs)});
+$('#filePick').addEventListener('change',e=>{const fs=[...e.target.files];if(pickMode==='midi')loadMidi(fs[0]);else if(pickMode==='song')setSongAudio(curSong(),fs[0]);else handleFiles(fs)});
 $('#importPick').addEventListener('change',e=>{if(e.target.files[0])doImport(e.target.files[0])});
 window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';render();window.scrollTo(0,0)});
 
