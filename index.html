@@ -1073,7 +1073,7 @@ function viewBands(){const og=S.bands.filter(b=>isOrigBand(b.id)),cp=S.bands.fil
 function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace('#/bands');return ''}
   S.cur.band=b.id;const songs=S.songs.filter(s=>s.bandId===b.id),t=todayStr(),gs=bandGigs(b.id),og=isOrigBand(b.id),osl=origSets().find(x=>x.bandId===b.id);
   return topbar('bands')+`<main><a class="back" href="#/bands">‹ バンド</a>
-  <div class="slhead"><input class="h1in nameedit" value="${esc(b.name)}" data-input="bandNameId" data-id="${b.id}" aria-label="バンドの名前" enterkeyhint="done"></div>
+  <div class="slhead"><input class="h1in nameedit" value="${esc(b.name)}" data-input="bandNameId" data-id="${b.id}" aria-label="バンドの名前" enterkeyhint="done"><button class="ghost slmore" data-act="bandMore" data-b="${b.id}" aria-label="バンドのメニュー">⋯</button></div>
   <p class="sub gigsub">${og?`オリジナル ・ <a href="#/setlist/${osl.id}">曲順とスタジオの予定 ›</a>`:`コピバン ・ <a href="javascript:void 0" data-act="makeOrig" data-b="${b.id}">オリジナルにする</a>`}</p>
   <div class="sec">出るイベント (${gs.length})</div>
   <div class="list cards">${gs.map(o=>`<div class="row ${slDate(o)&&slDate(o)<t?'pastrow':''}"><a class="body" href="#/setlist/${o.sl.id}"><div class="title">${esc(o.g.name)}</div><div class="sub">${slDate(o)?dayLbl(slDate(o)):'日付未定'} ・ ${o.sl.songIds.filter(songById).length}曲</div></a><span class="sub">${slDate(o)&&slDate(o)>=t?daysLeft(slDate(o)):''} ›</span></div>`).join('')||'<div class="empty">まだ出るイベントはありません</div>'}</div>
@@ -2485,6 +2485,12 @@ const ACT={
   newSetlist,newBand,
   // ⋯ の下に出す小さいメニュー
   newBandHere(){newBand(true)},
+  bandMore(t){const bid=t.dataset.b,og=isOrigBand(bid);popMenu(t,(og?`<button data-act="popDo" data-v="unOrig" data-b="${bid}">オリジナルから外す(コピバンに戻す)</button>`:`<button data-act="popDo" data-v="makeOrig" data-b="${bid}">オリジナルにする</button>`)
+    +`<hr><button class="danger" data-act="popDo" data-v="delBandId" data-id="${bid}">バンドを削除</button>`,true)},
+  // オリジナルから外す: 「オリジナル」の段から抜く。曲とイベントの出番はそのまま。オリジナルの曲順とスタジオの予定は消える
+  unOrig(t){const bid=t.dataset.b,sl=origSets().find(x=>x.bandId===bid);if(!sl)return;const nev=(sl.events||[]).length;
+    if(nev&&!confirm(`オリジナルから外すと、オリジナルとして入れていたスタジオの予定(${nev}件)が消えます。曲とイベントの出番はそのままです。外しますか？`))return;
+    S.setlists=S.setlists.filter(x=>x!==sl);render();toast('コピバンに戻しました(元に戻すボタンで戻せます)')},
   // オリジナルにする: 「オリジナル」の段に入れる(普段の曲順とスタジオの予定を持てるようにする)
   makeOrig(t){const bid=t.dataset.b,g=S.gigs.find(x=>x.regular);if(!g||isOrigBand(bid))return;S.setlists.push({id:uid(),bandId:bid,gigId:g.id,name:g.name,songIds:[],events:[]});render();toast('オリジナルにしました')},
   // イベントに出る: 今あるイベントを選ぶか、新しく作る
@@ -2835,9 +2841,9 @@ const ACT={
     window.print();document.title=t},
   export:doExport,
   import(){const f=$('#importPick');f.value='';f.click()},
-  delBand(){const b=band();if(!confirm(`バンド「${b.name}」と、その曲・曲順・予定を全部削除しますか？`))return;
+  delBand(){const b=band();if(S.bands.length<=1)return toast('バンドが1つしかないので消せません');if(!confirm(`バンド「${b.name}」と、その曲・曲順・予定を全部削除しますか？`))return;
     const songs=S.songs.filter(s=>s.bandId===b.id);songBlobIds(songs).forEach(delBlob);
-    S.songs=S.songs.filter(s=>s.bandId!==b.id);S.setlists=S.setlists.filter(x=>x.bandId!==b.id);S.bands=S.bands.filter(x=>x!==b);S.cur.band=S.bands[0].id;S.cur.setlist=null;location.hash='#/songs';render()},
+    S.songs=S.songs.filter(s=>s.bandId!==b.id);S.setlists=S.setlists.filter(x=>x.bandId!==b.id);S.bands=S.bands.filter(x=>x!==b);S.cur.band=S.bands[0].id;S.cur.setlist=null;location.hash=R.name==='bands'?'#/bands':'#/songs';render();toast('バンドを削除しました')},
 };
 const CHG={
   band(t){if(t.value==='__new'){newBand();if(t.value==='__new')render();return}S.cur.band=t.value;S.cur.setlist=null;location.hash='#/';render()},
