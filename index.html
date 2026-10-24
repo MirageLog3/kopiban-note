@@ -651,13 +651,15 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 9:35';
+const APP_VER='10/25 10:00';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
    権限は「このアプリが作ったファイルだけ」(drive.file)。写真と録音は重いので同期しない(文字のデータと、曲の音源ファイルだけ)。
    どの端末でいつ保存したかを覚えておいて、両方で変えていたときは、どちらを残すか聞く */
 const GCLIENT='550031929022-h9544gmr7i7093osevvd9pv0li1s22dv.apps.googleusercontent.com';
+// Googleのファイル選択画面(Picker)用。ブラウザに出して使う公開の鍵で、このサイトとPickerだけに制限してある
+const GPICKER_KEY='AIzaSyD3vo_Qx2OV24D5m94w2csTjC7eC61nAaM',GAPP_ID='550031929022';
 const SYNC_NAME='kopiban-note-sync.json',SYNC_KEY='kbSync';
 const SY={meta:(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})(),busy:false,t:null,lastPull:0,err:''};
 const syncSave=()=>{try{localStorage.setItem(SYNC_KEY,JSON.stringify(SY.meta))}catch(e){}};
@@ -696,11 +698,11 @@ async function syncLogin(){if(!GCLIENT)return toast('同期はまだ準備中で
     callback:r=>{if(r.error){SY.err='ログインできませんでした';syncUI();return}loginDone(r.access_token,r.expires_in)},
     error_callback:()=>{SY.err='ログインの画面が閉じられました';syncUI()}});
   tc.requestAccessToken({prompt:SY.meta.on?'':'consent'})}
-async function gapi(url,opt={}){const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+SY.meta.tok,...(opt.headers||{})}});
+async function gapi_(url,opt={}){const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+SY.meta.tok,...(opt.headers||{})}});
   if(r.status===401){SY.meta.exp=0;syncSave();throw new Error('auth')}if(!r.ok)throw new Error('Googleドライブとやりとりできませんでした('+r.status+')');return r}
-async function syncFind(){if(SY.meta.fileId){try{const f=await (await gapi(`https://www.googleapis.com/drive/v3/files/${SY.meta.fileId}?fields=id,appProperties,trashed`)).json();if(f&&!f.trashed)return f}catch(e){if(e.message==='auth')throw e}}
+async function syncFind(){if(SY.meta.fileId){try{const f=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${SY.meta.fileId}?fields=id,appProperties,trashed`)).json();if(f&&!f.trashed)return f}catch(e){if(e.message==='auth')throw e}}
   const q=encodeURIComponent(`name='${SYNC_NAME}' and trashed=false`);
-  const j=await (await gapi(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=modifiedTime desc&fields=files(id,appProperties)&pageSize=1`)).json();return j.files&&j.files[0]||null}
+  const j=await (await gapi_(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=modifiedTime desc&fields=files(id,appProperties)&pageSize=1`)).json();return j.files&&j.files[0]||null}
 function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.bands,songs:data.songs||S.songs,setlists:data.setlists||S.setlists,markers:data.markers||S.markers,gigs:data.gigs||S.gigs});
   H.past=[];H.future=[];H.last=histSnap();H.busy=false;histBtns();idb('kv','readwrite',s=>s.put(S,'state'));
   Object.assign(SY.meta,{at:ap.savedAt,hash:syncHash()});syncSave();
@@ -711,20 +713,20 @@ const AUP={busy:false,get:{},have:{}};
 async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO||S.prefs.audioUp===false)return;if(!(await ensureToken()))return;AUP.busy=true;
   try{for(const s of S.songs){const a=s.audio;if(!a||a.drv)continue;const b=await getBlob(a.blobId);if(!b)continue;
       const ty=b.type||'application/octet-stream',meta={name:'kopiban-audio-'+a.name,appProperties:{kbAudio:a.blobId}};let id=null;
-      try{const ini=await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':ty},body:JSON.stringify(meta)});
+      try{const ini=await gapi_('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':ty},body:JSON.stringify(meta)});
         const loc=ini.headers.get('Location');
         if(loc){const r=await fetch(loc,{method:'PUT',headers:{'Content-Type':ty},body:b});if(r.ok)id=(await r.json()).id}}catch(e){if(e.message==='auth')throw e}
       if(!id){const bd='kb'+Math.random().toString(36).slice(2);
         const body=new Blob([`--${bd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${bd}\r\nContent-Type: ${ty}\r\n\r\n`,b,`\r\n--${bd}--`]);
-        id=(await (await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json()).id}
+        id=(await (await gapi_('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json()).id}
       const cur=S.songs.find(x=>x.id===s.id);if(id&&cur&&cur.audio&&cur.audio.blobId===a.blobId){cur.audio.drv=id;save()}}}catch(e){}
   AUP.busy=false;updAudioStat()}
 // 手元にない音源を、ドライブから取ってくる。取れたら true
 async function audioFetch(s){const a=s&&s.audio;if(!a||!a.drv||AUP.get[a.blobId]===1)return false;if(!SY.meta.on||!(await ensureToken()))return false;
   AUP.get[a.blobId]=1;updAudioStat();
-  try{const b=await (await gapi(`https://www.googleapis.com/drive/v3/files/${a.drv}?alt=media`)).blob();await putBlob(a.blobId,b);AUP.get[a.blobId]=0;AUP.have[a.blobId]=true;updAudioStat();return true}
+  try{const b=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${a.drv}?alt=media`)).blob();await putBlob(a.blobId,b);AUP.get[a.blobId]=0;AUP.have[a.blobId]=true;updAudioStat();return true}
   catch(e){AUP.get[a.blobId]='ng';updAudioStat();return false}}
-function audioDrvDel(a){if(!a||!a.drv||!SY.meta.on)return;ensureToken().then(ok=>{if(ok)gapi(`https://www.googleapis.com/drive/v3/files/${a.drv}`,{method:'DELETE'}).catch(()=>{})})}
+function audioDrvDel(a){if(!a||!a.drv||a.picked||!SY.meta.on)return;ensureToken().then(ok=>{if(ok)gapi_(`https://www.googleapis.com/drive/v3/files/${a.drv}`,{method:'DELETE'}).catch(()=>{})})}
 function audioStatHTML(s){const a=s.audio,id=a.blobId;
   if(AUP.get[id]===1)return `${esc(a.name)} をGoogleドライブから読み込んでいます…`;
   if(AUP.have[id]===false){
@@ -738,7 +740,7 @@ async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!(await ensureT
     if(!f){SY.busy=false;return syncPush(true)}
     SY.meta.fileId=f.id;const ap=f.appProperties||{};
     if(ap.savedAt&&ap.savedAt!==SY.meta.at){
-      const data=await (await gapi(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json();
+      const data=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json();
       if(!SY.meta.at||syncDirty()){const lo=syncLocalOnly(data);
         if(lo.items.length||lo.changed){const ans=await syncAsk(ap,lo);await syncKeep(f.id,ap);
           if(ans.mode==='local'){SY.meta.at=ap.savedAt;SY.busy=false;return syncPush(true)}
@@ -756,7 +758,7 @@ async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!(await ensureToken(
     if(f&&ap.savedAt&&SY.meta.at&&ap.savedAt!==SY.meta.at){SY.busy=false;return syncPull()}
     const savedAt=String(Date.now()),meta={appProperties:{savedAt,device:devName()}};if(!f)meta.name=SYNC_NAME,meta.mimeType='application/json';
     const bd='kb'+Math.random().toString(36).slice(2);const body=`--${bd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${bd}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(syncData())}\r\n--${bd}--`;
-    const r=await (await gapi(f?`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart&fields=id`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    const r=await (await gapi_(f?`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart&fields=id`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
       {method:f?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json();
     Object.assign(SY.meta,{fileId:r.id,at:savedAt,hash:syncHash(),last:+savedAt});syncSave();SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
   SY.busy=false;syncUI();audioUp()}
@@ -790,10 +792,10 @@ function syncAsk(ap,lo){return new Promise(ok=>{const dev=ap.device||'ほかの�
    ドライブのデータ → ドライブに日付つきのコピー(kopiban-note-backup-…json)、この端末のデータ → この端末の中(syncPrev) */
 const bkStamp=t=>{const d=new Date(t);return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')};
 async function syncKeep(fileId,ap){try{await idb('kv','readwrite',s=>s.put({at:Date.now(),device:devName(),data:JSON.parse(JSON.stringify(syncData()))},'syncPrev'))}catch(e){}
-  try{await gapi(`https://www.googleapis.com/drive/v3/files/${fileId}/copy?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},
+  try{await gapi_(`https://www.googleapis.com/drive/v3/files/${fileId}/copy?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({name:`kopiban-note-backup-${bkStamp(+ap.savedAt||Date.now())}.json`,appProperties:{backup:'1',savedAt:String(ap.savedAt||''),device:ap.device||''}})})}catch(e){}}
 async function syncBackups(){const q=encodeURIComponent("name contains 'kopiban-note-backup-' and trashed=false");
-  const j=await (await gapi(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,appProperties)&pageSize=15`)).json();return j.files||[]}
+  const j=await (await gapi_(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,appProperties)&pageSize=15`)).json();return j.files||[]}
 // 控えから戻す: 選んだ控えをこの端末に入れて、ドライブにも保存する(戻す前の今のドライブも控えに残す)
 async function syncRestoreOpen(){let list=[];const prev=await idb('kv','readonly',s=>s.get('syncPrev')).catch(()=>null);
   if(syncReady())try{list=await syncBackups()}catch(e){}
@@ -803,7 +805,7 @@ async function syncRestoreOpen(){let list=[];const prev=await idb('kv','readonly
     ${rows.length?`<div class="sync-pick">${rows.join('')}</div>`:'<p class="sub">まだ控えはありません。</p>'}${!syncReady()&&SY.meta.on?'<p class="note">ドライブの控えを見るには、先に「Googleで続ける」でログインしてください。</p>':''}
     <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button data-act="lbClose">閉じる</button></div></div>`;
   document.querySelectorAll('.sync-pick button').forEach(b=>b.onclick=async()=>{if(!b.dataset.sure){document.querySelectorAll('.sync-pick button').forEach(x=>{delete x.dataset.sure;x.classList.remove('sure')});b.dataset.sure=1;b.classList.add('sure');return toast('もう一度押すと、これに戻します')}
-    let data;try{data=b.dataset.k==='local'?prev.data:await (await gapi(`https://www.googleapis.com/drive/v3/files/${b.dataset.k}?alt=media`)).json()}catch(e){return toast('控えを読み込めませんでした')}
+    let data;try{data=b.dataset.k==='local'?prev.data:await (await gapi_(`https://www.googleapis.com/drive/v3/files/${b.dataset.k}?alt=media`)).json()}catch(e){return toast('控えを読み込めませんでした')}
     if(SY.meta.on&&syncReady()&&SY.meta.fileId)await syncKeep(SY.meta.fileId,{savedAt:SY.meta.at,device:'戻す前'});
     H.busy=true;Object.assign(S,{bands:data.bands||S.bands,songs:data.songs||[],setlists:data.setlists||[],markers:data.markers||S.markers,gigs:data.gigs||S.gigs});H.busy=false;
     $('#overlay').innerHTML='';save();render();toast('控えのデータに戻しました');if(SY.meta.on)syncPush(true)})}
@@ -1159,7 +1161,7 @@ function viewSong(){
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     <div id="ytSlot" ${songMedia(s)==='yt'?'':'hidden'}></div>
     ${s.audio?`<p class="sub" id="audioStat" style="margin:8px 0 0">${audioStatHTML(s)}</p>`
-      :`<div class="hstack" id="audioDrop" style="margin-top:8px"><button class="primary" data-act="audioPick">音源ファイルを入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
+      :`<div class="hstack" id="audioDrop" style="margin-top:8px;flex-wrap:wrap"><button class="primary" data-act="audioPick">音源ファイルを入れる(wav / mp3 など)</button><button data-act="drivePick">Googleドライブから選ぶ</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
   <div class="hstack song-acts" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><button data-act="midiPick" title="Cubaseなどから書き出したMIDIファイルで、テンポ・拍子・マーカー(ブロック分け)を読み込む">MIDIを読み込む</button><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
   <div style="margin-top:14px">${strip(s,true)}</div>
   ${metroCard(s)}
@@ -1454,6 +1456,25 @@ function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<
   $('#plRemove').style.display=kind==='audio'?'':'none';$('#plPick').textContent=kind==='audio'?'差し替え':'音源ファイルを入れる';
   const lb=PL.loop&&s.blocks.find(b=>b.id===PL.loop);$('#plLoop').innerHTML=lb?`🔁 ${esc(lb.name)} をループ中 <button class="ghost" data-act="bLoop" data-id="${lb.id}">解除</button>`:'';
   onTime();ytPos();setTimeout(ytPos,400)}
+/* ドライブから音源を選ぶ: Googleのファイル選択画面で選んだファイルを、そのまま曲の音源にする。
+   ドライブに元からあるファイルなので上げ直さず、外したり差し替えたりしてもドライブのファイルは消さない(picked) */
+function pickerLoad(){return new Promise((ok,ng)=>{if(window.google&&google.picker)return ok();
+  const go=()=>gapi.load('picker',{callback:ok,onerror:()=>ng(new Error('読み込めませんでした'))});
+  if(window.gapi)return go();const sc=document.createElement('script');sc.src='https://apis.google.com/js/api.js';sc.onload=go;sc.onerror=()=>ng(new Error('Googleの画面を読み込めませんでした'));document.head.appendChild(sc)})}
+async function drivePick(){const s=curSong();if(!s)return;
+  if(!SY.meta.on){toast('先にメニューの「Googleで自動バックアップ・同期」でログインしてください');location.hash='#/settings/sync';return}
+  if(!(await ensureToken())){toast('Googleのログインが切れています。もう一度ログインしてください');return ACT.syncLogin()}
+  try{await pickerLoad()}catch(e){return toast(e.message)}
+  const P=google.picker,view=new P.DocsView(P.ViewId.DOCS).setMimeTypes('audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/m4a,audio/aac,audio/wav,audio/x-wav,audio/wave,audio/flac,audio/x-flac,audio/ogg,audio/aiff,audio/x-aiff,audio/webm').setIncludeFolders(true).setSelectFolderEnabled(false);
+  const pk=new P.PickerBuilder().setDeveloperKey(GPICKER_KEY).setAppId(GAPP_ID).setOAuthToken(SY.meta.tok).setLocale('ja').setTitle('音源を選ぶ')
+    .addView(view).enableFeature(P.Feature.SUPPORT_DRIVES)
+    .setCallback(d=>{if(d[P.Response.ACTION]!==P.Action.PICKED)return;const f=d[P.Response.DOCUMENTS][0];if(f)drivePickDone(s,f[P.Document.ID],f[P.Document.NAME])}).build();
+  pk.setVisible(true)}
+async function drivePickDone(s,id,name){toast('ドライブから読み込んでいます…');
+  try{const b=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`)).blob();
+    if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio)}const bid=uid();await putBlob(bid,b);AUP.have[bid]=true;
+    s.audio={blobId:bid,name:String(name||'音源').replace(/\.\w+$/,''),drv:id,picked:true};save();render();toast('ドライブの音源を入れました')}
+  catch(e){toast('ドライブから読み込めませんでした'+(e.message&&e.message!=='auth'?'('+e.message+')':''))}}
 async function setSongAudio(s,file){if(!file||!(file.type.startsWith('audio/')||/\.(wav|mp3|m4a|aac|flac|ogg|aiff?)$/i.test(file.name)))return toast('音声ファイルを選んでください');
   if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio)}const id=uid();await putBlob(id,file);AUP.have[id]=true;s.audio={blobId:id,name:file.name.replace(/\.\w+$/,'')};save();render();toast('音源を入れました')}
 let pickMode='memo';
@@ -2374,7 +2395,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2851,8 +2872,10 @@ const ACT={
   pmPlay(){ctxReady();MS.last=null;M.paused()?M.play():M.pause()},
   pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?'🎵 '+s.audio.name:k==='gd'?'▶ Googleドライブ(参考音源URL)':k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
     popMenu(t,`<div class="sub" style="padding:8px 12px;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</div><hr>
-      <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
+      <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button><button data-act="pmDrive">Googleドライブから選ぶ</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
+  pmDrive(){ACT.lbClose();drivePick()},
+  drivePick(){drivePick()},
   pmRemove(){ACT.lbClose();ACT.audioRemove()},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
     try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「☰ メニュー → 共有コードを読み込む」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
