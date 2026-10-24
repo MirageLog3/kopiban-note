@@ -182,7 +182,13 @@ h1{font-size:24px;margin:4px 0 6px}
 .shortcode{flex:1;min-width:0;width:100%;font-size:26px!important;font-weight:800;letter-spacing:4px;text-align:center;font-family:ui-monospace,Consolas,monospace}
 .pl-mini{display:none;align-items:center;gap:8px;flex:1;min-width:0}
 .pm-play{width:44px;height:44px;border-radius:50%;padding:0;font-size:18px;background:var(--accent);border-color:var(--accent);color:#fff;flex:0 0 auto}
-#pmSeek{flex:1;min-width:0;accent-color:var(--accent);height:28px}
+/* iPhoneの標準のシークバーは、0のときもつまみが右にずれて見えるので、線とつまみを自前で描く */
+#pmSeek{flex:1;min-width:0;height:28px;margin:0;padding:0;border:0;box-shadow:none;-webkit-appearance:none;appearance:none;background:transparent;--p:0%}
+#pmSeek::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--accent),var(--accent)) 0 0/var(--p) 100% no-repeat,var(--line)}
+#pmSeek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--accent);border:none}
+#pmSeek::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+#pmSeek::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+#pmSeek::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);border:none}
 .pm-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pm-more{font-size:20px;padding:4px 8px}
 .url-stat{font-size:12px;margin-top:4px;line-height:1.5}.url-stat:empty{display:none}.url-stat .ok{color:var(--ok);font-weight:600}.url-stat .ng{color:var(--accent)}
@@ -1003,7 +1009,7 @@ function keepVisible(el){if(!el||document.body.classList.contains('sheet-open'))
 
 /* ---------- song audio player ---------- */
 const PL={songId:null,blobId:null,loop:null};
-const fmtT=t=>t==null?'':t<0?'-'+fmtT(-t):`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
+const fmtT=t=>t==null?'':t<=-0.05?'-'+fmtT(-t):(t=Math.max(0,t),`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`);
 const fmtS=t=>!isFinite(t)||t<0?'0:00':`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 function timeBtns(b){const s=curSong()||playerSong();const t=blockTime(s,b),sync=syncOn(s);
   return `<span class="tbtns"><span class="tstamp" title="${sync?'メトロノームの拍の並びから計算した位置':'⏱で登録した位置'}">${t!=null?fmtT(t):'--:--'}</span>
@@ -1023,10 +1029,11 @@ function initPlayer(){
   setInterval(()=>{if((M.kind==='yt'||M.kind==='sp')&&$('#player').style.display!=='none')onTime()},250);
   // スマホ用のコンパクトな再生バー(1行): 再生ボタン・シークバー・時間
   const sk=$('#pmSeek');let dragging=false;
-  sk.addEventListener('input',()=>{dragging=true;const d=M.dur();if(d)$('#pmTime').textContent=fmtS(sk.value/1000*d)});
+  const skP=()=>sk.style.setProperty('--p',sk.value/10+'%');
+  sk.addEventListener('input',()=>{dragging=true;skP();const d=M.dur();if(d)$('#pmTime').textContent=fmtS(sk.value/1000*d)});
   sk.addEventListener('change',()=>{const d=M.dur();if(d)M.seek(sk.value/1000*d);dragging=false});
   setInterval(()=>{if(!M.kind||$('#player').style.display==='none')return;const d=M.dur(),t=M.time();
-    $('#pmPlay').textContent=M.paused()?'▶':'⏸';if(!dragging){$('#pmTime').textContent=fmtS(t)+' / '+fmtS(d);if(d)sk.value=Math.round(t/d*1000)}},250);
+    $('#pmPlay').textContent=M.paused()?'▶':'⏸';if(!dragging){$('#pmTime').textContent=fmtS(t)+' / '+fmtS(d);sk.value=d&&isFinite(t)?Math.max(0,Math.round(t/d*1000)):0;skP()}},250);
   a.addEventListener('loadedmetadata',()=>{a.playbackRate=+$('#plRate').value});
   a.addEventListener('timeupdate',onTime);
 }
