@@ -48,6 +48,8 @@ button:not(.ghost):not(.foldbtn):not(.bn):not(.kk){box-shadow:0 1px 2px var(--bt
 input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):not(.name):not(.lyric),textarea{background:var(--inbg);border-color:var(--inline);box-shadow:inset 0 1px 2px var(--btnsh)}
 input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):focus,textarea:focus{border-color:var(--accent)}
 .top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--line)}
+/* ホーム画面のアプリ(特にiPadのウインドウ表示)では、画面の上の端にOSの帯がかぶって、ぼかしがかかる。上のバーの中身はその下から始める */
+header.top{padding-top:max(8px,env(safe-area-inset-top))}
 .brand{font-weight:700}
 .bandsel{color:var(--sub);font-size:13px}
 .bandsel select{margin-left:4px}
