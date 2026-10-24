@@ -655,7 +655,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:03';
+const APP_VER='10/25 8:15';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1369,7 +1369,7 @@ function initPlayer(){
   ['loadstart','waiting','seeking'].forEach(t=>a.addEventListener(t,()=>{if(a.getAttribute('src')&&!a.paused)pl(true)}));
   ['canplay','loadedmetadata','playing','pause','error','emptied','seeked'].forEach(t=>a.addEventListener(t,()=>pl(false)));
   a.addEventListener('loadedmetadata',()=>{if(M.kind==='gd'){M.gdState='ready';updUrlStat()}});a.addEventListener('error',()=>{if(M.kind!=='gd'||!a.getAttribute('src'))return;const s=curSong(),id=s&&gdId(s.url);
-    if(id&&a.getAttribute('src')===gdSrc(id)){a.src=gdSrcOld(id);return}M.gdState='error';M.gdWhy='';updUrlStat();
+    if(id&&a.getAttribute('src')===gdSrc(id)){a.src=gdSrcDirect(id);return}if(id&&a.getAttribute('src')===gdSrcDirect(id)){a.src=gdSrcOld(id);return}M.gdState='error';M.gdWhy='';updUrlStat();
     if(id)fetch(gdSrc(id),{headers:{Range:'bytes=0-1'}}).then(async r=>{let w='';if(r.ok)w='(Googleからは読めています。もう一度読み込むと聴けるかもしれません)';
       else{try{const j=await r.json();const e=j.error||{},rs=(e.errors&&e.errors[0]&&e.errors[0].reason)||'';
         w=rs==='notFound'?'(ファイルが見つかりません。共有がまだ「リンクを知っている全員」になっていないか、ファイルが消されたかもしれません)'
@@ -1399,8 +1399,12 @@ function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
 const gdId=u=>{const t=String(u||'');if(!/(drive|docs)\.google\.com/.test(t))return null;const m=t.match(/\/file\/d\/([\w-]{20,})/)||t.match(/[?&]id=([\w-]{20,})/);return m?m[1]:null};
-const gdSrc=id=>`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true&key=${GPICKER_KEY}`;
-const gdSrcOld=id=>'https://drive.google.com/uc?export=download&id='+id;
+// ドライブの共有ファイルは、ダウンロード用の住所(drive.usercontent)から直接読む。途中から読めてCookieも要らない。
+// Drive APIの鍵つきの読み方は、大きいファイルを何度か読むと「自動の問い合わせ」扱いで止められたので、読めないときの予備にする
+// ブラウザから直接だとGoogleがダウンロードを通さないことがあるので、共有の置き場(Cloudflare)に中継してもらう。だめなら直接の住所を試す
+const gdSrc=id=>SHARE_API.replace(/\/?$/,'/')+'gd/'+id;
+const gdSrcDirect=id=>'https://drive.usercontent.google.com/download?id='+id+'&export=download&confirm=t';
+const gdSrcOld=id=>`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true&key=${GPICKER_KEY}`;
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
 // Spotifyは曲(トラック)のリンクだけ。open.spotify.com/intl-ja/track/… や spotify:track:… の形も読む
 const spId=u=>{const m=String(u||'').match(/(?:open\.spotify\.com\/(?:intl-[\w-]+\/)?(?:embed\/)?track\/|spotify:track:)([A-Za-z0-9]{22})/);return m?m[1]:null};
