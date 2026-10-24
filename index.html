@@ -393,7 +393,9 @@ h1{font-size:24px;margin:4px 0 6px}
 .la-b b{font-size:13px}.la-b small{font-size:10px;color:var(--sub)}.la-b .la-c{position:absolute;left:0;top:0;bottom:0;width:5px;border-radius:5px 0 0 5px}
 .la-b.next{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.la-b:disabled{opacity:.55}
 .place-bar{position:sticky;top:var(--toph,52px);z-index:6;margin:6px 0 8px;padding:10px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);box-shadow:0 4px 14px var(--shadow)}
-.place-now{font-size:18px;font-weight:700;margin:2px 0}.place-next{font-size:12px}
+.place-now{font-size:18px;font-weight:700;margin:2px 0}
+.bar.lr .cells{box-shadow:0 0 0 2px var(--accent);border-radius:4px}
+.loop-bar{position:sticky;top:var(--toph,52px);z-index:6;display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:8px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);font-weight:600}.place-next{font-size:12px}
 #grid.placing .bar{cursor:pointer}#grid.placing .bar:hover .cells{outline:2px dashed var(--accent);outline-offset:1px}
 .lyr-opts{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
 .lyr-prev{max-height:34vh;overflow-y:auto;margin:6px 0 10px}
@@ -944,10 +946,12 @@ function clickAt(at,acc){const c=MT.ctx,vol=S.prefs.mVol??1;if(vol<=0.001)return
 function mNext(){if(MT.i<MT.pre.length){const e=MT.pre[MT.i];return Object.assign({},e,{at:MT.start+e.t,count:true})}
   const j=MT.i-MT.pre.length,L=MT.pass.ev.length,cyc=Math.floor(j/L);if(cyc>0&&!MT.loop)return null;
   const e=MT.pass.ev[j%L];return Object.assign({},e,{at:MT.start+MT.preDur+cyc*MT.pass.total+e.t})}
-async function mStart(s,blocks,loopId){mStop();const tok=MT.tok;const ctx=await ctxReady();if(tok!==MT.tok)return;if(!ctx)return toast('このブラウザでは鳴らせません');
+// rg = {from,to}: 最初のブロックの from 小節目から(to まで)だけ鳴らす。to があれば、その範囲だけを繰り返す
+async function mStart(s,blocks,loopId,rg){mStop();const tok=MT.tok;const ctx=await ctxReady();if(tok!==MT.tok)return;if(!ctx)return toast('このブラウザでは鳴らせません');
   if(ctx.state!=='running')toast('音が出ないときは、もう一度 ▶ 再生 を押してください');
-  MT.pass=clicksFor(s,blocks,bl=>bl.bars.map((_,i)=>i));if(!MT.pass.ev.length)return;
-  const pre=S.prefs.mCount!==false?clicksFor(s,[blocks[0]],()=>[0]):{ev:[],total:0};
+  const barsOf=bl=>{const all=bl.bars.map((_,i)=>i);return rg&&bl===blocks[0]?all.filter(i=>i>=rg.from&&(rg.to==null||i<=rg.to)):all};
+  MT.pass=clicksFor(s,blocks,barsOf);if(!MT.pass.ev.length)return;
+  const pre=S.prefs.mCount!==false?clicksFor(s,[blocks[0]],()=>[rg?rg.from:0]):{ev:[],total:0};
   Object.assign(MT,{pre:pre.ev,preDur:pre.total,i:0,start:MT.ctx.currentTime+0.12,vis:[],playing:true,songId:s.id,loop:loopId||null});
   MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15){clickAt(e.at,e.acc);if(!e.count)(e.subs||[]).forEach(o=>clickAt(e.at+o,-1));MT.vis.push(e);MT.i++}
     if(!e&&MT.vis.length&&MT.ctx.currentTime>MT.vis[MT.vis.length-1].at+0.6)mStop()},25);
@@ -962,7 +966,8 @@ function mCell(e,sub){const want=e&&!e.count&&R.name==='block'&&R.b===e.bid;let 
 // 再生が次のブロックに進んだら、そのブロックの画面に自動で移る(ループ中・コード入力中・別のブロックを見ているときは移らない)
 let FOL=null;
 function follow(sid,bid,looping){
-  if(R.name==='block'&&R.a===sid&&!looping&&!document.body.classList.contains('sheet-open')&&FOL&&FOL===R.b&&bid&&bid!==R.b)location.replace(`#/block/${sid}/${bid}`);
+  // 歌詞を小節に置いているあいだ・範囲を繰り返しているあいだは、次のブロックへ勝手に移らない
+  if(R.name==='block'&&R.a===sid&&!looping&&!PLACE&&!LOOPR&&!document.body.classList.contains('sheet-open')&&FOL&&FOL===R.b&&bid&&bid!==R.b)location.replace(`#/block/${sid}/${bid}`);
   FOL=bid||null}
 function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroStat');if(e&&!e.count)lyrFollow(e);
   if(!e)FOL=null;else if(!e.count)follow(MT.songId,e.bid,!!(MT.loop||PL.loop));
@@ -973,7 +978,7 @@ function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroSta
   if(st)st.innerHTML=e.count?`<b>カウント ${e.beat}</b>`:`<b>${esc(bl?bl.name:'')}</b> ${e.bar+1}小節目 ・ ${e.beat}拍 <span class="sub">♩${Math.round(blockBpm(bl,s)*(S.prefs.mRate||1))}${MT.loop?' ・ 繰り返し中':''}</span>`;
   if(!e.count){document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('mplaying',r.dataset.bid===e.bid));
     if(R.name==='block'&&R.b===e.bid){document.querySelectorAll('.bar').forEach(b=>b.classList.toggle('mbar',b.id==='bar-'+e.bar));
-      const key=e.bid+':'+e.bar;if(MT.lastKey!==key){MT.lastKey=key;keepVisible($('#bar-'+e.bar))}}}}
+      const key=e.bid+':'+e.bar;if(MT.lastKey!==key){MT.lastKey=key;if(!PLACE)keepVisible($('#bar-'+e.bar))}}}}
 // 再生中の小節が画面の外(下のプレーヤーの裏も含む)に出たら、上から1/3くらいの位置までスクロール
 function keepVisible(el){if(!el||document.body.classList.contains('sheet-open'))return;const r=el.getBoundingClientRect();
   const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;const bot=innerHeight-pb-12;
@@ -1013,6 +1018,7 @@ function blockRange(s,bid){const i=s.blocks.findIndex(b=>b.id===bid);const b=s.b
   const nx=s.blocks.slice(i+1).map(x=>blockTime(s,x)).find(x=>x!=null&&x>st);return {start:st,end:nx!=null?nx:(M.dur()||Infinity)}}
 function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   if(PL.loop){const r=blockRange(s,PL.loop);if(r&&(now>=r.end-0.03||now<r.start-0.5)){M.seek(r.start)}}
+  if(LOOPR&&LOOPR.st!=null&&!M.paused()&&(now>=LOOPR.en-0.03||now<LOOPR.st-0.5)){M.seek(LOOPR.st);MS.last=null}
   let cur=null,ct=-1;for(const b of s.blocks){const t=blockTime(s,b);if(t!=null&&t<=now+0.05&&t>=ct){cur=b;ct=t}}
   document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('playing',!!cur&&r.dataset.bid===cur.id&&now>0));
   if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
@@ -1148,7 +1154,7 @@ function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
   return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのキー(調)を入れると度数になります</span>':''}
     <span class="spacer"></span><button class="foldbtn ${PLACE&&PLACE.bid===bl.id?'on':''}" data-act="lyrPlaceStart">歌詞を小節に置く</button><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
-  ${placeBarHTML(bl)}
+  ${placeBarHTML(bl)}${loopBarHTML(bl)}
   ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
     <p class="sub" style="margin:6px 0 0">1小節だけ拍子を変えたいときは、左の小節番号を押してください</p></div>`:''}
   <div id="grid" class="${PLACE&&PLACE.bid===bl.id?'placing':''}">${bl.bars.map((_,i)=>barHTML(bl,i)).join('')}</div>`}
@@ -1321,7 +1327,23 @@ function placeBarHTML(bl){if(!PLACE||PLACE.bid!==bl.id)return '';const L=bl.lyrL
     <div class="hstack" style="margin-top:6px"><button data-act="placePrev" ${i?'':'disabled'}>← 1行戻す</button><button data-act="placeSkip">この行を飛ばす</button><span class="spacer"></span><button class="primary" data-act="placeEnd">終わる</button></div></div>`}
 document.addEventListener('click',e=>{if(!PLACE||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea,.bn'))return;
   e.preventDefault();e.stopPropagation();placeAt(+bar.id.slice(4))},true);
-window.addEventListener('hashchange',()=>{const r=route();if(PLACE&&!(r.name==='block'&&r.b===PLACE.bid))PLACE=null});
+window.addEventListener('hashchange',()=>{const r=route();if(PLACE&&!(r.name==='block'&&r.b===PLACE.bid))PLACE=null;
+  if(LOOPSEL&&!(r.name==='block'&&r.b===LOOPSEL.bid))LOOPSEL=null});
+/* ---------- 小節から再生・範囲を繰り返す ----------
+   小節の番号を押すとメニュー。「ここから繰り返す」は、次に終わりの小節をタップしてもらって、その範囲をループする。
+   音源に合わせて鳴らす設定の曲は音源ごと、それ以外はメトロノームだけで鳴らす */
+let LOOPR=null,LOOPSEL=null;
+function loopTimes(s,r){const ev=syncEv(s);const a=ev.find(x=>x.bid===r.bid&&x.bar===r.from);const bs=ev.filter(x=>x.bid===r.bid&&x.bar===r.to);const b=bs[bs.length-1];
+  return a&&b?{st:a.t,en:b.t+b.dur}:null}
+function loopStart(){const s=curSong(),bl=s&&blockById(s,LOOPR.bid);if(!bl)return;
+  if(syncOn(s)){const t=loopTimes(s,LOOPR);if(!t){LOOPR=null;render();return toast('この小節は音源の位置が分からないので、繰り返せません')}
+    Object.assign(LOOPR,t);PL.loop=null;ctxReady();MS.last=null;M.seek(Math.max(0,t.st-0.05));M.play();render();return}
+  LOOPR.st=null;render();mStart(s,[bl],'range',{from:LOOPR.from,to:LOOPR.to})}
+function loopBarHTML(bl){if(LOOPSEL&&LOOPSEL.bid===bl.id)return `<div class="place-bar" id="loopBar"><div class="place-now">繰り返しの終わりの小節をタップ</div><div class="sub">${LOOPSEL.from+1}小節目から。同じ小節をタップすると、その1小節だけを繰り返します</div>
+    <div class="hstack" style="margin-top:6px"><span class="spacer"></span><button data-act="loopCancel">やめる</button></div></div>`;
+  if(LOOPR&&LOOPR.bid===bl.id)return `<div class="loop-bar"><span>🔁 ${LOOPR.from+1}〜${LOOPR.to+1}小節を繰り返し中</span><span class="spacer"></span><button data-act="loopClear">解除</button></div>`;return ''}
+document.addEventListener('click',e=>{if(!LOOPSEL||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea'))return;
+  e.preventDefault();e.stopPropagation();const bi=+bar.id.slice(4),a=LOOPSEL.from;LOOPR={bid:LOOPSEL.bid,from:Math.min(a,bi),to:Math.max(a,bi)};LOOPSEL=null;loopStart()},true);
 const blockById=(s,id)=>s.blocks.find(b=>b.id===id);
 // 貼り付けた文 → [{lines:[...]}]。曲全体のときは空行でまとまりに分ける。ブロック1つのときは全部の行を1まとまりにする
 function lyrParas(){const t=(LYR.text||'').replace(/\r/g,'');
@@ -1385,7 +1407,7 @@ function barHTML(bl,bi){
     // 長いコード名は後ろの空きマスまではみ出して表示(--sp = 使えるマス数)。それでも入らなければ fitCells で文字を小さくする
     let sp=1;if(c)while(i+sp<bar.n&&!bar.cells[i+sp])sp++;
     cells+=`<div class="cell ${c?'start':''} ${beat?'beat':''} ${i===0?'first':''} ${sel?'sel':''}" data-act="cell" data-bar="${bi}" data-slot="${i}">${c?`<span class="ct" style="--sp:${sp}">${esc(showC(c,bl))}</span>`:''}</div>`}
-  return `<div class="bar" id="bar-${bi}"><button class="bn" data-act="barN" data-bar="${bi}" title="この小節だけ拍子・マス数を変える">${bi+1}${bm!==blockMeter(bl,curSong())?`<small>${bm||bar.n+'マス'}</small>`:''}</button>
+  return `<div class="bar ${LOOPR&&LOOPR.bid===bl.id&&bi>=LOOPR.from&&bi<=LOOPR.to?'lr':''} ${LOOPSEL&&LOOPSEL.bid===bl.id&&bi===LOOPSEL.from?'lr':''}" id="bar-${bi}"><button class="bn" data-act="barMenu" data-bar="${bi}" title="この小節から再生・繰り返し・拍子の変更">${bi+1}${bm!==blockMeter(bl,curSong())?`<small>${bm||bar.n+'マス'}</small>`:''}</button>
   <div class="cells" style="grid-template-columns:repeat(${bar.n},1fr)">${cells}</div>
   <input class="lyric" data-input="lyric" data-bar="${bi}" value="${esc(bar.lyric)}" placeholder="歌詞・メモ"></div>`}
 function fitCells(){document.querySelectorAll('#grid .ct').forEach(el=>{el.style.fontSize='';if(!el.clientWidth||el.scrollWidth<=el.clientWidth+1)return;
@@ -1806,7 +1828,7 @@ const TOUR=[
   {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。⋮⋮ をつかむと並べ替え、いちばん下のボタンから追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
   {core:1,on:'block',r:tBlk,sel:'#bquick',h:'ブロックの画面',t:'1つのブロックの中身です。小節数・メモ・マーカー(キメ・テンポ注意などの目印)を書いておけます。',need:tourBlock,before:tNoCell},
   {core:1,r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'コードも書いておきたいときは、マスをタップすると専用のキーボードが出ます。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。空いているマスは「前のコードが続く」という意味です。',
-    g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
+    g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。左の小節の番号を押すと、その小節から再生したり、何小節かを繰り返したりできます。',need:tourBlock,before:tNoCell},
   {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'途中で転調する・拍子が変わる・テンポが変わるなど、曲の一部だけ変化があるときは、「詳しい設定」でそのブロックだけ拍子・テンポ・キーを変えられます。ブロックの種類(イントロ・Aメロなど)もここで変えられます。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
@@ -1898,7 +1920,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-24',items:['歌詞をブロックに割り当てる画面: 行はチェックボックスで1行ずつ選ぶ形に。入れたあとの説明は画面に残して、そのままブロックの「小節に置く」へ進めるように','歌詞をブロックに入れたとき、勝手に「1行=2小節」で小節に並べないように。小節に置くのは「歌詞を小節に置く」で歌い出しをタップしたときだけ','歌詞をブロックに割り当てる画面で、行を選ぶたびに一番上までスクロールが戻ってしまうのを修正','バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。1行は分けずに、歌い出しの小節にまるごと置く)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
+  {d:'2026-10-24',items:['ブロックの画面で小節の番号を押すと「この小節から再生」「ここから繰り返す(終わりの小節をタップして範囲を決める)」ができるように','ブロックの「詳しい設定」で拍子を変えても反映されなかったのを修正','歌詞を小節に置いているあいだは、再生しても次のブロックへ移ったり勝手にスクロールしたりしないように','歌詞をブロックに割り当てる画面: 行はチェックボックスで1行ずつ選ぶ形に。入れたあとの説明は画面に残して、そのままブロックの「小節に置く」へ進めるように','歌詞をブロックに入れたとき、勝手に「1行=2小節」で小節に並べないように。小節に置くのは「歌詞を小節に置く」で歌い出しをタップしたときだけ','歌詞をブロックに割り当てる画面で、行を選ぶたびに一番上までスクロールが戻ってしまうのを修正','バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。1行は分けずに、歌い出しの小節にまるごと置く)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
   {d:'2026-10-11',items:['歌詞カード: 曲の歌詞を大きく表示して、メトロノームや音源に合わせて今の行が光るように。「かくす」で頭の文字だけにして覚えたかの確認も','構成表に歌詞を「頭の文字だけ」載せて印刷できるように(本番のカンペ用)','曲の構成とセトリの曲を、1つずつ独立したカードの見た目に','共有に、参考音源に合わせてメトロノームを鳴らす設定(始めるブロック・位置・刻み)も入るように','構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「歌詞をまとめて入れる」、ブロックの画面の「歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
@@ -2053,6 +2075,14 @@ const ACT={
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.filter(x=>x!==m.name)));S.markers.splice(+t.dataset.i,1);render()},
   toggleTag(t){const bl=curBlock(),x=t.dataset.t;bl.tags=bl.tags.includes(x)?bl.tags.filter(y=>y!==x):[...bl.tags,x];render()},
   cell:t=>selectCell(+t.dataset.bar,+t.dataset.slot),
+  barMenu(t){const bi=+t.dataset.bar;popMenu(t,`<button data-act="popDo" data-v="barPlay" data-bar="${bi}">▶ この小節から再生</button><button data-act="popDo" data-v="barLoopFrom" data-bar="${bi}">🔁 ここから繰り返す</button><hr><button data-act="popDo" data-v="barN" data-bar="${bi}">この小節だけ拍子を変える</button>`)},
+  barPlay(t){const s=curSong(),bl=curBlock(),bi=+t.dataset.bar;LOOPR=null;LOOPSEL=null;
+    if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===bl.id&&x.bar===bi);if(!e)return toast('この小節は音源の位置が分からないので、ここからは流せません');
+      PL.loop=null;ctxReady();MS.last=null;M.seek(Math.max(0,e.t-0.05));M.play();render();return}
+    render();mStart(s,s.blocks.slice(s.blocks.indexOf(bl)),null,{from:bi})},
+  barLoopFrom(t){LOOPSEL={bid:curBlock().id,from:+t.dataset.bar};LOOPR=null;if(P)ACT.pClose();render();const b=$('#loopBar');if(b)b.scrollIntoView({block:'nearest'})},
+  loopCancel(){LOOPSEL=null;render()},
+  loopClear(){const s=curSong();LOOPR=null;mStop();if(s&&syncOn(s)&&M.kind)M.pause();render()},
   barN(t){const s=curSong(),bl=curBlock(),bi=+t.dataset.bar,bar=bl.bars[bi];const bm=blockMeter(bl,s);
     meterModal(`${bi+1}小節目だけの拍子`,barMeter(bl,bar,s)||bm,`ブロックと同じ(${bm})に戻す`,v=>{
       const m=v&&v!==bm?v:null,n=meterSlots(m||bm);
@@ -2220,7 +2250,7 @@ const ACT={
   mLoopBlock(){const s=curSong(),bl=curBlock();
     if(syncOn(s)){PL.loop=bl.id;syncPlayFrom(s,s.blocks.indexOf(bl));render();return}
     mStart(s,[bl],bl.id)},
-  mStop(){mStop();const s=curSong();if(s&&s.mSync&&M.kind)M.pause()},
+  mStop(){mStop();LOOPR=null;const s=curSong();if(s&&s.mSync&&M.kind)M.pause();if(R.name==='block')render()},
   mOff(t){const s=curSong();s.mOffset=Math.round(((+s.mOffset||0)+ +t.dataset.v)*100)/100;const i=$('#mOffIn');if(i)i.value=s.mOffset.toFixed(2);MS.last=null;save()},
   bZoom(t){const v=+t.dataset.v;setBZ(v===0?1:BZ*(v>0?1.25:0.8))},
   lyrPlay(){const s=curSong();if(!s)return;LYRNOW='';if(syncOn(s))return syncPlayFrom(s,Math.max(0,s.blocks.indexOf(syncAnchor(s))));mStart(s,s.blocks)},
@@ -2307,8 +2337,8 @@ const CHG={
     if(bars.some(x=>x.cells.slice(n).some(Boolean))&&!confirm('拍子を変えると、はみ出すマスのコードが消えます。よろしいですか？(ブロックごとに拍子を決めてあるところはそのままです)')){render();return}
     bars.forEach(x=>resizeBar(x,n));render();toast('拍子 '+songMeterDefault(s)+' に合わせました')},
   blockMeter(t){const s=curSong(),bl=curBlock();const v=t.value;
-    if(v==='__other'){render();meterModal('ブロックの拍子',blockMeter(bl,s),'',v=>ACT.setBlockMeter(v));return}
-    ACT.setBlockMeter(v)},
+    if(v==='__other'){render();meterModal('ブロックの拍子',blockMeter(bl,s),'',v=>CHG.setBlockMeter(v));return}
+    CHG.setBlockMeter(v)},
   setBlockMeter(v){const s=curSong(),bl=curBlock();const prev=bl.meter;
     bl.meter=v;const n=meterSlots(blockMeter(bl,s));
     const targets=bl.bars.filter(b=>!b.m&&b.n!==n);
