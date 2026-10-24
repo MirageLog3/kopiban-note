@@ -1088,11 +1088,11 @@ function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace(
 function viewSongs(){
   if(S.cur.band===NOBAND){const os=orphanSongs();if(os.length)return topbar('songs')+`<main>${bandBar()}<h1>バンドなしの曲</h1>
     <p class="sub">バンドを消したときに残した曲です。「移す」でどれかのバンドに入れられます。</p>
-    <div class="list">${os.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}</a>
+    <div class="list cards">${os.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}</a>
     <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`).join('')}</div></main>`;S.cur.band=S.bands[0].id}
   const songs=bandSongs();
   return topbar('songs')+`<main>${bandBar()}<div class="slhead"><h1>${esc(band().name)} の曲</h1><button class="ghost" data-act="renameBand" data-id="${band().id}" style="margin-left:auto">名前を変更</button></div><p class="sub">ここには「${esc(band().name)}」の曲だけが並びます。同じ曲をいくつかのイベントで使っても、中身は1つなので直せば全部に反映されます。</p>
-  <div class="list">${songs.map(s=>{const n=bandSetlists().filter(x=>x.songIds.includes(s.id)).length;
+  <div class="list cards">${songs.map(s=>{const n=bandSetlists().filter(x=>x.songIds.includes(s.id)).length;
     return `<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)} ・ イベント${n}件</div>${strip(s)}${tagChips(s)}</a>
     <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}" title="この曲を別のバンドへ移す">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`}).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
   <div class="adds"><button class="primary" data-act="newSong">＋ 新しい曲</button></div></main>`}
