@@ -70,6 +70,9 @@ h1{font-size:24px;margin:4px 0 6px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0}
 /* 左の色の帯は角の丸みに沿って曲がらないよう、枠線ではなく背景で描く(内側の線がまっすぐになる) */
 .studio{--bc:var(--accent);background-image:linear-gradient(90deg,var(--bc) 0 5px,transparent 5px)}
+.addbtn{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.adrag-ghost{z-index:80;pointer-events:none;box-shadow:0 8px 24px var(--shadow);opacity:.95}
+.row.dropbefore{box-shadow:0 -3px 0 var(--accent)}.row.dropafter{box-shadow:0 3px 0 var(--accent)}.row.justadded{animation:justAdd 1.2s ease-out}@keyframes justAdd{from{background:var(--accbg)}to{background:transparent}}
+.tpl-row{display:flex;gap:8px;align-items:flex-start;padding:6px 2px;font-size:14px}
 .addbtn{background-image:linear-gradient(90deg,var(--bc) 0 5px,transparent 5px);padding-left:16px}
 .studio .big{font-size:20px;font-weight:700}
 .studio input{font-size:13px}
@@ -783,8 +786,12 @@ let S;
 const newBar=(n=8)=>({n,cells:Array(n).fill(''),lyric:''});
 function newBlock(type,name,bars){bars=bars??(type==='In'||type==='Out'?4:8);
   return {id:uid(),type,name:name||TYPES[type].label,bars:Array.from({length:bars},()=>newBar()),tags:[],note:'',memos:[]}}
-function newSong(bandId,title){return {id:uid(),bandId,title,bpm:'',meter:'4/4',key:'',url:'',
-  blocks:[newBlock('In'),newBlock('A'),newBlock('B'),newBlock('S'),newBlock('Out')]}}
+/* 曲を作るときの最初の形。2回目に出てくるブロックは「2Aメロ」のように番号をつける(ブロックを足すときと同じ付け方) */
+const SONG_TPLS=[['full','よくある形','イントロ→A→B→サビ→間奏→A→B→サビ→Cメロ→サビ→アウトロ',['In','A','B','S','I','A','B','S','C','S','Out']],
+  ['simple','シンプル','イントロ→A→B→サビ→アウトロ',['In','A','B','S','Out']],['empty','からっぽ','ブロックなし(MIDIを読み込むときや、自分で並べたいとき)',[]]];
+const blockName=(blocks,ty)=>{const same=blocks.filter(b=>b.type===ty).length;return same&&ty!=='X'?`${same+1}${TYPES[ty].label}`:TYPES[ty].label};
+function newSong(bandId,title,tpl){const t=(SONG_TPLS.find(x=>x[0]===tpl)||SONG_TPLS[1])[3],blocks=[];t.forEach(ty=>blocks.push(newBlock(ty,blockName(blocks,ty))));
+  return {id:uid(),bandId,title,bpm:'',meter:'4/4',key:'',url:'',blocks}}
 function defaultState(){const b={id:uid(),name:'マイバンド'};const song=newSong(b.id,'サンプル曲');
   const g={id:uid(),name:'〇月定例ライブ',events:[]};
   const sl={id:uid(),bandId:b.id,gigId:g.id,name:g.name,songIds:[song.id],events:[]};
@@ -1048,7 +1055,7 @@ function viewSong(){
     <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
     ${songMedia(s)?timeBtns(b):''}
     <div class="rowbtns"><button data-act="dupBlock" data-i="${i}" title="複製">複製</button><button data-act="delBlock" data-i="${i}">削除</button></div></div>`}).join('')||'<div class="empty">ブロックを追加してください</div>'}</div>
-  <div class="adds"><span class="sub" style="align-self:center">＋ 追加:</span>${Object.entries(TYPES).map(([k,t])=>`<button data-act="addBlock" data-type="${k}" style="--bc:${t.color}" class="addbtn">${t.label}</button>`).join('')}</div>
+  <p class="sub" style="margin:10px 2px 4px">押すとアウトロの手前に入ります。長押しでつかむと、好きな位置に置けます。</p><div class="adds"><span class="sub" style="align-self:center">＋ 追加:</span>${Object.entries(TYPES).map(([k,t])=>`<button data-act="addBlock" data-type="${k}" style="--bc:${t.color}" class="addbtn">${t.label}</button>`).join('')}</div>
   </main>`}
 
 /* ---------- metronome (ブロックごとのテンポ・拍子に合わせて鳴らす) ---------- */
@@ -2087,7 +2094,7 @@ const TOUR=[
   {on:'song',r:tSong,sel:'#songAudio',kw:'YouTube Spotify mp3 wav ファイル 再生 プレーヤー 速さ スロー',h:'音源',t:'音源ファイル(wav・mp3など)や、YouTube・YouTube Music・SpotifyのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。再生中は今の場所を自動で追いかけますが、画面を触ると止まります。「↓ 再生位置へ」で戻れます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',kw:'クリック BPM テンポ 拍 刻み 音量 カウント ハネ シャッフル',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。音源に合わせて鳴らすこともできます。「刻み」で8分や3連・ハネの音を足したり、「音量」で音源とのバランスを変えたりできます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。左端をつかんで並べ替えることができます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
-  {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けます。曲を作るときに、最初のブロックの形(よくある形・シンプル・からっぽ)も選べます。',need:tourSong},
   {on:'song',r:tSong,sel:'.lyr-open',adv:1,kw:'歌詞カード 貼り付け 歌い出し',h:'歌詞をまとめて入れる',t:'「歌詞をまとめて入れる」に曲の歌詞の全文を貼り付けると、行の一覧が出ます。入れたい行にチェックをつけて、下のブロックをタップすると、その行がブロックに入ります。同じ行を2回目のサビなど別のブロックにも入れられます。歌い出しの小節は、ブロックの画面の「歌詞を小節に置く」で、行が始まる小節をタップして決めます。「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong},
   {on:'song',r:tSong,sel:'[data-act=midiPick]',adv:1,kw:'Cubase DAW マーカー オリジナル 自作',h:'MIDIを読み込む',t:'自分の曲なら、DAW(Cubaseなど)から書き出したMIDIファイルで、テンポ・拍子・キーと、マーカーでのブロック分けをまとめて読み込めます。マーカーの名前がそのままブロックの名前になります。',need:tourSong},
   {on:'song',r:tSong,sel:'#songActs',kw:'PDF 印刷 コード譜 構成表 送る LINE',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
@@ -2228,7 +2235,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['曲を作るときに最初のブロックの形を選べるように(よくある形・シンプル・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2345,8 +2352,32 @@ async function loadMidi(file){const s=curSong();if(!s||!file)return;let m;try{m=
   if(has&&!confirm('今の構成(コード・歌詞・メモも)を、MIDIの内容で置き換えます。あとで「元に戻す」で戻せます。よろしいですか？'))return;
   const r=midiToSong(m,s);save();render();
   alert(`MIDIから読み込みました\n・ブロック ${r.blocks}個(マーカー ${r.marks}個)\n・${r.bars}小節 / 拍子 ${r.meters.join(', ')||'4/4'}\n・テンポ ♩${s.bpm}${r.ramps?` ・ だんだん変わるところ ${r.ramps}か所`:''}${r.key?`\n・キー ${r.key}`:''}${r.marks?'':'\n\nマーカーがなかったので、1つのブロックにまとめました'}`)}
-function createSong(addToSetlist){const t=prompt('曲名');if(!t)return;const s=newSong(band().id,t);S.songs.push(s);
-  if(addToSetlist&&curSetlist())curSetlist().songIds.push(s.id);location.hash='#/song/'+s.id}
+function insertBlock(ty,at){const s=curSong();const nb=newBlock(ty,blockName(s.blocks,ty));const n=meterSlots(songMeterDefault(s));nb.bars.forEach(b=>resizeBar(b,n));
+  s.blocks.splice(Math.max(0,Math.min(at,s.blocks.length)),0,nb);render();setTimeout(()=>{const r=document.querySelector(`.row[data-bid="${nb.id}"]`);if(r){r.classList.add('justadded');r.scrollIntoView({block:'nearest',behavior:'smooth'})}},30)}
+/* 追加ボタンを長押し(マウスは押したまま動かす)すると、ブロックをつかんで構成の好きな位置に置ける */
+const ADRAG={};
+function adragPos(y){const rows=[...document.querySelectorAll('.row[data-drag=blk]')];let i=rows.findIndex(r=>{const b=r.getBoundingClientRect();return y<b.top+b.height/2});if(i<0)i=rows.length;
+  rows.forEach((r,k)=>{r.classList.toggle('dropbefore',k===i);r.classList.toggle('dropafter',i===rows.length&&k===rows.length-1)});return i}
+function adragEnd(drop){clearTimeout(ADRAG.tm);document.querySelectorAll('.dropbefore,.dropafter').forEach(r=>r.classList.remove('dropbefore','dropafter'));
+  if(ADRAG.ghost)ADRAG.ghost.remove();const on=ADRAG.on,ty=ADRAG.ty,y=ADRAG.y;Object.assign(ADRAG,{on:false,ghost:null,ty:null});clearInterval(ADRAG.scr);
+  if(on&&drop){ADRAG.swallow=true;setTimeout(()=>{ADRAG.swallow=false},400);insertBlock(ty,adragPos(y));document.querySelectorAll('.dropbefore,.dropafter').forEach(r=>r.classList.remove('dropbefore','dropafter'))}}
+function adragStart(){const b=ADRAG.btn;ADRAG.on=true;const g=b.cloneNode(true);g.className='addbtn adrag-ghost';g.style.cssText+=`;position:fixed;left:${ADRAG.x-40}px;top:${ADRAG.y-20}px`;document.body.appendChild(g);ADRAG.ghost=g;adragPos(ADRAG.y);
+  if(navigator.vibrate)try{navigator.vibrate(10)}catch(e){}
+  ADRAG.scr=setInterval(()=>{if(!ADRAG.on)return;const y=ADRAG.y;if(y<90)scrBy(0,-8);else if(y>innerHeight-90)scrBy(0,8);adragPos(y)},16)}
+document.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.closest('.addbtn[data-type]');if(!b||R.name!=='song')return;
+  Object.assign(ADRAG,{btn:b,ty:b.dataset.type,x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,mouse:e.pointerType==='mouse'});clearTimeout(ADRAG.tm);
+  if(!ADRAG.mouse)ADRAG.tm=setTimeout(adragStart,280)});
+document.addEventListener('pointermove',e=>{if(!ADRAG.btn)return;ADRAG.x=e.clientX;ADRAG.y=e.clientY;
+  if(!ADRAG.on){if(Math.hypot(e.clientX-ADRAG.x0,e.clientY-ADRAG.y0)>8){if(ADRAG.mouse&&e.buttons)adragStart();else{clearTimeout(ADRAG.tm);ADRAG.btn=null}}return}
+  ADRAG.ghost.style.left=(e.clientX-40)+'px';ADRAG.ghost.style.top=(e.clientY-20)+'px';adragPos(e.clientY)});
+document.addEventListener('pointerup',()=>{if(ADRAG.on)adragEnd(true);else clearTimeout(ADRAG.tm);ADRAG.btn=null});
+document.addEventListener('pointercancel',()=>{if(ADRAG.on)adragEnd(false);clearTimeout(ADRAG.tm);ADRAG.btn=null});
+document.addEventListener('touchmove',e=>{if(ADRAG.on)e.preventDefault()},{passive:false});
+document.addEventListener('contextmenu',e=>{if(ADRAG.on||(e.target.closest&&e.target.closest('.addbtn[data-type]')))e.preventDefault()});
+function createSong(addToSetlist){const cur=S.prefs.songTpl||'full';
+  nameModal('新しい曲','<b>曲名</b>を入れてください。',[],'',t=>{const s=newSong(band().id,t,S.prefs.songTpl||'full');S.songs.push(s);
+    if(addToSetlist&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id},
+    `<div class="tpl-pick"><div class="sub" style="margin:10px 0 4px">最初のブロック</div>${SONG_TPLS.map(([k,l,d])=>`<label class="tpl-row"><input type="radio" name="songTpl" value="${k}" ${cur===k?'checked':''} onchange="S.prefs.songTpl=this.value"> <span><b>${l}</b><small class="sub" style="display:block">${d}</small></span></label>`).join('')}</div>`)}
 // 名前を決める画面: 何を入れればいいかの説明と例を添える(prompt だと説明が出せないため)
 let NMF=null;
 function nameModal(title,hint,eg,value,onOk,extra){NMF=onOk;
@@ -2446,8 +2477,9 @@ const ACT={
   newSong:()=>createSong(false),
   delSong(t){const s=songById(t.dataset.id);if(!confirm(`曲「${s.title}」を削除しますか？(写真・録音も消えます)`))return;
     songBlobIds([s]).forEach(delBlob);S.songs=S.songs.filter(x=>x!==s);S.setlists.forEach(x=>x.songIds=x.songIds.filter(i=>i!==s.id));render()},
-  addBlock(t){const s=curSong(),ty=t.dataset.type;const same=s.blocks.filter(b=>b.type===ty).length;
-    const nb=newBlock(ty,same&&ty!=='X'?`${same+1}${TYPES[ty].label}`:TYPES[ty].label);const n=meterSlots(songMeterDefault(s));nb.bars.forEach(b=>resizeBar(b,n));s.blocks.push(nb);render()},
+  addBlock(t){if(ADRAG.swallow){ADRAG.swallow=false;return}const s=curSong(),ty=t.dataset.type;
+    // 最後がアウトロなら、その手前に入れる
+    let at=s.blocks.length;while(at>0&&s.blocks[at-1].type==='Out'&&ty!=='Out')at--;insertBlock(ty,at)},
   dupBlock(t){const s=curSong(),i=+t.dataset.i;const c=JSON.parse(JSON.stringify(s.blocks[i]));c.id=uid();c.memos=[];c.name+='(コピー)';s.blocks.splice(i+1,0,c);render()},
   delBlock(t){const s=curSong(),b=s.blocks[+t.dataset.i];if(!confirm(`「${b.name}」を削除しますか？`))return;memoBlobIds([b]).forEach(delBlob);s.blocks.splice(+t.dataset.i,1);render()},
   toggleDegree(){setCodeView(S.prefs.degree?'abc':'degree')},
