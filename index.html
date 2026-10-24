@@ -646,6 +646,8 @@ const getBlob=id=>idb('blobs','readonly',s=>s.get(id));
 // 写真・音源は「元に戻す」で復活できるように、その場では消さない。次に開いたときに、どこからも使われていないものだけ片付ける
 const delBlob=()=>{};
 async function gcBlobs(){try{const keys=await idb('blobs','readonly',s=>s.getAllKeys());const used=new Set(songBlobIds(S.songs));
+  // バンド・イベントのメモの写真と録音、ドライブのリンクから取り込んだ音源(gd:ファイルID)も残す
+  [...S.bands,...S.gigs].forEach(o=>(o.memos||[]).forEach(m=>{if(m.blobId)used.add(m.blobId)}));S.songs.forEach(s=>{const g=gdId(s.url);if(g)used.add('gd:'+g)});
   const drop=(keys||[]).filter(k=>!used.has(k));if(drop.length)await idb('blobs','readwrite',s=>{drop.forEach(k=>s.delete(k))})}catch(_){}}
 let saveT;
 let DEMO=null; // 案内用の見本を表示中(このあいだは保存しない)
@@ -655,7 +657,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:33';
+const APP_VER='10/25 8:36';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
