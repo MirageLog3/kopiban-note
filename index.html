@@ -850,7 +850,7 @@ function viewSong(){
   <div class="lyr-open hstack"><button class="foldbtn" data-act="lyrAllOpen">歌詞をまとめて入れる</button>${songHasLyr(s)?`<a href="#/lyrics/${s.id}"><button class="foldbtn">歌詞カード</button></a>`:''}</div>
   <div class="list cards">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
-    <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
+    <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${(b.ramps||[]).length?' ・ '+rampLabel(b):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
     <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
     ${songMedia(s)?timeBtns(b):''}
     <div class="rowbtns"><button data-act="dupBlock" data-i="${i}" title="複製">複製</button><button data-act="delBlock" data-i="${i}">削除</button></div></div>`}).join('')||'<div class="empty">ブロックを追加してください</div>'}</div>
@@ -866,9 +866,14 @@ function barBeats(bl,bar,s){const m=normMeter(barMeter(bl,bar,s)||blockMeter(bl,
 const MSUB=[['','拍ごと'],['8','8分'],['sw','8分ハネ(スウィング)'],['3','3連'],['16','16分'],['16sw','16分ハネ']];
 function subOffs(s,d,dur){const m=s&&s.mSub,q=4/d;if(!m||q<1)return [];const fr={'8':[.5],sw:[2/3],'3':[1/3,2/3],'16':[.25,.5,.75],'16sw':[1/3,.5,5/6]}[m]||[];const out=[];
   for(let i=0;i<q-1e-9;i++){if(i>0)out.push(i);fr.forEach(f=>out.push(i+f))}return out.map(p=>p*dur/q)}
+// テンポがだんだん変わる範囲(ブロックの ramps: [{from,to,a,b}] = from〜to小節で ♩a → ♩b)。拍ごとにテンポを少しずつ変える。
+// 範囲が終わったあとは、そのブロックの終わりまで ♩b のまま
+function beatBpm(bl,bi,k,n,s){let bpm=blockBpm(bl,s);for(const r of [...(bl.ramps||[])].sort((x,y)=>x.from-y.from)){if(bi<r.from)break;if(bi>r.to){bpm=r.b;continue}
+    const p=((bi-r.from)*n+k)/((r.to-r.from+1)*n);return r.a+(r.b-r.a)*p}return bpm}
+const rampLabel=b=>(b.ramps||[]).map(r=>`♩${r.a}→${r.b}(${r.from+1}〜${r.to+1}小節)`).join(' ');
 function clicksFor(s,blocks,barsOf){const ev=[];let t=0;const rate=S.prefs.mRate||1;
-  for(const bl of blocks)for(const bi of barsOf(bl)){const bar=bl.bars[bi];const {n,d}=barBeats(bl,bar,s);const dur=60/(blockBpm(bl,s)*rate)*4/d;const subs=subOffs(s,d,dur);
-    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1,subs});t+=dur}}
+  for(const bl of blocks)for(const bi of barsOf(bl)){const bar=bl.bars[bi];const {n,d}=barBeats(bl,bar,s);
+    for(let k=0;k<n;k++){const bpm=beatBpm(bl,bi,k,n,s)*rate,dur=60/bpm*4/d;ev.push({t,dur,bpm,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1,subs:subOffs(s,d,dur)});t+=dur}}
   return {ev,total:t}}
 function metroOpts(){const r=S.prefs.mRate||1;
   return `<label class="sub">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label>
@@ -901,10 +906,10 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
 const MS={ev:null,evKey:'',last:null,lastMt:null};
 const syncAnchor=s=>s.blocks.find(b=>b.id===s.mAnchor)||s.blocks[0];
 function syncEvents(s){const off=+s.mOffset||0;const ev=[];let t=off;const ai=Math.max(0,s.blocks.indexOf(syncAnchor(s)));
-  s.blocks.slice(ai).forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);const dur=60/blockBpm(bl,s)*4/d;const subs=subOffs(s,d,dur);
-    for(let k=0;k<n;k++){ev.push({t,dur,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1,subs});t+=dur}}));
+  s.blocks.slice(ai).forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);
+    for(let k=0;k<n;k++){const bpm=beatBpm(bl,bi,k,n,s),dur=60/bpm*4/d;ev.push({t,dur,bpm,nb:n,acc:k===0?2:(d===8&&n%3===0&&k%3===0)?1:0,bid:bl.id,bar:bi,beat:k+1,subs:subOffs(s,d,dur)});t+=dur}}));
   return ev}
-function syncEv(s){const key=s.id+JSON.stringify(s.blocks.map(b=>[b.id,b.bpm,b.meter,b.bars.map(x=>x.n+(x.m||''))]))+s.bpm+s.meter+s.mOffset+(s.mSub||'')+(s.mAnchor||'');
+function syncEv(s){const key=s.id+JSON.stringify(s.blocks.map(b=>[b.id,b.bpm,b.meter,b.bars.map(x=>x.n+(x.m||'')),b.ramps||0]))+s.bpm+s.meter+s.mOffset+(s.mSub||'')+(s.mAnchor||'');
   if(!MS.ev||MS.evKey!==key){MS.ev=syncEvents(s);MS.evKey=key}return MS.ev}
 const syncOn=s=>!!(s&&s.mSync&&songMedia(s));
 // ブロックの頭の時刻: 同期モードなら拍の並びから計算、それ以外は ⏱ で登録した位置
@@ -975,7 +980,7 @@ function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroSta
   mCell(e,sub);
   if(!e){if(st&&stopped)st.textContent='止めました';return}
   const bl=s&&s.blocks.find(b=>b.id===e.bid);
-  if(st)st.innerHTML=e.count?`<b>カウント ${e.beat}</b>`:`<b>${esc(bl?bl.name:'')}</b> ${e.bar+1}小節目 ・ ${e.beat}拍 <span class="sub">♩${Math.round(blockBpm(bl,s)*(S.prefs.mRate||1))}${MT.loop?' ・ 繰り返し中':''}</span>`;
+  if(st)st.innerHTML=e.count?`<b>カウント ${e.beat}</b>`:`<b>${esc(bl?bl.name:'')}</b> ${e.bar+1}小節目 ・ ${e.beat}拍 <span class="sub">♩${Math.round(e.bpm||blockBpm(bl,s)*(S.prefs.mRate||1))}${MT.loop?' ・ 繰り返し中':''}</span>`;
   if(!e.count){document.querySelectorAll('.row[data-bid]').forEach(r=>r.classList.toggle('mplaying',r.dataset.bid===e.bid));
     if(R.name==='block'&&R.b===e.bid){document.querySelectorAll('.bar').forEach(b=>b.classList.toggle('mbar',b.id==='bar-'+e.bar));
       const key=e.bid+':'+e.bar;if(MT.lastKey!==key){MT.lastKey=key;if(!PLACE)keepVisible($('#bar-'+e.bar))}}}}
@@ -1122,7 +1127,7 @@ function viewBlock(){
   <div class="btitle"><span class="cbar" style="background:${TYPES[bl.type].color}"></span>
     <input class="name" value="${esc(bl.name)}" data-input="blockField" data-k="name">
     <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">詳しい設定 ${UI('bset')?'▾':'▸'}</button></div>
-  <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),blockKey(bl,s)&&'キー '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
+  <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),(bl.ramps||[]).length&&rampLabel(bl),blockKey(bl,s)&&'キー '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
   <div class="blockhead panel" id="bquick">
     <div class="brow bq"><label class="frow"><span>小節数</span><input type="number" min="1" max="64" inputmode="numeric" value="${bl.bars.length}" data-change="barsCount"></label>
       <label class="frow" style="flex:1"><span>メモ</span><textarea rows="2" class="memo-ta" data-input="blockField" data-k="note" placeholder="例 半音上げ転調・リズムに注意">${esc(bl.note)}</textarea></label></div>
@@ -1328,18 +1333,32 @@ function placeBarHTML(bl){if(!PLACE||PLACE.bid!==bl.id)return '';const L=bl.lyrL
 document.addEventListener('click',e=>{if(!PLACE||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea,.bn'))return;
   e.preventDefault();e.stopPropagation();placeAt(+bar.id.slice(4))},true);
 window.addEventListener('hashchange',()=>{const r=route();if(PLACE&&!(r.name==='block'&&r.b===PLACE.bid))PLACE=null;
-  if(LOOPSEL&&!(r.name==='block'&&r.b===LOOPSEL.bid))LOOPSEL=null});
+  if(LOOPSEL&&!(r.name==='block'&&r.b===LOOPSEL.bid))LOOPSEL=null;if(RAMPSEL&&!(r.name==='block'&&r.b===RAMPSEL.bid))RAMPSEL=null});
 /* ---------- 小節から再生・範囲を繰り返す ----------
    小節の番号を押すとメニュー。「ここから繰り返す」は、次に終わりの小節をタップしてもらって、その範囲をループする。
    音源に合わせて鳴らす設定の曲は音源ごと、それ以外はメトロノームだけで鳴らす */
-let LOOPR=null,LOOPSEL=null;
+let LOOPR=null,LOOPSEL=null,RAMPSEL=null,RPF=null;
+// テンポを変える範囲を決めたら、始まりと終わりのテンポを聞く。重なる範囲があれば置き換える
+function rampModal(bl,from,to,old){const s=curSong(),a0=old?old.a:Math.round(beatBpm(bl,from,0,4,s)),b0=old?old.b:'';
+  RPF=(a,b)=>{bl.ramps=(bl.ramps||[]).filter(r=>r!==old&&(r.to<from||r.from>to));bl.ramps.push({from,to,a,b});MS.evKey='';save();render();toast(`${from+1}〜${to+1}小節で ♩${a}→${b} にしました`)};
+  $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
+  <div class="hstack"><b>${from+1}〜${to+1}小節でテンポをだんだん変える</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+  <p class="note" style="margin:6px 0 8px">メトロノームは、この範囲のあいだ1拍ずつ少しずつテンポを変えます。範囲のあとは、ブロックの終わりまで終わりのテンポのままです。</p>
+  <div class="hstack" style="gap:10px;align-items:flex-end"><label class="sub" style="display:flex;flex-direction:column;gap:2px">始まり ♩<input id="rpA" type="number" inputmode="numeric" min="20" max="400" value="${a0}" style="width:90px"></label>
+  <span style="padding-bottom:8px">→</span><label class="sub" style="display:flex;flex-direction:column;gap:2px">終わり ♩<input id="rpB" type="number" inputmode="numeric" min="20" max="400" value="${b0}" style="width:90px" placeholder="例 120"></label></div>
+  <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="rampOk">決める</button></div></div>`;
+  const i=$('#rpB');if(i&&!b0)i.focus()}
+document.addEventListener('click',e=>{if(!RAMPSEL||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea'))return;
+  e.preventDefault();e.stopPropagation();const bi=+bar.id.slice(4),a=RAMPSEL.from;const bl=blockById(curSong(),RAMPSEL.bid);RAMPSEL=null;render();rampModal(bl,Math.min(a,bi),Math.max(a,bi),null)},true);
 function loopTimes(s,r){const ev=syncEv(s);const a=ev.find(x=>x.bid===r.bid&&x.bar===r.from);const bs=ev.filter(x=>x.bid===r.bid&&x.bar===r.to);const b=bs[bs.length-1];
   return a&&b?{st:a.t,en:b.t+b.dur}:null}
 function loopStart(){const s=curSong(),bl=s&&blockById(s,LOOPR.bid);if(!bl)return;
   if(syncOn(s)){const t=loopTimes(s,LOOPR);if(!t){LOOPR=null;render();return toast('この小節は音源の位置が分からないので、繰り返せません')}
     Object.assign(LOOPR,t);PL.loop=null;ctxReady();MS.last=null;M.seek(Math.max(0,t.st-0.05));M.play();render();return}
   LOOPR.st=null;render();mStart(s,[bl],'range',{from:LOOPR.from,to:LOOPR.to})}
-function loopBarHTML(bl){if(LOOPSEL&&LOOPSEL.bid===bl.id)return `<div class="place-bar" id="loopBar"><div class="place-now">繰り返しの終わりの小節をタップ</div><div class="sub">${LOOPSEL.from+1}小節目から。同じ小節をタップすると、その1小節だけを繰り返します</div>
+function loopBarHTML(bl){if(RAMPSEL&&RAMPSEL.bid===bl.id)return `<div class="place-bar" id="rampBar"><div class="place-now">テンポが変わり終わる小節をタップ</div><div class="sub">${RAMPSEL.from+1}小節目から、どの小節までかけて変えるか</div>
+    <div class="hstack" style="margin-top:6px"><span class="spacer"></span><button data-act="rampCancel">やめる</button></div></div>`;
+  if(LOOPSEL&&LOOPSEL.bid===bl.id)return `<div class="place-bar" id="loopBar"><div class="place-now">繰り返しの終わりの小節をタップ</div><div class="sub">${LOOPSEL.from+1}小節目から。同じ小節をタップすると、その1小節だけを繰り返します</div>
     <div class="hstack" style="margin-top:6px"><span class="spacer"></span><button data-act="loopCancel">やめる</button></div></div>`;
   if(LOOPR&&LOOPR.bid===bl.id)return `<div class="loop-bar"><span>🔁 ${LOOPR.from+1}〜${LOOPR.to+1}小節を繰り返し中</span><span class="spacer"></span><button data-act="loopClear">解除</button></div>`;return ''}
 document.addEventListener('click',e=>{if(!LOOPSEL||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea'))return;
@@ -1407,7 +1426,7 @@ function barHTML(bl,bi){
     // 長いコード名は後ろの空きマスまではみ出して表示(--sp = 使えるマス数)。それでも入らなければ fitCells で文字を小さくする
     let sp=1;if(c)while(i+sp<bar.n&&!bar.cells[i+sp])sp++;
     cells+=`<div class="cell ${c?'start':''} ${beat?'beat':''} ${i===0?'first':''} ${sel?'sel':''}" data-act="cell" data-bar="${bi}" data-slot="${i}">${c?`<span class="ct" style="--sp:${sp}">${esc(showC(c,bl))}</span>`:''}</div>`}
-  return `<div class="bar ${LOOPR&&LOOPR.bid===bl.id&&bi>=LOOPR.from&&bi<=LOOPR.to?'lr':''} ${LOOPSEL&&LOOPSEL.bid===bl.id&&bi===LOOPSEL.from?'lr':''}" id="bar-${bi}"><button class="bn" data-act="barMenu" data-bar="${bi}" title="この小節から再生・繰り返し・拍子の変更">${bi+1}${bm!==blockMeter(bl,curSong())?`<small>${bm||bar.n+'マス'}</small>`:''}</button>
+  return `<div class="bar ${LOOPR&&LOOPR.bid===bl.id&&bi>=LOOPR.from&&bi<=LOOPR.to?'lr':''} ${LOOPSEL&&LOOPSEL.bid===bl.id&&bi===LOOPSEL.from?'lr':''}" id="bar-${bi}"><button class="bn" data-act="barMenu" data-bar="${bi}" title="この小節から再生・繰り返し・テンポや拍子の変更">${bi+1}${(()=>{const r=(bl.ramps||[]).find(r=>r.from===bi);return r?`<small>♩${r.a}→${r.b}</small>`:''})()}${bm!==blockMeter(bl,curSong())?`<small>${bm||bar.n+'マス'}</small>`:''}</button>
   <div class="cells" style="grid-template-columns:repeat(${bar.n},1fr)">${cells}</div>
   <input class="lyric" data-input="lyric" data-bar="${bi}" value="${esc(bar.lyric)}" placeholder="歌詞・メモ"></div>`}
 function fitCells(){document.querySelectorAll('#grid .ct').forEach(el=>{el.style.fontSize='';if(!el.clientWidth||el.scrollWidth<=el.clientWidth+1)return;
@@ -1613,7 +1632,7 @@ function chordSheetHTML(s,withNotes,withPhotos,showBand){
     const texts=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>`<div class="pnotes">${esc(m.text)}</div>`).join(''):'';
     const photos=withPhotos?b.memos.filter(m=>m.kind==='photo'):[];
     return `<div class="pblk"><div class="pblk-h"><span class="pc" style="background:${TYPES[b.type].color}"></span>${esc(b.name)}
-      <span class="ps">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</span>${b.tags.map(t=>tagHTML(t,'ptag')).join('')}</div>
+      <span class="ps">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${(b.ramps||[]).length?' ・ '+rampLabel(b):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</span>${b.tags.map(t=>tagHTML(t,'ptag')).join('')}</div>
       ${loose}<div class="pgrid">${bars}</div>${texts}
       ${photos.length?`<div class="pphotos">${photos.map(m=>`<img data-blob="${m.blobId}" alt="">`).join('')}</div>`:''}</div>`}).join('');
   return `<div class="pv"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}${showBand&&band()?' ・ '+esc(band().name):''}</div>
@@ -1636,7 +1655,7 @@ function mapHTML(s,withNotes,withLyr){let pos=1;
     const memo=withNotes?b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>esc(m.text)).join(' / '):'';
     return `<tr><td class="mi">${i+1}</td><td class="mc" style="background:${TYPES[b.type].color}"></td>
       <td class="mn">${esc(b.name)}</td><td class="mb"><b>${b.bars.length}</b><span>小節</span></td>
-      <td class="mx">${(b.meter||b.bpm||b.key)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${withLyr&&blockLyr(b).length?`<div class="mlyr">${blockLyr(b).map(({t:l})=>{if(withLyr!=='head')return esc(l);const [h,t]=lyrHead(l,3);return esc(h)+(t?'…':'')}).join(' / ')}</div>`:''}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
+      <td class="mx">${(b.meter||b.bpm||b.key||(b.ramps||[]).length)?`<div class="mnote">${[b.meter,b.bpm&&'♩'+esc(b.bpm),(b.ramps||[]).length&&rampLabel(b),b.key&&'キー '+esc(b.key)].filter(Boolean).join(' ')}</div>`:''}${b.note?`<div class="mnote">${esc(b.note)}</div>`:''}${b.tags.map(t=>tagHTML(t,'ptag')).join('')}${withLyr&&blockLyr(b).length?`<div class="mlyr">${blockLyr(b).map(({t:l})=>{if(withLyr!=='head')return esc(l);const [h,t]=lyrHead(l,3);return esc(h)+(t?'…':'')}).join(' / ')}</div>`:''}${memo?`<div class="mmemo">${memo}</div>`:''}</td>
       <td class="mp">${from}–${pos-1}</td></tr>`}).join('');
   return `<div class="pv map"><div class="mhead"><h1>${esc(s.title)}</h1><div class="pmeta">${songMeta(s)}</div></div>
     <div style="margin:10px 0 12px">${strip(s,true)}</div>
@@ -1666,14 +1685,14 @@ function songData(s){const sd=meterSlots(songMeterDefault(s));
       if(!c.length&&!x.lyric&&!x.m&&x.n===dn)return 0;const a=[x.n===dn&&!x.m?0:x.n,c];if(x.lyric||x.m)a.push(x.lyric||'');if(x.m)a.push(x.m);return a});
     if(bars.every(x=>x===0))bars=bars.length;
     return {ty:b.type,n:b.name===TYPES[b.type].label?undefined:b.name,no:U(b.note),tg:U(b.tags),st:b.start??undefined,bm:U(b.meter),bb:U(b.bpm),bk:U(b.key),bars,
-      tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text)),ly:b.bars.some(x=>x.lyric)?undefined:U(b.lyrLines||[])}})}}
+      tx:U(b.memos.filter(m=>m.kind==='text'&&m.text).map(m=>m.text)),ly:b.bars.some(x=>x.lyric)?undefined:U(b.lyrLines||[]),rp:U((b.ramps||[]).map(r=>[r.from,r.to,r.a,r.b]))}})}}
 // 共有データ v2: 項目名を省いた配列にしてから圧縮する。リンクは英数字(1文字6bit)、共有コードは漢字(1文字14bit)で書く
 const trimA=a=>{a=a.map(x=>x===undefined?null:x);while(a.length&&a[a.length-1]==null)a.pop();return a};
 // 7番目: 参考音源に合わせてメトロノームを鳴らす設定 [合わせる?1:0, 始めるブロックの頭の秒, 始めるブロックの番号, 刻み]
 const syncArr=s=>{const ai=s.mAnchor?s.blocks.findIndex(b=>b.id===s.mAnchor):-1;const a=trimA([s.mSync?1:undefined,+s.mOffset||undefined,ai>0?ai:undefined,U(s.mSub)]);return a.length?a:undefined};
-function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx,b.ly])),syncArr(s)])}
+function songArr(s){const d=songData(s);return trimA([d.t,d.bpm,d.m,d.k,d.u,d.b.map(b=>trimA([b.ty,b.n,b.no,b.tg,b.st,b.bm,b.bb,b.bk,b.bars,b.tx,b.ly,b.rp])),syncArr(s)])}
 function arrSong(a){return {t:a[0],bpm:a[1]||undefined,m:a[2]||undefined,k:a[3]||undefined,u:a[4]||undefined,sy:a[6]||undefined,
-  b:(a[5]||[]).map(b=>({ty:b[0],n:b[1]??undefined,no:b[2]||undefined,tg:b[3]||undefined,st:b[4]??undefined,bm:b[5]||undefined,bb:b[6]||undefined,bk:b[7]||undefined,bars:b[8]??0,tx:b[9]||undefined,ly:b[10]||undefined}))}}
+  b:(a[5]||[]).map(b=>({ty:b[0],n:b[1]??undefined,no:b[2]||undefined,tg:b[3]||undefined,st:b[4]??undefined,bm:b[5]||undefined,bb:b[6]||undefined,bk:b[7]||undefined,bars:b[8]??0,tx:b[9]||undefined,ly:b[10]||undefined,rp:b[11]||undefined}))}}
 async function packBytes(d){const cs=new Blob([new TextEncoder().encode(JSON.stringify(d))]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(cs).arrayBuffer())}
 function b64u(u8){let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode(...u8.subarray(i,i+8192));return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
@@ -1701,7 +1720,7 @@ function songFromShared(d,bandId){const sd=meterSlots(songMeterDefault({meter:d.
   blocks:d.b.map(b=>{const ty=TYPES[b.ty]?b.ty:'X',dn=meterSlots(b.bm)||sd;const raw=typeof b.bars==='number'?Array(b.bars).fill(0):b.bars;
    return {id:uid(),type:ty,name:b.n??TYPES[ty].label,note:b.no||'',tags:b.tg||[],start:b.st??null,meter:b.bm||'',bpm:b.bb||'',key:b.bk||'',
     bars:raw.map(x=>{const [n0,c,l,m]=x===0?[0,[],'']:x;const n=n0||dn;return Object.assign({n,cells:Array.from({length:n},(_,i)=>c[i]||''),lyric:l||''},m?{m}:{})}),
-    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()})),...(b.ly?{lyrLines:b.ly}:{})}}),
+    memos:(b.tx||[]).map(text=>({id:uid(),kind:'text',text,ts:Date.now()})),...(b.ly?{lyrLines:b.ly}:{}),...(b.rp?{ramps:b.rp.map(([from,to,a,bb])=>({from,to,a,b:bb}))}:{})}}),
   ...(d.sy?{mSync:!!d.sy[0],mOffset:d.sy[1]||0,mSub:d.sy[3]||''}:{})}}
 // 始めるブロックは番号で送っているので、ブロックを作ったあとでidに直す
 function songFromSharedFull(d,bandId){const s=songFromShared(d,bandId);if(d.sy&&d.sy[2]&&s.blocks[d.sy[2]])s.mAnchor=s.blocks[d.sy[2]].id;return s}
@@ -1828,7 +1847,7 @@ const TOUR=[
   {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。⋮⋮ をつかむと並べ替え、いちばん下のボタンから追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
   {core:1,on:'block',r:tBlk,sel:'#bquick',h:'ブロックの画面',t:'1つのブロックの中身です。小節数・メモ・マーカー(キメ・テンポ注意などの目印)を書いておけます。',need:tourBlock,before:tNoCell},
   {core:1,r:tBlk,sel:'#grid .bar',h:'小節とマス',t:'コードも書いておきたいときは、マスをタップすると専用のキーボードが出ます。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。空いているマスは「前のコードが続く」という意味です。',
-    g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。左の小節の番号を押すと、その小節から再生したり、何小節かを繰り返したりできます。',need:tourBlock,before:tNoCell},
+    g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。左の小節の番号を押すと、その小節から再生したり、何小節かを繰り返したり、テンポをだんだん変えたり(accel.・rit.)できます。',need:tourBlock,before:tNoCell},
   {on:'block',r:tBlk,sel:'[data-k=bset]',h:'詳しい設定',t:'途中で転調する・拍子が変わる・テンポが変わるなど、曲の一部だけ変化があるときは、「詳しい設定」でそのブロックだけ拍子・テンポ・キーを変えられます。ブロックの種類(イントロ・Aメロなど)もここで変えられます。',need:tourBlock,before:tNoCell},
   {r:tBlk,sel:'.kb',h:'コード入力キーボード',t:'ルート音(C〜B)→コードの種類の順に押して、「次 →」で次のマスへ進みます。',help:TUT[2][2],helpSel:'.cs-foot',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
@@ -1920,7 +1939,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-24',items:['ブロックの画面で小節の番号を押すと「この小節から再生」「ここから繰り返す(終わりの小節をタップして範囲を決める)」ができるように','ブロックの「詳しい設定」で拍子を変えても反映されなかったのを修正','歌詞を小節に置いているあいだは、再生しても次のブロックへ移ったり勝手にスクロールしたりしないように','歌詞をブロックに割り当てる画面: 行はチェックボックスで1行ずつ選ぶ形に。入れたあとの説明は画面に残して、そのままブロックの「小節に置く」へ進めるように','歌詞をブロックに入れたとき、勝手に「1行=2小節」で小節に並べないように。小節に置くのは「歌詞を小節に置く」で歌い出しをタップしたときだけ','歌詞をブロックに割り当てる画面で、行を選ぶたびに一番上までスクロールが戻ってしまうのを修正','バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。1行は分けずに、歌い出しの小節にまるごと置く)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
+  {d:'2026-10-24',items:['テンポをだんだん変えられるように: 小節の番号 →「ここからテンポをだんだん変える」で、変わり終わる小節と ♩○→○ を決めると、メトロノームも音源合わせもそれに合わせて刻みます','ブロックの画面で小節の番号を押すと「この小節から再生」「ここから繰り返す(終わりの小節をタップして範囲を決める)」ができるように','ブロックの「詳しい設定」で拍子を変えても反映されなかったのを修正','歌詞を小節に置いているあいだは、再生しても次のブロックへ移ったり勝手にスクロールしたりしないように','歌詞をブロックに割り当てる画面: 行はチェックボックスで1行ずつ選ぶ形に。入れたあとの説明は画面に残して、そのままブロックの「小節に置く」へ進めるように','歌詞をブロックに入れたとき、勝手に「1行=2小節」で小節に並べないように。小節に置くのは「歌詞を小節に置く」で歌い出しをタップしたときだけ','歌詞をブロックに割り当てる画面で、行を選ぶたびに一番上までスクロールが戻ってしまうのを修正','バンドの名前を変えられるように(セトリの「⋯」・曲一覧の「名前を変更」・設定のバンド)','いちばん上を「イベント」に: ライブやイベントの中に出るバンドを並べて、バンドごとに曲順とスタジオを持つ形に。本番の日時はイベントに1回だけ。オリジナルの普段のスタジオは「普段の練習」へ。前のセトリは、それぞれ同じ名前のイベントになっています','iPhoneで予定の日付を選んでいる途中に、勝手に確定されてしまうのを修正','セトリ画面の上をすっきり: セトリ名を押すと切り替え・新しいセトリ、名前の変更・共有・移動・削除は右の「⋯」に','歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。1行は分けずに、歌い出しの小節にまるごと置く)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
   {d:'2026-10-11',items:['歌詞カード: 曲の歌詞を大きく表示して、メトロノームや音源に合わせて今の行が光るように。「かくす」で頭の文字だけにして覚えたかの確認も','構成表に歌詞を「頭の文字だけ」載せて印刷できるように(本番のカンペ用)','曲の構成とセトリの曲を、1つずつ独立したカードの見た目に','共有に、参考音源に合わせてメトロノームを鳴らす設定(始めるブロック・位置・刻み)も入るように','構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「歌詞をまとめて入れる」、ブロックの画面の「歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
@@ -2075,7 +2094,16 @@ const ACT={
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.filter(x=>x!==m.name)));S.markers.splice(+t.dataset.i,1);render()},
   toggleTag(t){const bl=curBlock(),x=t.dataset.t;bl.tags=bl.tags.includes(x)?bl.tags.filter(y=>y!==x):[...bl.tags,x];render()},
   cell:t=>selectCell(+t.dataset.bar,+t.dataset.slot),
-  barMenu(t){const bi=+t.dataset.bar;popMenu(t,`<button data-act="popDo" data-v="barPlay" data-bar="${bi}">▶ この小節から再生</button><button data-act="popDo" data-v="barLoopFrom" data-bar="${bi}">🔁 ここから繰り返す</button><hr><button data-act="popDo" data-v="barN" data-bar="${bi}">この小節だけ拍子を変える</button>`)},
+  barMenu(t){const bi=+t.dataset.bar,bl=curBlock(),inR=(bl.ramps||[]).findIndex(r=>bi>=r.from&&bi<=r.to);
+    popMenu(t,`<button data-act="popDo" data-v="barPlay" data-bar="${bi}">▶ この小節から再生</button><button data-act="popDo" data-v="barLoopFrom" data-bar="${bi}">🔁 ここから繰り返す</button><hr>`
+      +(inR>=0?`<button data-act="popDo" data-v="rampEdit" data-i="${inR}">♩ テンポの変化を直す</button><button class="danger" data-act="popDo" data-v="rampDel" data-i="${inR}">テンポの変化を消す</button>`
+        :`<button data-act="popDo" data-v="rampFrom" data-bar="${bi}">♩ ここからテンポをだんだん変える</button>`)
+      +`<button data-act="popDo" data-v="barN" data-bar="${bi}">この小節だけ拍子を変える</button>`)},
+  rampFrom(t){RAMPSEL={bid:curBlock().id,from:+t.dataset.bar};LOOPSEL=null;if(P)ACT.pClose();render();const b=$('#rampBar');if(b)b.scrollIntoView({block:'nearest'})},
+  rampCancel(){RAMPSEL=null;render()},
+  rampEdit(t){const bl=curBlock(),r=bl.ramps[+t.dataset.i];rampModal(bl,r.from,r.to,r)},
+  rampDel(t){const bl=curBlock();bl.ramps.splice(+t.dataset.i,1);if(!bl.ramps.length)delete bl.ramps;MS.evKey='';save();render();toast('テンポの変化を消しました')},
+  rampOk(){const a=+$('#rpA').value,b=+$('#rpB').value;if(!(a>=20&&a<=400&&b>=20&&b<=400))return toast('テンポは20〜400で入れてください');const f=RPF;ACT.lbClose();f&&f(Math.round(a),Math.round(b))},
   barPlay(t){const s=curSong(),bl=curBlock(),bi=+t.dataset.bar;LOOPR=null;LOOPSEL=null;
     if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===bl.id&&x.bar===bi);if(!e)return toast('この小節は音源の位置が分からないので、ここからは流せません');
       PL.loop=null;ctxReady();MS.last=null;M.seek(Math.max(0,e.t-0.05));M.play();render();return}
