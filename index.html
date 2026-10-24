@@ -195,7 +195,9 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .panel.metro-b{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .shortbox{background:var(--panel2);border-radius:6px;padding:10px 12px;margin-bottom:12px}
 .shortcode{flex:1;min-width:0;width:100%;font-size:26px!important;font-weight:800;letter-spacing:4px;text-align:center;font-family:ui-monospace,Consolas,monospace}
-.pl-mini{display:none;align-items:center;gap:8px;flex:1;min-width:0}
+.pl-mini{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+#pa{display:none!important}
+@media screen and (min-width:701px){.pm-more{display:none}#player .pl-mini{min-width:240px}#player .pl-in{flex-wrap:nowrap}#player .pl-name{flex:0 1 auto;min-width:0}#plPick,#plRemove,.pl-rate{white-space:nowrap;flex:none}}
 .pm-play{width:44px;height:44px;border-radius:50%;padding:0;font-size:18px;background:var(--accent);border-color:var(--accent);color:#fff;flex:0 0 auto}
 /* iPhoneの標準のシークバーは、0のときもつまみが右にずれて見えるので、線とつまみを自前で描く */
 #pmSeek{flex:1;min-width:0;height:28px;margin:0;padding:0;border:0;box-shadow:none;-webkit-appearance:none;appearance:none;background:transparent;--p:0%}
@@ -649,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 9:20';
+const APP_VER='10/25 9:35';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
