@@ -184,16 +184,16 @@ h1{font-size:24px;margin:4px 0 6px}
 .pm-play{width:44px;height:44px;border-radius:50%;padding:0;font-size:18px;background:var(--accent);border-color:var(--accent);color:#fff;flex:0 0 auto}
 /* iPhoneの標準のシークバーは、0のときもつまみが右にずれて見えるので、線とつまみを自前で描く */
 #pmSeek{flex:1;min-width:0;height:28px;margin:0;padding:0;border:0;box-shadow:none;-webkit-appearance:none;appearance:none;background:transparent;--p:0%}
-#pmSeek::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--accent),var(--accent)) 0 0/var(--p) 100% no-repeat,var(--line)}
-#pmSeek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--accent);border:none}
-#pmSeek::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
-#pmSeek::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
-#pmSeek::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);border:none}
+#pmSeek::-webkit-slider-runnable-track,.m-vol input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--accent),var(--accent)) 0 0/var(--p) 100% no-repeat,var(--line)}
+#pmSeek::-webkit-slider-thumb,.m-vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--accent);border:none}
+#pmSeek::-moz-range-track,.m-vol input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+#pmSeek::-moz-range-progress,.m-vol input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+#pmSeek::-moz-range-thumb,.m-vol input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);border:none}
 .pm-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pm-more{font-size:20px;padding:4px 8px}
 .url-stat{font-size:12px;margin-top:4px;line-height:1.5}.url-stat:empty{display:none}.url-stat .ok{color:var(--ok);font-weight:600}.url-stat .ng{color:var(--accent)}
 .m-anchor{margin:2px 0 4px;max-width:100%}
-.m-vol{gap:10px}.m-vol label{display:flex;align-items:center;gap:4px;flex:1;min-width:0}.m-vol input[type=range]{flex:1;min-width:60px;accent-color:var(--accent)}
+.m-vol{gap:10px}.m-vol label{display:flex;align-items:center;gap:4px;flex:1;min-width:0}.m-vol input[type=range]{flex:1;min-width:60px;height:28px;margin:0;padding:0;border:0;box-shadow:none;-webkit-appearance:none;appearance:none;background:transparent;--p:0%}
 .msync{margin-top:8px;gap:6px}.msync button{padding:3px 7px;font-size:12px}
 .m-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}.m-head{margin-top:0}.m-from{flex:1;min-width:0}
 .m-rate{display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -767,9 +767,12 @@ function render(){
   if(R.name==='import'||R.name==='s')fillImport();
   measureMaps();
   document.querySelectorAll('[data-blob]').forEach(async el=>{el.src=await blobURL(el.dataset.blob);if(el.closest('#board'))layoutBoard()});
-  layoutBoard();
+  layoutBoard();rangeFill();
   save();
 }
+// 音量のスライダーも、線とつまみを自前で描く(iPhone標準だと端までつまみが行かないため)。色のついた部分の長さを値に合わせる
+function rangeFill(el){(el?[el]:document.querySelectorAll('.m-vol input[type=range]')).forEach(r=>{const mn=+r.min||0,mx=+r.max||100;r.style.setProperty('--p',((+r.value-mn)/(mx-mn)*100)+'%')})}
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('.m-vol input[type=range]'))rangeFill(e.target)});
 // 元に戻す・やり直すのアイコン(よくある丸い矢印)
 const ICON_UNDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>';
 const ICON_REDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>';
