@@ -1908,7 +1908,7 @@ async function openShare(kind){
     // 予定は [種類(0=スタジオ 1=本番), 日付, 開始, 終了, 場所] の並びで入れる。終わった予定は送らない
     const evs=slAllEvents(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));hasSt=evs.length>0;withSt=hasSt&&S.prefs.shareStudio!==false;
     const sb=S.bands.find(x=>x.id===sl.bandId);var bytes=await packBytes(trimA([3,gnm,withSt?evs.map(evArr):null,songs.map(songArr),[sb?oidOf(sb):null,sb?sb.name:null,songs.map(oidOf),oidOf(sl)]]))}
-  else if(kind==='band'){const b=band(),all=S.songs.filter(s=>s.bandId===b.id),withSongs=!!S.prefs.shareBandSongs,songs=withSongs?all:[],sls=S.setlists.filter(x=>x.bandId===b.id);
+  else if(kind==='band'){const b=band(),all=S.songs.filter(s=>s.bandId===b.id),withSongs=(S.prefs.shareBandSongs!==false),songs=withSongs?all:[],sls=S.setlists.filter(x=>x.bandId===b.id);
     title=withSongs?`バンド「${b.name}」(${songs.length}曲)`:`バンド「${b.name}」`;
     var bytes=await packBytes([4,b.name,oidOf(b),songs.map(songArr),songs.map(oidOf),sls.map(sl=>{const g=gigOf(sl);
       const evs=slAllEvents(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));
@@ -1917,8 +1917,8 @@ async function openShare(kind){
   code=b64u(bytes);const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-  ${kind==='band'?`<label class="hstack" style="margin:0 0 6px;font-size:14px"><input type="checkbox" data-change="shareBandSongs" ${S.prefs.shareBandSongs?'checked':''}> 曲も入れる</label><p class="note" style="margin:0 0 8px">${S.prefs.shareBandSongs?'バンドの曲ぜんぶと、セトリの曲順・これからの予定が入ります。':'バンドの名前と、セトリ・これからの予定だけが入ります(曲は入りません)。曲はあとから1曲ずつ「共有」で送ると、受け取った人の同じバンドに入ります。'}</p>`:''}
-  ${kind==='band'&&!S.prefs.shareBandSongs?'':`<p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置・参考音源のリンク(YouTube・Spotifyなど)と、それに合わせてメトロノームを鳴らす設定が入ります。音源ファイル・写真・録音は入りません。</p>`}
+  ${kind==='band'?`<label class="hstack" style="margin:0 0 6px;font-size:14px"><input type="checkbox" data-change="shareBandSongs" ${S.prefs.shareBandSongs!==false?'checked':''}> 曲も入れる</label><p class="note" style="margin:0 0 8px">${S.prefs.shareBandSongs!==false?'バンドの曲ぜんぶと、セトリの曲順・これからの予定が入ります。':'バンドの名前と、セトリ・これからの予定だけが入ります(曲は入りません)。曲はあとから1曲ずつ「共有」で送ると、受け取った人の同じバンドに入ります。'}</p>`:''}
+  ${kind==='band'&&S.prefs.shareBandSongs===false?'':`<p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置・参考音源のリンク(YouTube・Spotifyなど)と、それに合わせてメトロノームを鳴らす設定が入ります。音源ファイル・写真・録音は入りません。</p>`}
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> スタジオ・本番の予定も入れる <span class="sub">(${slAllEvents(curSetlist()).filter(e=>!(e.date&&e.date<todayStr())&&(e.date||e.place)).length}件)</span></label>`:''}
   ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">LINEなどのアプリで送る</button>`:''}
   <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
