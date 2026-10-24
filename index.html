@@ -1245,7 +1245,7 @@ function placeAt(bi){const bl=curBlock();if(!PLACE||!bl||PLACE.bid!==bl.id)retur
 function placeBarHTML(bl){if(!PLACE||PLACE.bid!==bl.id)return '';const L=bl.lyrLines||[],i=PLACE.i;
   return `<div class="place-bar" id="placeBar"><div class="sub">歌い出しの小節をタップ(${i+1} / ${L.length}行目)</div><div class="place-now">${esc(L[i]||'')}</div>
     ${L[i+1]?`<div class="sub place-next">次: ${esc(L[i+1])}</div>`:''}
-    <div class="hstack" style="margin-top:6px"><button data-act="placePrev" ${i?'':'disabled'}>← 1行戻す</button><button data-act="placeSkip">この行を飛ばす</button><span class="spacer"></span><button class="primary" data-act="placeEnd">終わる</button></div></div>`}
+    <div class="hstack" style="margin-top:6px"><button data-act="placePrev" ${i?'':'disabled'}>← 1行戻す</button><button data-act="placeSkip">この行を飛ばす</button><button data-act="placeSplit" title="小節をまたぐ行を、途中で分けて別々の小節に置く">分ける</button><span class="spacer"></span><button class="primary" data-act="placeEnd">終わる</button></div></div>`}
 document.addEventListener('click',e=>{if(!PLACE||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea,.bn'))return;
   e.preventDefault();e.stopPropagation();placeAt(+bar.id.slice(4))},true);
 window.addEventListener('hashchange',()=>{const r=route();if(PLACE&&!(r.name==='block'&&r.b===PLACE.bid))PLACE=null});
@@ -1824,7 +1824,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-24',items:['歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
+  {d:'2026-10-24',items:['歌詞の入れ方を作り直し: 全文を貼って、行を選んでブロックをタップすると入る形に。ブロックの画面の「歌詞を小節に置く」で、歌い出しの小節をタップして1行ずつ置ける(休みの小節は飛ばすだけ。小節をまたぐ行は「分ける」で途中で分けて置ける)','バンドの切り替えを、セトリと曲の画面のいちばん上に大きく表示。セトリを作るときにどのバンドか選べて、曲やセトリを「別のバンドへ」移せるように(オリジナルとコピバンが曲一覧で混ざらないように)','間奏の色を紫に、合いの手のマーカーを水色に(赤と緑が見分けにくい人だと、前のピンクがイントロの灰色と似て見えたため)','配色を、方眼ノートに青ペンで書き込むイメージに変更。ブロックやマーカーの色は、色の見え方が違う人にも区別しやすい組み合わせに','ボタンの絵文字を外して、角の丸みを小さめに']},
   {d:'2026-10-11',items:['歌詞カード: 曲の歌詞を大きく表示して、メトロノームや音源に合わせて今の行が光るように。「かくす」で頭の文字だけにして覚えたかの確認も','構成表に歌詞を「頭の文字だけ」載せて印刷できるように(本番のカンペ用)','曲の構成とセトリの曲を、1つずつ独立したカードの見た目に','共有に、参考音源に合わせてメトロノームを鳴らす設定(始めるブロック・位置・刻み)も入るように','構成やセトリを並べ替えるとき、つかんだ行が浮いて指についてきて、ほかの行がよけて置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源URLにYouTube MusicとSpotifyのリンクも使えるように(Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴。速さは変えられません)','メトロノームの音量を今までの2倍まで上げられるように(YouTubeの音源に負けないように)','音源を読み込み直したあとなどに、メトロノームが鳴らなくなることがあったのを対策','音源に合わせてメトロノームを鳴らすときに、鳴らし始めるブロックを選べるように(テンポのない前奏がある曲用)','YouTubeのリンクを入れたときに、読み込み中・読み込めた・再生できない理由が分かるように','メトロノームと音源の音量を別々に変えられるように(メトロノームの「音量」)','スマホの再生バーで ⋯ を押したときに表示が崩れていたのを修正','メトロノームに「刻み」を追加(8分・8分ハネ(スウィング)・3連・16分・16分ハネ。曲ごとに選べます)','iPhone・iPadで入力欄を押したときに画面が拡大されないように','歌詞をまとめて貼り付けて、ブロックと小節に振り分けられるように(曲の画面の「歌詞をまとめて入れる」、ブロックの画面の「歌詞を貼る」)。構成表にも歌詞を載せられます','使い方に「メモ(写真・録音)」「コピペ」の説明を追加','最初の案内を短く(曲を開いて、ブロックの中を見るまで)。ほかの機能の説明は「☰ メニュー → 使い方を見る」の目次から開けるように。項目ごとに「▶ 画面で見る」で実際の画面を光らせて確認もできます','スマホでメトロノームの設定が崩れて見えていたのを整理','iPadで構成表を印刷すると2枚目にはみ出すことがあったのを調整','文字を入れる欄(白い枠)とボタンを見分けやすく','初めて開いたときの使い方を、実際の画面を見ながら案内する形に(メニューの「使い方を見る」は文章で読めます)','案内の動きをなめらかにして、文章が言葉の途中で改行されにくいように','「Key」の表記を「キー(調)」に','曲の画面: 音源をまとめて上に、印刷は「印刷・PDF」ボタン1つに。ブロックの画面: 小節数・メモ・マーカーを設定を開かずに変えられるように','「バンド」を「バンド・サークル」に。セトリやバンド・サークルを作るときに、どんな名前を付ければいいかの例を出すように','マークに ↑ ↓ 〜 を追加','コードの表示(アルファベット・ドレミ・ディグリー)はどれか1つを選ぶ形に','元に戻す・やり直すのボタンを丸い矢印に','右上に ☰ メニューを追加。テーマ・ドレミ・ディグリーの切り替えと、設定(バンド・共有コード・バックアップなど)をここにまとめました']},
   {d:'2026-10-08',items:['セトリにスタジオ・本番の予定を何個でも入れられるように(日付順に並んで、次の予定に印が付きます)','元に戻す・やり直すボタン(画面の上の ↶ ↷)','共有リンクを開いたページに、ホーム画面のアプリへ取り込むための共有コードを表示','使い方ガイドとお知らせを追加','コード判定ツール(鍵盤・低い音から順に・♭♯の表記切り替え)','マスや小節のコピペ','ドレミ表示','再生中に今のマスが光る・次のブロックへ自動で移動・自動スクロール','小節ごとの拍子は「数 / 分母」を選ぶ形に','長いコード名は後ろの空きマスにはみ出して表示','マーク(★※〇■ など)']}];
@@ -2014,6 +2014,11 @@ const ACT={
     bl.lyrLines=lines;bl.bars.forEach(x=>x.lyric='');if(P)ACT.pClose();PLACE={bid:bl.id,i:0,at:[]};save();render();$('#placeBar')&&$('#placeBar').scrollIntoView({block:'nearest'})},
   placePrev(){if(!PLACE||!PLACE.i)return;const bl=curBlock();PLACE.i--;const bi=PLACE.at[PLACE.i];if(bi!=null)lyrUnplace(bl.bars[bi],bl.lyrLines[PLACE.i]);PLACE.at.length=PLACE.i;save();render()},
   placeSkip(){if(!PLACE)return;PLACE.at[PLACE.i]=null;PLACE.i++;if(PLACE.i>=curBlock().lyrLines.length)return ACT.placeEnd();render()},
+  // 小節をまたぐ行: 区切りたいところに「/」を入れてもらい、2つの行に分けて、それぞれ歌い出しの小節に置けるようにする
+  placeSplit(){const bl=curBlock();if(!PLACE||!bl)return;const ln=bl.lyrLines[PLACE.i];if(ln==null)return;
+    const v=prompt('小節が変わるところに「/」を入れてください(例 夜の街を/歩いてた)',ln);if(v==null)return;
+    const parts=v.split(/[\/／]/).map(x=>x.trim()).filter(Boolean);if(parts.length<2)return toast('「/」が入っていないので、分けませんでした');
+    bl.lyrLines.splice(PLACE.i,1,...parts);save();render();toast(`${parts.length}つに分けました。1つずつ小節をタップしてください`)},
   placeEnd(){PLACE=null;render();toast('歌詞を置きました。小節ごとの歌詞は、下の欄でそれぞれ書き直せます')},
   lyrOpen(t){const s=curSong();if(!s)return;if(!t.dataset.b)return ACT.lyrAllOpen();LYR={bid:t.dataset.b||null,per:LYR.per||2,assign:[],text:''};
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal lyr-m">
