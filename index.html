@@ -216,8 +216,9 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .m-off input{width:100%;min-width:0;text-align:center;font-variant-numeric:tabular-nums}.m-now{margin-top:8px;width:100%}
 .sec-hint{margin:-4px 0 8px;font-size:12px}
 .metro-b{margin-top:10px;gap:6px}.metro-b .mstat{margin:0}
-#ytWrap iframe{display:block;border-radius:6px;width:240px;height:135px}
-@media screen and (max-width:700px){#ytWrap iframe{width:160px;height:90px}}
+#ytSlot{width:100%;max-width:480px;aspect-ratio:16/9;margin-top:8px;border-radius:8px;background:var(--line)}
+#ytWrap{position:fixed;z-index:4;left:-9999px;top:0;width:320px;height:180px;border-radius:8px;overflow:hidden}
+#ytWrap iframe{display:block;width:100%!important;height:100%!important;border:0}
 #spWrap iframe{display:block;border-radius:8px;width:280px;height:80px;border:0}
 @media screen and (max-width:700px){#spWrap iframe{width:200px}}
 .board-tools{margin-bottom:6px;gap:6px}.board-tools button{padding:3px 10px}
@@ -560,7 +561,6 @@ body.dragging-row{user-select:none;-webkit-user-select:none}
   .pl-name,#pa,#plLoop:empty,#plPick,#plRemove{display:none!important}
   .pl-mini{display:flex}
   .pl-rate-t{display:none}.pl-rate select{font-size:13px;padding:4px 2px}
-  #ytWrap iframe{width:96px!important;height:54px!important}
   #spWrap{flex-basis:100%}#spWrap iframe{width:100%!important}
   /* ⋯ を押したとき: 1行目は再生バーのまま、2行目に曲名・速さ・差し替え・外す */
   #player.more .pl-mini{flex-basis:100%}
@@ -648,11 +648,11 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:00';
+const APP_VER='10/25 8:00';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
-   権限は「このアプリが作ったファイルだけ」(drive.file)。写真と録音は重いので同期しない(文字のデータだけ)。
+   権限は「このアプリが作ったファイルだけ」(drive.file)。写真と録音は重いので同期しない(文字のデータと、曲の音源ファイルだけ)。
    どの端末でいつ保存したかを覚えておいて、両方で変えていたときは、どちらを残すか聞く */
 const GCLIENT='550031929022-h9544gmr7i7093osevvd9pv0li1s22dv.apps.googleusercontent.com';
 const SYNC_NAME='kopiban-note-sync.json',SYNC_KEY='kbSync';
@@ -703,6 +703,33 @@ function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.ban
   Object.assign(SY.meta,{at:ap.savedAt,hash:syncHash()});syncSave();
   if((R.name==='song'||R.name==='block'||R.name==='print')&&!songById(R.a))location.hash='#/';render();toast(`${ap.device||'ほかの端末'}のデータを取ってきました`)}
 // 取ってくる: ドライブのほうが新しければ読み込む。この端末でも変えていたら、どちらを残すか聞く
+/* 音源ファイルもドライブに置く: 入れた端末で上げておき、ほかの端末では、手元にないときだけドライブから取ってくる */
+const AUP={busy:false,get:{},have:{}};
+async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO)return;if(!(await ensureToken()))return;AUP.busy=true;
+  try{for(const s of S.songs){const a=s.audio;if(!a||a.drv)continue;const b=await getBlob(a.blobId);if(!b)continue;
+      const ty=b.type||'application/octet-stream',meta={name:'kopiban-audio-'+a.name,appProperties:{kbAudio:a.blobId}};let id=null;
+      try{const ini=await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',{method:'POST',headers:{'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Type':ty},body:JSON.stringify(meta)});
+        const loc=ini.headers.get('Location');
+        if(loc){const r=await fetch(loc,{method:'PUT',headers:{'Content-Type':ty},body:b});if(r.ok)id=(await r.json()).id}}catch(e){if(e.message==='auth')throw e}
+      if(!id){const bd='kb'+Math.random().toString(36).slice(2);
+        const body=new Blob([`--${bd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${bd}\r\nContent-Type: ${ty}\r\n\r\n`,b,`\r\n--${bd}--`]);
+        id=(await (await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json()).id}
+      const cur=S.songs.find(x=>x.id===s.id);if(id&&cur&&cur.audio&&cur.audio.blobId===a.blobId){cur.audio.drv=id;save()}}}catch(e){}
+  AUP.busy=false;updAudioStat()}
+// 手元にない音源を、ドライブから取ってくる。取れたら true
+async function audioFetch(s){const a=s&&s.audio;if(!a||!a.drv||AUP.get[a.blobId]===1)return false;if(!SY.meta.on||!(await ensureToken()))return false;
+  AUP.get[a.blobId]=1;updAudioStat();
+  try{const b=await (await gapi(`https://www.googleapis.com/drive/v3/files/${a.drv}?alt=media`)).blob();await putBlob(a.blobId,b);AUP.get[a.blobId]=0;AUP.have[a.blobId]=true;updAudioStat();return true}
+  catch(e){AUP.get[a.blobId]='ng';updAudioStat();return false}}
+function audioDrvDel(a){if(!a||!a.drv||!SY.meta.on)return;ensureToken().then(ok=>{if(ok)gapi(`https://www.googleapis.com/drive/v3/files/${a.drv}`,{method:'DELETE'}).catch(()=>{})})}
+function audioStatHTML(s){const a=s.audio,id=a.blobId;
+  if(AUP.get[id]===1)return `${esc(a.name)} をGoogleドライブから読み込んでいます…`;
+  if(AUP.have[id]===false){
+    if(a.drv&&AUP.get[id]==='ng')return `<span class="ng">${esc(a.name)} をGoogleドライブから読み込めませんでした。通信を確かめて、曲を開き直してください。</span>`;
+    if(a.drv)return `<span class="ng">${esc(a.name)} は別の端末で入れた音源です。メニューの「Googleで自動バックアップ・同期」でログインすると、この端末でも聴けます。</span>`;
+    return `<span class="ng">${esc(a.name)} は別の端末で入れた音源で、この端末には入っていません。入れた端末でGoogleの同期をオンにしてアプリを開くと、ほかの端末でも聴けるようになります。下のプレーヤーの「⋯」から入れ直すこともできます。</span>`}
+  return `${esc(a.name)} を入れてあります。${SY.meta.on?(a.drv?'Googleドライブにも置いてあるので、ほかの端末でも聴けます。':'Googleドライブに上げています…'):''}`}
+function updAudioStat(){const el=$('#audioStat'),s=R.name==='song'&&curSong();if(el&&s&&s.audio)el.innerHTML=audioStatHTML(s)}
 async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!(await ensureToken()))return syncUI();SY.busy=true;SY.lastPull=Date.now();syncUI();
   try{const f=await syncFind();
     if(!f){SY.busy=false;return syncPush(true)}
@@ -718,7 +745,7 @@ async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!(await ensureT
       else syncApply(data,ap)}
     else if(syncDirty()){SY.busy=false;return syncPush(true)}
     SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
-  SY.busy=false;syncUI()}
+  SY.busy=false;syncUI();audioUp()}
 // 保存: 送る前に、ほかの端末が先に保存していないか確かめる
 async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!(await ensureToken()))return syncUI();if(SY.busy){clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),3000);return}
   if(!now&&!syncDirty())return;SY.busy=true;syncUI();
@@ -729,7 +756,7 @@ async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!(await ensureToken(
     const r=await (await gapi(f?`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart&fields=id`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
       {method:f?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json();
     Object.assign(SY.meta,{fileId:r.id,at:savedAt,hash:syncHash(),last:+savedAt});syncSave();SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
-  SY.busy=false;syncUI()}
+  SY.busy=false;syncUI();audioUp()}
 /* ドライブにもこの端末にもデータがあるとき: この端末にだけあるセトリ・曲を、選んでドライブのデータに足せるようにする。
    最初から入っている見本(サンプル曲・〇月定例ライブ)は、はじめはチェックを外しておく */
 function syncLocalOnly(rd){const rs=new Set((rd.songs||[]).map(x=>x.id)),rl=new Set((rd.setlists||[]).map(x=>x.id)),items=[],inSl=new Set();
@@ -1119,9 +1146,11 @@ function viewSong(){
   </div>
   <div class="card song-audio" id="songAudio"><b>音源</b>
     <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTube・YouTube Music・Spotifyのリンクを貼り付け"></label>
-      <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a></div>
+      <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a>
+      <a class="back" id="ytFind" href="https://www.youtube.com/results?search_query=${encodeURIComponent(s.title)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;white-space:nowrap;${s.url?'display:none':''}">YouTubeで探す ↗</a></div>
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
-    ${s.audio?`<p class="sub" style="margin:8px 0 0">${esc(s.audio.name)} を入れてあります。下のプレーヤーで再生・差し替えできます。</p>`
+    <div id="ytSlot" ${songMedia(s)==='yt'?'':'hidden'}></div>
+    ${s.audio?`<p class="sub" id="audioStat" style="margin:8px 0 0">${audioStatHTML(s)}</p>`
       :`<div class="hstack" id="audioDrop" style="margin-top:8px"><button class="primary" data-act="audioPick">音源ファイルを入れる(wav / mp3 など)</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
   <div class="hstack song-acts" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><button data-act="midiPick" title="Cubaseなどから書き出したMIDIファイルで、テンポ・拍子・マーカー(ブロック分け)を読み込む">MIDIを読み込む</button><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
   <div style="margin-top:14px">${strip(s,true)}</div>
@@ -1297,6 +1326,7 @@ function initPlayer(){
   <label class="sub pl-rate"><span class="pl-rate-t">速さ </span><select id="plRate">${[100,90,80,75,70,60,50].map(v=>`<option value="${v/100}">${v}%</option>`).join('')}</select></label>
   <span id="plLoop" class="sub"></span>
   <button class="ghost" data-act="audioPick" id="plPick" title="音源ファイルを入れる・差し替える">差し替え</button><button class="ghost" data-act="audioRemove" id="plRemove" title="この曲から音源を外す">外す</button></div>`;
+  document.body.appendChild($('#ytWrap'));
   const a=$('#pa');a.preservesPitch=true;
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
   setInterval(()=>{if((M.kind==='yt'||M.kind==='sp')&&$('#player').style.display!=='none')onTime()},250);
@@ -1387,23 +1417,31 @@ function loadSP(id){
   if(window.SPAPI)make(window.SPAPI);else{window.onSpotifyIframeApiReady=api=>{window.SPAPI=api;make(api)};
     if(!$('#spapi')){const sc=document.createElement('script');sc.id='spapi';sc.src='https://open.spotify.com/embed/iframe-api/v1';
       sc.onerror=()=>{M.spState='error';updUrlStat()};document.head.appendChild(sc)}}}
+function ytPos(){const w=$('#ytWrap');if(!w)return;const sl=$('#ytSlot');if(sl)sl.hidden=M.kind!=='yt'||$('#player').style.display==='none';
+  if(!sl||sl.hidden||M.kind!=='yt'){w.style.left='-9999px';return}
+  const r=sl.getBoundingClientRect(),hd=$('header.top'),top=hd?hd.getBoundingClientRect().bottom:0,pl=$('#player'),bot=pl&&pl.style.display!=='none'?pl.getBoundingClientRect().top:innerHeight;
+  if(r.bottom<=top||r.top>=bot||!r.width){w.style.left='-9999px';return}
+  Object.assign(w.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',clipPath:`inset(${Math.max(0,top-r.top)}px 0 ${Math.max(0,r.bottom-bot)}px 0 round 8px)`})}
+let ytPosQ=0;const ytPosSoon=()=>{if(!ytPosQ)ytPosQ=requestAnimationFrame(()=>{ytPosQ=0;ytPos()})};
+document.addEventListener('scroll',ytPosSoon,true);addEventListener('resize',ytPosSoon);
 function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<0.999)applyAVol()}
   const s=(R.name==='song'||R.name==='block'||R.name==='lyrics')?songById(R.a):null;const kind=songMedia(s);const show=!!kind;
   document.body.classList.toggle('has-player',show);$('#player').style.display=show?'':'none';
   const a=$('#pa');
-  if(!show){if(!a.paused)a.pause();if(M.kind==='yt'||M.kind==='sp')M.pause();return}
+  if(!show){if(!a.paused)a.pause();if(M.kind==='yt'||M.kind==='sp')M.pause();ytPosSoon();return}
   const key=kind==='audio'?'a:'+s.audio.blobId:kind==='sp'?'s:'+spId(s.url):'y:'+ytId(s.url);
   if(PL.songId!==s.id||PL.blobId!==key){if(M.kind)M.pause();PL.songId=s.id;PL.blobId=key;PL.loop=null;M.kind=kind;
     $('#ytWrap').style.display=kind==='yt'?'':'none';$('#spWrap').style.display=kind==='sp'?'':'none';a.style.display=kind==='audio'?'':'none';
     // Spotifyは速さを変えられないので100%に固定
     const rt=$('#plRate');rt.disabled=kind==='sp';rt.title=kind==='sp'?'Spotifyの音源は速さを変えられません':'';if(kind==='sp')rt.value='1';
-    if(kind==='audio')blobURL(s.audio.blobId).then(u=>{a.src=u});else if(kind==='sp')loadSP(spId(s.url));else loadYT(ytId(s.url))}
+    if(kind==='audio'){const bid=s.audio.blobId;blobURL(bid).then(async u=>{AUP.have[bid]=!!u;if(!u){updAudioStat();if(await audioFetch(s))u=await blobURL(bid)}
+      if(PL.blobId!=='a:'+bid)return;if(u)a.src=u;else a.removeAttribute('src');updAudioStat()})}else if(kind==='sp')loadSP(spId(s.url));else loadYT(ytId(s.url))}
   $('#plName').textContent=kind==='audio'?'🎵 '+s.audio.name:kind==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
   $('#plRemove').style.display=kind==='audio'?'':'none';$('#plPick').textContent=kind==='audio'?'差し替え':'音源ファイルを入れる';
   const lb=PL.loop&&s.blocks.find(b=>b.id===PL.loop);$('#plLoop').innerHTML=lb?`🔁 ${esc(lb.name)} をループ中 <button class="ghost" data-act="bLoop" data-id="${lb.id}">解除</button>`:'';
-  onTime()}
+  onTime();ytPos();setTimeout(ytPos,400)}
 async function setSongAudio(s,file){if(!file||!(file.type.startsWith('audio/')||/\.(wav|mp3|m4a|aac|flac|ogg|aiff?)$/i.test(file.name)))return toast('音声ファイルを選んでください');
-  if(s.audio)delBlob(s.audio.blobId);const id=uid();await putBlob(id,file);s.audio={blobId:id,name:file.name.replace(/\.\w+$/,'')};save();render();toast('音源を入れました')}
+  if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio)}const id=uid();await putBlob(id,file);AUP.have[id]=true;s.audio={blobId:id,name:file.name.replace(/\.\w+$/,'')};save();render();toast('音源を入れました')}
 let pickMode='memo';
 
 function curSong(){return songById(R.a)}
@@ -2191,7 +2229,7 @@ const TOUR=[
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
   {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期も、このメニューにあります。',help:TUT[4][2]},
-  {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。写真と録音は、それぞれの端末にだけ残ります。'},
+  {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります。'},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
 const TOUR_MORE=['音源','歌詞をまとめて入れる','小節の番号','コード入力キーボード','メモ(写真・録音)','MIDIを読み込む','共有・印刷','曲順と予定を共有','Googleで自動バックアップ・同期'];
@@ -2314,7 +2352,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2348,7 +2386,7 @@ function settingCards(){return {news:newsCard(),
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     </div>`,
   sync:`<div class="card"><b>Googleで自動バックアップ・同期</b><p class="note">Googleでログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
-    ・同期するのは曲・構成・曲順・予定などの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
+    ・同期するのは曲・構成・曲順・予定などの文字のデータです。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります<br>
     ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
     ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
@@ -2482,8 +2520,8 @@ function bandMoveModal(title,hint,exclude,onPick){BPF=onPick;
   <div class="hstack"><b>${esc(title)}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <p class="note" style="margin:6px 0 4px">${hint}</p>${bandPickHTML('移す先のバンド',null,exclude)}
   <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="bpOk">移す</button></div></div>`}
-function popMenu(anchor,html,right){const r=anchor.getBoundingClientRect();
-  $('#overlay').innerHTML=`<div class="pop-bg" data-act="lbClose"></div><div class="popmenu" style="top:${Math.round(r.bottom+4)}px;${right?`right:${Math.round(innerWidth-r.right)}px`:`left:${Math.round(r.left)}px`}">${html}</div>`}
+function popMenu(anchor,html,right,up){const r=anchor.getBoundingClientRect();
+  $('#overlay').innerHTML=`<div class="pop-bg" data-act="lbClose"></div><div class="popmenu" style="${up?`bottom:${Math.round(innerHeight-r.top+6)}px`:`top:${Math.round(r.bottom+4)}px`};${right?`right:${Math.round(innerWidth-r.right)}px`:`left:${Math.round(r.left)}px`}">${html}</div>`}
 function newGig(){nameModal('新しいイベント','<b>ライブや企画の名前</b>をつけてください。作ったあとで、そのイベントに出るバンドを追加します。',['「11月定例ライブ」「OBライブ」','「新歓ライブ」「追いコン」'],'',n=>{
   const g={id:uid(),name:n,events:[]};S.gigs.push(g);location.hash='#/gig/'+g.id;render()})}
 const newSetlist=()=>newGig();
@@ -2572,7 +2610,7 @@ const ACT={
   newSongToSetlist:()=>createSong(true),
   newSong:()=>createSong(false),
   delSong(t){const s=songById(t.dataset.id);if(!confirm(`曲「${s.title}」を削除しますか？(写真・録音も消えます)`))return;
-    songBlobIds([s]).forEach(delBlob);S.songs=S.songs.filter(x=>x!==s);S.setlists.forEach(x=>x.songIds=x.songIds.filter(i=>i!==s.id));render()},
+    songBlobIds([s]).forEach(delBlob);audioDrvDel(s.audio);S.songs=S.songs.filter(x=>x!==s);S.setlists.forEach(x=>x.songIds=x.songIds.filter(i=>i!==s.id));render()},
   addBlock(t){if(ADRAG.swallow){ADRAG.swallow=false;return}const s=curSong(),ty=t.dataset.type;
     // 最後がアウトロなら、その手前に入れる
     let at=s.blocks.length;while(at>0&&s.blocks[at-1].type==='Out'&&ty!=='Out')at--;insertBlock(ty,at)},
@@ -2787,7 +2825,11 @@ const ACT={
   lyrTap(t){const s=curSong();if(S.prefs.lyrHide){t.classList.toggle('open');return}
     if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===t.dataset.bid&&x.bar===+t.dataset.bar);if(e){ctxReady();MS.last=null;M.seek(Math.max(0,e.t-0.05));M.play()}}},
   pmPlay(){ctxReady();MS.last=null;M.paused()?M.play():M.pause()},
-  pmMore(){$('#player').classList.toggle('more')},
+  pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?'🎵 '+s.audio.name:k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
+    popMenu(t,`<div class="sub" style="padding:8px 12px;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</div><hr>
+      <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
+  pmPick(){ACT.lbClose();ACT.audioPick()},
+  pmRemove(){ACT.lbClose();ACT.audioRemove()},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
     try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「☰ メニュー → 共有コードを読み込む」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
   share:()=>openShare('song'),
@@ -2833,7 +2875,7 @@ const ACT={
   syncOff(){syncOff()},
   midiPick(){pickMode='midi';const f=$('#filePick');f.accept='.mid,.midi,audio/midi,audio/x-midi';f.value='';f.click()},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
-  audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
+  audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);audioDrvDel(s.audio);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
   bPlay(t){const s=curSong(),b=s.blocks.find(x=>x.id===t.dataset.id);const st=blockTime(s,b);if(st==null)return;ctxReady();MS.last=null;M.seek(st);M.play()},
   uiToggle(t){S.prefs.ui=S.prefs.ui||{};const k=t.dataset.k;S.prefs.ui[k]=!S.prefs.ui[k];render()},
   mOffNow(){const s=curSong();if(!M.kind)return;s.mOffset=Math.round(M.time()*100)/100;MS.last=null;save();render();toast(`「${syncAnchor(s).name}」の頭を ${s.mOffset.toFixed(2)} 秒にしました`)},
@@ -2916,7 +2958,7 @@ const CHG={
 };
 const INP={
   evf(t){const {e}=evFind(t.dataset.id);if(!e)return;e[t.dataset.k]=t.value;const s=$('#evSum-'+e.id);if(s)s.innerHTML=studioSum(e)},
-  songField(t){curSong()[t.dataset.k]=t.value;if(t.dataset.k==='url'){syncPlayer();updUrlStat();const o=$('#urlOpen');if(o){o.href=t.value.trim();o.style.display=t.value.trim()?'':'none'}}},
+  songField(t){curSong()[t.dataset.k]=t.value;if(t.dataset.k==='url'){syncPlayer();updUrlStat();const o=$('#urlOpen');if(o){o.href=t.value.trim();o.style.display=t.value.trim()?'':'none'}const yf=$('#ytFind');if(yf)yf.style.display=t.value.trim()?'none':''}},
   blockField(t){curBlock()[t.dataset.k]=t.value},
   lyric(t){curBlock().bars[+t.dataset.bar].lyric=t.value},
   lyrText(t){LYR.text=t.value;lyrPrev()},
