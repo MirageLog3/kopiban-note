@@ -46,7 +46,7 @@ input,select,textarea{background:var(--panel2);border:1px solid var(--line);bord
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 /* ボタンと入力欄を見分けられるように: ボタンは少し浮かせ、文字を入れる欄は白(ダークでは黒)でへこませる */
 button:not(.ghost):not(.foldbtn):not(.bn):not(.kk){box-shadow:0 1px 2px var(--btnsh)}
-input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):not(.name):not(.lyric),textarea{background:var(--inbg);border-color:var(--inline);box-shadow:inset 0 1px 2px var(--btnsh)}
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):not(.name):not(.lyric):not(.nameedit),textarea{background:var(--inbg);border-color:var(--inline);box-shadow:inset 0 1px 2px var(--btnsh)}
 input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([readonly]):focus,textarea:focus{border-color:var(--accent)}
 .top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--line)}
 /* ホーム画面のアプリ(特にiPadのウインドウ表示)では、画面の上の端にOSの帯がかぶって、ぼかしがかかる。上のバーの中身はその下から始める */
@@ -63,6 +63,10 @@ html.iphoneapp header.top{padding-top:max(22px,calc(env(safe-area-inset-top) + 4
 .top nav a.on{color:var(--accent);background:var(--accbg)}
 main{max-width:980px;margin:0 auto;padding:20px 20px 260px}
 h1{font-size:24px;margin:4px 0 6px}
+/* 名前を書きかえられる欄: 下に点線を引いて、押せば変えられると分かるようにする */
+input.nameedit{background:none;border:0;border-bottom:1.5px dashed var(--inline);border-radius:0;box-shadow:none}
+input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
+.h1in{flex:1;min-width:0;font-size:24px;font-weight:700;padding:2px 0;margin:0 0 4px}
 .back{color:var(--accent);font-size:14px}
 .sub{color:var(--sub);font-size:13px}
 .hstack{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -788,9 +792,9 @@ function newBlock(type,name,bars){bars=bars??(type==='In'||type==='Out'?4:8);
   return {id:uid(),type,name:name||TYPES[type].label,bars:Array.from({length:bars},()=>newBar()),tags:[],note:'',memos:[]}}
 /* 曲を作るときの最初の形。2回目に出てくるブロックは「2Aメロ」のように番号をつける(ブロックを足すときと同じ付け方) */
 const SONG_TPLS=[['full','よくある形','イントロ→A→B→サビ→間奏→A→B→サビ→Cメロ→サビ→アウトロ',['In','A','B','S','I','A','B','S','C','S','Out']],
-  ['simple','シンプル','イントロ→A→B→サビ→アウトロ',['In','A','B','S','Out']],['empty','からっぽ','ブロックなし(MIDIを読み込むときや、自分で並べたいとき)',[]]];
+['empty','からっぽ','ブロックなし(MIDIを読み込むときや、自分で並べたいとき)',[]]];
 const blockName=(blocks,ty)=>{const same=blocks.filter(b=>b.type===ty).length;return same&&ty!=='X'?`${same+1}${TYPES[ty].label}`:TYPES[ty].label};
-function newSong(bandId,title,tpl){const t=(SONG_TPLS.find(x=>x[0]===tpl)||SONG_TPLS[1])[3],blocks=[];t.forEach(ty=>blocks.push(newBlock(ty,blockName(blocks,ty))));
+function newSong(bandId,title,tpl){const t=tpl?(SONG_TPLS.find(x=>x[0]===tpl)||SONG_TPLS[0])[3]:['In','A','B','S','Out'],blocks=[];t.forEach(ty=>blocks.push(newBlock(ty,blockName(blocks,ty))));
   return {id:uid(),bandId,title,bpm:'',meter:'4/4',key:'',url:'',blocks}}
 function defaultState(){const b={id:uid(),name:'マイバンド'};const song=newSong(b.id,'サンプル曲');
   const g={id:uid(),name:'〇月定例ライブ',events:[]};
@@ -985,7 +989,7 @@ function viewHome(){const {reg,up,past}=gigSorted();const os=origSets(),rg=reg[0
 function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   const sets=gigSetsSorted(g),cust=(g.sort||'studio')==='custom';
   return topbar('setlist')+`<main><a class="back" href="#/">‹ イベント一覧</a>
-  <div class="slhead"><h1>${esc(g.name)}</h1><button class="ghost slmore" data-act="gigMore" data-id="${g.id}" title="名前の変更・削除" aria-label="イベントのメニュー">⋯</button></div>
+  <div class="slhead">${g.regular?`<h1>${esc(g.name)}</h1>`:`<input class="h1in nameedit" value="${esc(g.name)}" data-input="gigNameId" data-id="${g.id}" aria-label="イベントの名前" enterkeyhint="done">`}<button class="ghost slmore" data-act="gigMore" data-id="${g.id}" title="名前の変更・削除" aria-label="イベントのメニュー">⋯</button></div>
   ${g.regular?'<p class="sub gigsub">ライブが決まっていないバンドの、曲とスタジオ練習をまとめる場所です。</p>':g.color?`<div style="--live:${g.color}">${evSection(g,'live')}</div>`:evSection(g,'live')}
   <div class="hstack gig-sorthd"><div class="sec" style="margin:0">${g.regular?'バンド':'出るバンド'} (${sets.length})</div><span class="spacer"></span>${sets.length>1?`<select data-change="gigSort" data-id="${g.id}" aria-label="バンドの並び">${GIG_SORTS.map(([k,l])=>`<option value="${k}" ${(g.sort||'studio')===k?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
   ${cust&&sets.length>1?'<p class="sub" style="margin:0 0 6px">左の ⋮⋮ をつかんで並べ替えられます</p>':''}
@@ -1002,7 +1006,7 @@ function viewSetlist(){
   const others=bandSongs().filter(s=>!sl.songIds.includes(s.id));
   const orig=!!g.regular,lives=orig?bandLives(sl.bandId):[];
   return topbar('setlist')+`<main><a class="back" href="${orig?'#/':'#/gig/'+sl.gigId}">‹ ${orig?'ホーム':esc(g.name)}</a>
-  <div class="slhead"><h1>${esc(bandNameOf(sl.bandId))}</h1>
+  <div class="slhead"><input class="h1in nameedit" value="${esc(bandNameOf(sl.bandId))}" data-input="bandNameId" data-id="${sl.bandId}" aria-label="バンドの名前" enterkeyhint="done">
     <button class="ghost slmore" data-act="slMore" title="共有・移動・外す" aria-label="セトリのメニュー">⋯</button></div>
   <p class="sub gigsub">${orig?'オリジナル':esc(g.name)}${ls?` ・ 本番 <b>${ls}</b>`:''}</p>
   ${evSection(sl,'studio')}
@@ -1032,7 +1036,7 @@ function viewSong(){
   const counts={};s.blocks.forEach(b=>counts[b.type]=(counts[b.type]||0));
   return topbar('')+`<main>
   <a class="back" href="${sl?'#/setlist/'+sl.id:'#/songs'}">‹ ${sl?esc(bandNameOf(sl.bandId)+'(' +gigOf(sl).name+')'):'曲'}</a>
-  <input class="name" style="display:block;font-size:24px;font-weight:700;background:none;border-color:transparent;padding:4px 0;width:100%" value="${esc(s.title)}" data-input="songField" data-k="title">
+  <input class="name nameedit" style="display:block;font-size:24px;font-weight:700;padding:4px 0;width:100%" value="${esc(s.title)}" data-input="songField" data-k="title" aria-label="曲名">
   <div class="hstack meta" id="songInfo">
     <label>テンポ<input value="${esc(s.bpm)}" data-input="songField" data-k="bpm" placeholder="例 84"></label>
     <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
@@ -1338,7 +1342,7 @@ function viewBlock(){
     ${prev?`<a class="back" href="#/block/${s.id}/${prev.id}${tab}">← ${esc(prev.name)}</a>`:''}
     ${next?`<a class="back" href="#/block/${s.id}/${next.id}${tab}" style="margin-left:12px">${esc(next.name)} →</a>`:''}</div>
   <div class="btitle"><span class="cbar" style="background:${TYPES[bl.type].color}"></span>
-    <input class="name" value="${esc(bl.name)}" data-input="blockField" data-k="name">
+    <input class="name nameedit" value="${esc(bl.name)}" data-input="blockField" data-k="name" aria-label="ブロックの名前">
     <button class="foldbtn ${UI('bset')?'on':''}" data-act="uiToggle" data-k="bset">詳しい設定 ${UI('bset')?'▾':'▸'}</button></div>
   <div class="chips">${[bl.bars.length+'小節',blockMeter(bl,s),'♩'+blockBpm(bl,s),(bl.ramps||[]).length&&rampLabel(bl),blockKey(bl,s)&&'キー '+esc(blockKey(bl,s)),bl.note&&esc(bl.note)].filter(Boolean).map(x=>`<span class="chip">${x}</span>`).join('')}${bl.tags.map(t=>tagHTML(t)).join('')}</div>
   <div class="blockhead panel" id="bquick">
@@ -2094,7 +2098,7 @@ const TOUR=[
   {on:'song',r:tSong,sel:'#songAudio',kw:'YouTube Spotify mp3 wav ファイル 再生 プレーヤー 速さ スロー',h:'音源',t:'音源ファイル(wav・mp3など)や、YouTube・YouTube Music・SpotifyのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。再生中は今の場所を自動で追いかけますが、画面を触ると止まります。「↓ 再生位置へ」で戻れます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',kw:'クリック BPM テンポ 拍 刻み 音量 カウント ハネ シャッフル',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。音源に合わせて鳴らすこともできます。「刻み」で8分や3連・ハネの音を足したり、「音量」で音源とのバランスを変えたりできます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。左端をつかんで並べ替えることができます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
-  {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けます。曲を作るときに、最初のブロックの形(よくある形・シンプル・からっぽ)も選べます。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けます。曲を作るときに、最初のブロックの形(よくある形・からっぽ)も選べます。',need:tourSong},
   {on:'song',r:tSong,sel:'.lyr-open',adv:1,kw:'歌詞カード 貼り付け 歌い出し',h:'歌詞をまとめて入れる',t:'「歌詞をまとめて入れる」に曲の歌詞の全文を貼り付けると、行の一覧が出ます。入れたい行にチェックをつけて、下のブロックをタップすると、その行がブロックに入ります。同じ行を2回目のサビなど別のブロックにも入れられます。歌い出しの小節は、ブロックの画面の「歌詞を小節に置く」で、行が始まる小節をタップして決めます。「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong},
   {on:'song',r:tSong,sel:'[data-act=midiPick]',adv:1,kw:'Cubase DAW マーカー オリジナル 自作',h:'MIDIを読み込む',t:'自分の曲なら、DAW(Cubaseなど)から書き出したMIDIファイルで、テンポ・拍子・キーと、マーカーでのブロック分けをまとめて読み込めます。マーカーの名前がそのままブロックの名前になります。',need:tourSong},
   {on:'song',r:tSong,sel:'#songActs',kw:'PDF 印刷 コード譜 構成表 送る LINE',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
@@ -2235,7 +2239,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['曲を作るときに最初のブロックの形を選べるように(よくある形・シンプル・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2374,7 +2378,7 @@ document.addEventListener('pointerup',()=>{if(ADRAG.on)adragEnd(true);else clear
 document.addEventListener('pointercancel',()=>{if(ADRAG.on)adragEnd(false);clearTimeout(ADRAG.tm);ADRAG.btn=null});
 document.addEventListener('touchmove',e=>{if(ADRAG.on)e.preventDefault()},{passive:false});
 document.addEventListener('contextmenu',e=>{if(ADRAG.on||(e.target.closest&&e.target.closest('.addbtn[data-type]')))e.preventDefault()});
-function createSong(addToSetlist){const cur=S.prefs.songTpl||'full';
+function createSong(addToSetlist){if(!SONG_TPLS.some(x=>x[0]===S.prefs.songTpl))S.prefs.songTpl='full';const cur=S.prefs.songTpl;
   nameModal('新しい曲','<b>曲名</b>を入れてください。',[],'',t=>{const s=newSong(band().id,t,S.prefs.songTpl||'full');S.songs.push(s);
     if(addToSetlist&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id},
     `<div class="tpl-pick"><div class="sub" style="margin:10px 0 4px">最初のブロック</div>${SONG_TPLS.map(([k,l,d])=>`<label class="tpl-row"><input type="radio" name="songTpl" value="${k}" ${cur===k?'checked':''} onchange="S.prefs.songTpl=this.value"> <span><b>${l}</b><small class="sub" style="display:block">${d}</small></span></label>`).join('')}</div>`)}
@@ -2823,6 +2827,7 @@ const INP={
   memoText(t){findMemo(t.dataset.id).m.text=t.value},
   bandName(t){band().name=t.value},
   bandNameId(t){const b=S.bands.find(x=>x.id===t.dataset.id);if(b)b.name=t.value},
+  gigNameId(t){const g=gigById(t.dataset.id);if(!g)return;g.name=t.value;gigSets(g).forEach(x=>x.name=t.value)},
   studio(t){const st=curSetlist().studio;st[t.dataset.k]=t.value;$('#stSum').innerHTML=studioSum(st);$('#stDays').textContent=daysLeft(st.date)},
   shareBase(t){S.prefs.shareBase=t.value.trim()},
 };
