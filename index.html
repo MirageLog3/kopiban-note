@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 10:00';
+const APP_VER='10/25 10:10';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1154,10 +1154,9 @@ function viewSong(){
     <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
     <label>キー(調)<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
   </div>
-  <div class="card song-audio" id="songAudio"><b>音源</b>
+  <div class="card song-audio" id="songAudio"><div class="hstack" style="gap:14px"><b>音源</b><a class="back" id="ytFind" href="https://www.youtube.com/results?search_query=${encodeURIComponent(s.title)}" target="_blank" rel="noopener" style="padding:0;white-space:nowrap;${s.url?'display:none':''}">YouTubeで探す ↗</a></div>
     <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTube・Spotify・Googleドライブのリンクを貼り付け"></label>
-      <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a>
-      <a class="back" id="ytFind" href="https://www.youtube.com/results?search_query=${encodeURIComponent(s.title)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;white-space:nowrap;${s.url?'display:none':''}">YouTubeで探す ↗</a></div>
+      <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a></div>
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     <div id="ytSlot" ${songMedia(s)==='yt'?'':'hidden'}></div>
     ${s.audio?`<p class="sub" id="audioStat" style="margin:8px 0 0">${audioStatHTML(s)}</p>`
