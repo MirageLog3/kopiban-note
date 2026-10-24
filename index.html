@@ -1917,18 +1917,21 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   if(el&&!st.whole){const r=el.getBoundingClientRect(),bh=bub.offsetHeight,H=innerHeight;
     if(r.bottom+bh+24>H&&r.top-bh-24<0&&getComputedStyle(el).position!=='fixed'&&!el.closest('.sheet,header,#sheet'))window.scrollBy(0,r.top-70)}
   tourPlace();setTimeout(()=>{if(seq!==TSEQ)return;tourPlace();bub.classList.add('in')},330)}
+// 下にホームバーがあるiPhoneでは、枠と吹き出しをホームバーより上に収める(画面の丸い角で枠が欠けないように)
+function safeBottom(){let p=$('#sabProbe');if(!p){p=document.createElement('div');p.id='sabProbe';p.style.cssText='position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:0;visibility:hidden;pointer-events:none';document.body.appendChild(p)}return p.offsetHeight||0}
 function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(!st||!sp||!bub)return;
-  const el=tourEl(st);const W=innerWidth,Hh=innerHeight,m=6,bh=bub.offsetHeight;
+  const el=tourEl(st);const sab=safeBottom(),W=innerWidth,Hh=innerHeight-(sab?sab+4:0),m=6,bh=bub.offsetHeight,bb=(sab?sab+20:12)+'px';
+  const rad=()=>'10px';
   if(!el){Object.assign(sp.style,{left:W/2+'px',top:Hh/2+'px',width:'0px',height:'0px',borderRadius:'10px'});
     Object.assign(bub.style,{top:Math.max(12,(Hh-bh)/2)+'px',bottom:''});return}
   // 画面全体を見せたいステップは、上のバーより下を全部明るくして、吹き出しは一番下に出す
   if(st.whole){const hb=($('header.top')||{getBoundingClientRect:()=>({bottom:0})}).getBoundingClientRect().bottom;
-    Object.assign(sp.style,{left:'4px',top:hb+4+'px',width:W-8+'px',height:Hh-hb-8+'px',borderRadius:'10px'});Object.assign(bub.style,{top:'',bottom:'12px'});return}
+    const g=sab?8:4;Object.assign(sp.style,{left:g+'px',top:hb+4+'px',width:W-g*2+'px',height:Hh-hb-4-g+'px',borderRadius:rad(g,g)});Object.assign(bub.style,{top:'',bottom:bb});return}
   const r=el.getBoundingClientRect();const top=Math.max(4,r.top-m),bot=Math.min(Hh-4,r.bottom+m);
-  Object.assign(sp.style,{left:Math.max(4,r.left-m)+'px',top:top+'px',width:Math.min(W-8,r.width+m*2)+'px',height:Math.max(0,bot-top)+'px',borderRadius:'10px'});
+  Object.assign(sp.style,{left:Math.max(4,r.left-m)+'px',top:top+'px',width:Math.min(W-8,r.width+m*2)+'px',height:Math.max(0,bot-top)+'px',borderRadius:rad(Math.max(4,r.left-m),Hh-bot)});
   if(Hh-bot>=bh+12)Object.assign(bub.style,{top:bot+10+'px',bottom:''});
   else if(top>=bh+12)Object.assign(bub.style,{top:top-bh-10+'px',bottom:''});
-  else Object.assign(bub.style,{top:'',bottom:'12px'})}
+  else Object.assign(bub.style,{top:'',bottom:bb})}
 function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resize',tourPlace);removeEventListener('scroll',tourPlace,true);TI=-1;
   // 最初の案内は、終わった画面のまま続けて書き込めるようにする(セトリ画面に戻さない)
   if(DEMO)demoOff();
