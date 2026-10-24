@@ -52,7 +52,7 @@ input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range])
 /* ホーム画面のアプリ(特にiPadのウインドウ表示)では、画面の上の端にOSの帯がかぶって、ぼかしがかかる。上のバーの中身はその下から始める */
 header.top{padding-top:max(8px,env(safe-area-inset-top))}
 /* iPadのホーム画面アプリでは、画面の上の端にOSのガラスの効果がかかって文字がにじむ(「透明度を下げる」で消えることで確認)。上のバーの文字をその帯より下に置く */
-html.ipadapp header.top{padding-top:52px}
+html.ipadapp header.top{padding-top:36px}
 .brand{font-weight:700}
 .bandsel{color:var(--sub);font-size:13px}
 .bandsel select{margin-left:4px}
@@ -633,7 +633,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 2:30';
+const APP_VER='10/25 2:40';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
