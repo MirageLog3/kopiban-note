@@ -400,6 +400,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .la-b.next{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.la-b:disabled{opacity:.55}
 .place-bar{position:sticky;top:var(--toph,52px);z-index:6;margin:6px 0 8px;padding:10px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);box-shadow:0 4px 14px var(--shadow)}
 .place-now{font-size:18px;font-weight:700;margin:2px 0}
+#syncBar{position:fixed;left:12px;right:12px;z-index:16;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--panel);box-shadow:0 4px 16px var(--shadow);font-size:14px}
+#syncBar span{flex:1;min-width:0}
 .bar.lr .cells{box-shadow:0 0 0 2px var(--accent);border-radius:4px}
 .loop-bar{position:sticky;top:var(--toph,52px);z-index:6;display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:8px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);font-weight:600}.place-next{font-size:12px}
 #grid.placing .bar{cursor:pointer}#grid.placing .bar:hover .cells{outline:2px dashed var(--accent);outline-offset:1px}
@@ -613,7 +615,72 @@ async function gcBlobs(){try{const keys=await idb('blobs','readonly',s=>s.getAll
   const drop=(keys||[]).filter(k=>!used.has(k));if(drop.length)await idb('blobs','readwrite',s=>{drop.forEach(k=>s.delete(k))})}catch(_){}}
 let saveT;
 let DEMO=null; // 案内用の見本を表示中(このあいだは保存しない)
-function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250)}
+function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
+/* ---------- Googleドライブで同期 ----------
+   ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
+   権限は「このアプリが作ったファイルだけ」(drive.file)。写真と録音は重いので同期しない(文字のデータだけ)。
+   どの端末でいつ保存したかを覚えておいて、両方で変えていたときは、どちらを残すか聞く */
+const GCLIENT='550031929022-h9544gmr7i7093osevvd9pv0li1s22dv.apps.googleusercontent.com';
+const SYNC_NAME='kopiban-note-sync.json',SYNC_KEY='kbSync';
+const SY={meta:(()=>{try{return JSON.parse(localStorage.getItem(SYNC_KEY))||{}}catch(e){return {}}})(),busy:false,t:null,lastPull:0,err:''};
+const syncSave=()=>{try{localStorage.setItem(SYNC_KEY,JSON.stringify(SY.meta))}catch(e){}};
+const syncData=()=>({bands:S.bands,songs:S.songs,setlists:S.setlists,markers:S.markers,gigs:S.gigs});
+const syncHash=()=>{const j=JSON.stringify(syncData());let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return h+':'+j.length};
+const devName=()=>/iPhone/.test(navigator.userAgent)?'iPhone':/iPad|Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1?'iPad':/Android/.test(navigator.userAgent)?'Android':'PC';
+const syncReady=()=>!!(SY.meta.tok&&Date.now()<SY.meta.exp-60000);
+const syncDirty=()=>SY.meta.hash!==syncHash();
+const fmtWhen=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`};
+function gisLoad(){return window.google&&google.accounts?Promise.resolve():new Promise((ok,ng)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=ok;s.onerror=()=>ng(new Error('Googleのログイン画面を読み込めませんでした'));document.head.appendChild(s)})}
+// ログイン(ボタンを押したときだけ呼ぶ。押していないときに窓を開くとブラウザに止められるため)
+async function syncLogin(){if(!GCLIENT)return toast('同期はまだ準備中です');try{await gisLoad()}catch(e){return alert(e.message)}
+  const tc=google.accounts.oauth2.initTokenClient({client_id:GCLIENT,scope:'https://www.googleapis.com/auth/drive.file',
+    callback:r=>{if(r.error){SY.err='ログインできませんでした';syncUI();return}
+      Object.assign(SY.meta,{on:true,tok:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000});syncSave();SY.err='';syncPull(true)},
+    error_callback:()=>{SY.err='ログインの画面が閉じられました';syncUI()}});
+  tc.requestAccessToken({prompt:SY.meta.on?'':'consent'})}
+async function gapi(url,opt={}){const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+SY.meta.tok,...(opt.headers||{})}});
+  if(r.status===401){SY.meta.exp=0;syncSave();throw new Error('auth')}if(!r.ok)throw new Error('Googleドライブとやりとりできませんでした('+r.status+')');return r}
+async function syncFind(){if(SY.meta.fileId){try{const f=await (await gapi(`https://www.googleapis.com/drive/v3/files/${SY.meta.fileId}?fields=id,appProperties,trashed`)).json();if(f&&!f.trashed)return f}catch(e){if(e.message==='auth')throw e}}
+  const q=encodeURIComponent(`name='${SYNC_NAME}' and trashed=false`);
+  const j=await (await gapi(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=modifiedTime desc&fields=files(id,appProperties)&pageSize=1`)).json();return j.files&&j.files[0]||null}
+function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.bands,songs:data.songs||S.songs,setlists:data.setlists||S.setlists,markers:data.markers||S.markers,gigs:data.gigs||S.gigs});
+  H.past=[];H.future=[];H.last=histSnap();H.busy=false;histBtns();idb('kv','readwrite',s=>s.put(S,'state'));
+  Object.assign(SY.meta,{at:ap.savedAt,hash:syncHash()});syncSave();
+  if((R.name==='song'||R.name==='block'||R.name==='print')&&!songById(R.a))location.hash='#/';render();toast(`${ap.device||'ほかの端末'}のデータを取ってきました`)}
+// 取ってくる: ドライブのほうが新しければ読み込む。この端末でも変えていたら、どちらを残すか聞く
+async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!syncReady())return syncUI();SY.busy=true;SY.lastPull=Date.now();syncUI();
+  try{const f=await syncFind();
+    if(!f){SY.busy=false;return syncPush(true)}
+    SY.meta.fileId=f.id;const ap=f.appProperties||{};
+    if(ap.savedAt&&ap.savedAt!==SY.meta.at){
+      if((!SY.meta.at||syncDirty())&&!confirm(`「${ap.device||'ほかの端末'}」で ${fmtWhen(+ap.savedAt)} に保存したデータがドライブにあります。${SY.meta.at?'この端末でも変更があります。':''}\n\nOK: ${ap.device||'ほかの端末'}のデータを使う(この端末の変更は消えます)\nキャンセル: この端末のデータで上書きする`)){SY.meta.at=ap.savedAt;SY.busy=false;return syncPush(true)}
+      const data=await (await gapi(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json();syncApply(data,ap)}
+    else if(syncDirty()){SY.busy=false;return syncPush(true)}
+    SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
+  SY.busy=false;syncUI()}
+// 保存: 送る前に、ほかの端末が先に保存していないか確かめる
+async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!syncReady())return syncUI();if(SY.busy){clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),3000);return}
+  if(!now&&!syncDirty())return;SY.busy=true;syncUI();
+  try{let f=SY.meta.fileId?await syncFind():null;const ap=f&&f.appProperties||{};
+    if(f&&ap.savedAt&&SY.meta.at&&ap.savedAt!==SY.meta.at){SY.busy=false;return syncPull()}
+    const savedAt=String(Date.now()),meta={appProperties:{savedAt,device:devName()}};if(!f)meta.name=SYNC_NAME,meta.mimeType='application/json';
+    const bd='kb'+Math.random().toString(36).slice(2);const body=`--${bd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${bd}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(syncData())}\r\n--${bd}--`;
+    const r=await (await gapi(f?`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart&fields=id`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+      {method:f?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json();
+    Object.assign(SY.meta,{fileId:r.id,at:savedAt,hash:syncHash(),last:+savedAt});syncSave();SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
+  SY.busy=false;syncUI()}
+function syncSoon(){if(!SY.meta.on||H.busy)return;clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),4000);syncUI()}
+function syncOff(){if(!confirm('この端末の同期をやめますか？(ドライブのデータは消えません)'))return;
+  try{if(SY.meta.tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(SY.meta.tok,()=>{})}catch(e){}SY.meta={};syncSave();syncUI();render()}
+// 画面の下に出す小さな表示: ログインが切れたときと、うまく保存できなかったとき
+function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady(),msg=need?(syncDirty()?'変更をドライブに保存するには':'ほかの端末の変更を取ってくるには'):SY.err;
+  if(!SY.meta.on||!msg||DEMO){if(b)b.remove();}else{if(!b){b=document.createElement('div');b.id='syncBar';document.body.appendChild(b)}
+    b.innerHTML=need?`<span>☁ ${msg}</span><button class="primary" data-act="syncLogin">Googleで続ける</button>`:`<span>☁ ${esc(msg)}</span><button data-act="syncNow">もう一度</button>`;
+    const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;b.style.bottom=(pb+10)+'px'}
+  const st=$('#syncStat');if(st)st.innerHTML=syncStatText()}
+function syncStatText(){if(!SY.meta.on)return 'まだ同期していません';if(SY.busy)return '同期しています…';
+  return `${syncReady()?'✓ Googleドライブと同期中':'ログインが切れています'}${SY.meta.at?`<br><span class="sub">最後に保存: ${fmtWhen(+SY.meta.at)}</span>`:''}`}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SY.meta.on&&Date.now()-SY.lastPull>20000)syncPull()});
 /* ---------- 元に戻す・やり直す ----------
    保存のたびに曲・セトリなどの中身を比べて、変わっていたら前の状態を積む。0.8秒以内の連続した変更(文字入力など)は1回分にまとめる */
 const H={past:[],future:[],last:null,t:0,busy:false};
@@ -711,14 +778,14 @@ function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
 const MENU=[['tut','📖','使い方を見る'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンドの管理'],['markers','🏷','マーカーの編集'],
-  ['backup','💾','バックアップ・復元'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
+  ['sync','☁️','スマホとPCの同期'],['backup','💾','バックアップ・復元'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
   <div class="mline"><span>コードの表示</span><span class="mseg">${[['abc','C D E'],['doremi','ドレミ'],['degree','ディグリー']].map(([v,l])=>`<button class="${codeView()===v?'on':''}" data-act="menuCode" data-v="${v}">${l}</button>`).join('')}</span></div></div>`}
 // コードの表示は「アルファベット / ドレミ / ディグリー」のどれか1つ
 const codeView=()=>S.prefs.degree?'degree':S.prefs.doremi?'doremi':'abc';
 function setCodeView(v){S.prefs.degree=v==='degree';S.prefs.doremi=v==='doremi';save();render()}
-function menuList(){return `<div class="mlist">${MENU.map(([k,i,l])=>k==='tut'?`<button class="mrow" data-act="menuTut"><span class="mi">${i}</span>${l}<span class="spacer"></span><span class="sub">›</span></button>`
+function menuList(){return `<div class="mlist">${MENU.filter(([k])=>k!=='sync'||GCLIENT).map(([k,i,l])=>k==='tut'?`<button class="mrow" data-act="menuTut"><span class="mi">${i}</span>${l}<span class="spacer"></span><span class="sub">›</span></button>`
   :`<a class="mrow" href="#/settings/${k}"><span class="mi">${i}</span>${l}${k==='news'&&newsUnseen()?'<span class="newdot"></span>':''}<span class="spacer"></span><span class="sub">›</span></a>`).join('')}</div>`}
 function menuHTML(){return `<div class="drawer-bg" data-act="lbClose"></div><aside class="drawer"><div class="hstack"><b>メニュー</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <div class="msec">表示</div>${menuDisp()}<div class="msec">設定・その他</div>${menuList()}</aside>`}
@@ -1961,6 +2028,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
+  {d:'2026-10-25',items:['Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「スマホとPCの同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -1993,6 +2061,12 @@ function settingCards(){return {news:newsCard(),
   share:`<div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を入れると、その曲やセトリを取り込めます。</p>
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     </div>`,
+  sync:`<div class="card"><b>スマホとPCの同期</b><p class="note">Googleでログインすると、自分のGoogleドライブを通して、スマホとPCのデータが自動でそろいます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
+    ・同期するのは曲・構成・セトリなどの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
+    ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
+    ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
+    <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
+    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインして同期</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div></div>`,
   backup:`<div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">バックアップを書き出す</button><button data-act="import">バックアップから復元</button></div></div>`,
   tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたセトリが開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
@@ -2394,6 +2468,9 @@ const ACT={
     toast('追加しました')},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
+  syncLogin(){syncLogin()},
+  syncNow(){if(!syncReady())return syncLogin();SY.err='';syncPull(true)},
+  syncOff(){syncOff()},
   midiPick(){pickMode='midi';const f=$('#filePick');f.accept='.mid,.midi,audio/midi,audio/x-midi';f.value='';f.click()},
   audioPick(){pickMode='song';const f=$('#filePick');f.accept='audio/*,.wav,.mp3,.m4a,.flac,.aif,.aiff';f.value='';f.click()},
   audioRemove(){const s=curSong();if(!s||!s.audio||!confirm('この曲から音源を外しますか？(ブロックの頭の位置は残ります)'))return;delBlob(s.audio.blobId);s.audio=null;PL.songId=null;PL.blobId=null;$('#pa').removeAttribute('src');render()},
@@ -2557,7 +2634,7 @@ window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';rend
   S.prefs=S.prefs||{step:2};
   S.markers=S.markers||DEFAULT_MARKERS.map(([name,color])=>({name,color}));recolorMarkers();
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(v=>{STORE_OK=v}).catch(()=>{});
-  render();gcBlobs();
+  render();gcBlobs();if(SY.meta.on)syncPull()
   if(!S.prefs.tutDone&&!/^#\/(s|import)\//.test(location.hash))setTimeout(tourStart,400);
 })();
 </script>
