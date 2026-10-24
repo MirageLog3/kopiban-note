@@ -787,7 +787,7 @@ function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
 const MENU=[['tut','📖','使い方を見る'],['help','🔍','ヘルプ・機能を探す'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンドの管理'],['markers','🏷','マーカーの編集'],
-  ['sync','☁️','スマホとPCの同期'],['backup','💾','バックアップ・復元'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
+  ['sync','☁️','Googleで自動バックアップ・同期'],['backup','💾','バックアップ・復元'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
   <div class="mline"><span>コードの表示</span><span class="mseg">${[['abc','C D E'],['doremi','ドレミ'],['degree','ディグリー']].map(([v,l])=>`<button class="${codeView()===v?'on':''}" data-act="menuCode" data-v="${v}">${l}</button>`).join('')}</span></div></div>`}
@@ -865,10 +865,12 @@ function gigCard(g){const sets=gigSets(g),d=gigDate(g);
   return `<div class="card gig ${g.regular?'':'studio live'}"><a class="ghd" href="#/gig/${g.id}"><span class="gn">${esc(g.name)}</span>${g.regular?'<span class="gd">日付のない練習</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
   <div class="gbands">${sets.map(x=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
     return `<a class="gband" href="#/setlist/${x.id}">${esc(bandNameOf(x.bandId))}<span class="sub">${n}曲${nx?' ・ 次のスタジオ '+nx.date.slice(5).replace('-','/'):''}</span></a>`}).join('')||`<div class="gempty">まだバンドがありません</div>`}</div></div>`}
+// Googleにログインしていない人に、自動バックアップを一度だけ勧める(「今はしない」で消える。強制はしない)
+const syncNudge=()=>GCLIENT&&!SY.meta.on&&!DEMO&&S.prefs.tutDone&&!S.prefs.syncNudgeOff?`<div class="card sync-nudge"><b>☁ データを自動でバックアップ</b><p class="note" style="margin:4px 0 8px">Googleでログインしておくと、データが自分のGoogleドライブに自動で保存されます。スマホを替えたときや、PCで使いたいときも安心です。</p><div class="hstack"><button class="primary" data-act="syncLogin">Googleでログイン</button><button class="ghost" data-act="syncNudgeOff">今はしない</button></div></div>`:'';
 function viewHome(){const {reg,up,past}=gigSorted();
   return topbar('setlist')+`<main><div class="slhead"><h1>イベント</h1><span class="spacer"></span><button class="primary" data-act="newGig">＋ イベント</button></div>
   <p class="sub" style="margin:0 0 6px">ライブやイベントごとに、出るバンドとその曲順をまとめます。オリジナルバンドの普段のスタジオは「普段の練習」に入れます。</p>
-  ${reg.map(gigCard).join('')}${up.map(gigCard).join('')}
+  ${syncNudge()}${reg.map(gigCard).join('')}${up.map(gigCard).join('')}
   ${past.length?`<button class="foldbtn" data-act="uiToggle" data-k="pastGig" style="margin:4px 0 8px">終わったイベント (${past.length}) ${UI('pastGig')?'▾':'▸'}</button>${UI('pastGig')?past.map(gigCard).join(''):''}`:''}</main>`}
 function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   const sets=gigSets(g);
@@ -1921,7 +1923,7 @@ const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.sta
 // g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない  grp: 目次での見出し(なければ画面から決める)
 const TOUR=[
   {core:1,r:()=> '#/',sel:null,h:'ようこそ！',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。'},
-  {core:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>PCでも使う方は、あとで「☰ メニュー → スマホとPCの同期」でGoogleにログインすると、データがそろいます。',
+  {core:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
     g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
   {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。オリジナルバンドの普段のスタジオは「普段の練習」に入れます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
   {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、その中に出るバンドを追加します。コピバンを何組か掛け持ちするときは、同じイベントにバンドを並べます。'},
@@ -1934,13 +1936,13 @@ const TOUR=[
   {on:'song',r:tSong,sel:'#songInfo',kw:'テンポ 拍子 キー BPM',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songAudio',kw:'YouTube Spotify mp3 wav ファイル 再生 プレーヤー 速さ スロー',h:'音源',t:'音源ファイル(wav・mp3など)や、YouTube・YouTube Music・SpotifyのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。再生中は今の場所を自動で追いかけますが、画面を触ると止まります。「↓ 再生位置へ」で戻れます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',kw:'クリック BPM テンポ 拍 刻み 音量 カウント ハネ シャッフル',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。音源に合わせて鳴らすこともできます。「刻み」で8分や3連・ハネの音を足したり、「音量」で音源とのバランスを変えたりできます。',need:tourSong},
-  {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。⋮⋮ をつかむと並べ替えられます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。左端をつかんで並べ替えることができます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。',need:tourSong},
   {on:'song',r:tSong,sel:'.lyr-open',adv:1,kw:'歌詞カード 貼り付け 歌い出し',h:'歌詞をまとめて入れる',t:'「歌詞をまとめて入れる」に曲の歌詞の全文を貼り付けると、行の一覧が出ます。入れたい行にチェックをつけて、下のブロックをタップすると、その行がブロックに入ります。同じ行を2回目のサビなど別のブロックにも入れられます。歌い出しの小節は、ブロックの画面の「歌詞を小節に置く」で、行が始まる小節をタップして決めます。「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong},
   {on:'song',r:tSong,sel:'[data-act=midiPick]',adv:1,kw:'Cubase DAW マーカー オリジナル 自作',h:'MIDIを読み込む',t:'自分の曲なら、DAW(Cubaseなど)から書き出したMIDIファイルで、テンポ・拍子・キーと、マーカーでのブロック分けをまとめて読み込めます。マーカーの名前がそのままブロックの名前になります。',need:tourSong},
   {on:'song',r:tSong,sel:'#songActs',kw:'PDF 印刷 コード譜 構成表 送る LINE',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
   // ブロックの画面
-  {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。⋮⋮ をつかむと並べ替え、いちばん下のボタンから追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
+  {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。左端をつかんで並べ替えることができ、いちばん下のボタンからブロックを追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
   {core:1,on:'block',r:tBlk,sel:'#bquick',h:'ブロックの画面',t:'1つのブロックの中身です。小節数・メモ・マーカー(キメ・テンポ注意などの目印)を書いておけます。',need:tourBlock,before:tNoCell},
   {core:1,r:tBlk,sel:'#grid .bar',kw:'コード 8分 小節 マス',h:'小節とマス',t:'コードも書いておきたいときは、マスをタップすると専用のキーボードが出ます。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。空いているマスは「前のコードが続く」という意味です。',
     g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
@@ -1953,10 +1955,10 @@ const TOUR=[
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 送る メンバー',h:'セトリごと共有',t:'右の「⋯」の「セトリを共有」で、曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。',need:hasSl},
   {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
-  {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'スマホとPCの同期',t:'「☰ メニュー → スマホとPCの同期」でGoogleにログインすると、自分のGoogleドライブを通して、スマホとPCのデータが自動でそろいます。写真と録音は、それぞれの端末にだけ残ります。'},
-  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。',more:1,need:tourBlock,before:tNoCell}];
+  {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。写真と録音は、それぞれの端末にだけ残ります。'},
+  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
-const TOUR_MORE=['音源','歌詞をまとめて入れる','小節の番号','コード入力キーボード','メモ(写真・録音)','MIDIを読み込む','共有・印刷','セトリごと共有','スマホとPCの同期'];
+const TOUR_MORE=['音源','歌詞をまとめて入れる','小節の番号','コード入力キーボード','メモ(写真・録音)','MIDIを読み込む','共有・印刷','セトリごと共有','Googleで自動バックアップ・同期'];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
 const tGrp=(s,i)=>s.grp||(i<2?'はじめに':s.r===tSong?'曲の画面':s.r===tBlk?'ブロックの画面':'セトリ画面');
 // 使い方の目次は「基本」と「高度な機能」(adv)に分けて、基本を先に並べる
@@ -2076,7 +2078,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「スマホとPCの同期」)']},
+  {d:'2026-10-25',items:['ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2109,12 +2111,12 @@ function settingCards(){return {news:newsCard(),
   share:`<div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を入れると、その曲やセトリを取り込めます。</p>
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     </div>`,
-  sync:`<div class="card"><b>スマホとPCの同期</b><p class="note">Googleでログインすると、自分のGoogleドライブを通して、スマホとPCのデータが自動でそろいます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
+  sync:`<div class="card"><b>Googleで自動バックアップ・同期</b><p class="note">Googleでログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
     ・同期するのは曲・構成・セトリなどの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
     ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
     ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
-    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインして同期</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div></div>`,
+    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div></div>`,
   backup:`<div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">バックアップを書き出す</button><button data-act="import">バックアップから復元</button></div></div>`,
   tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたセトリが開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
@@ -2519,6 +2521,7 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
+  syncNudgeOff(){S.prefs.syncNudgeOff=true;render();toast('あとからでも ☰ メニューでログインできます')},
   syncNow(){if(!syncReady())return syncLogin();SY.err='';syncPull(true)},
   syncOff(){syncOff()},
   midiPick(){pickMode='midi';const f=$('#filePick');f.accept='.mid,.midi,audio/midi,audio/x-midi';f.value='';f.click()},
