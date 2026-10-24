@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 10:20';
+const APP_VER='10/25 7:33';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1464,16 +1464,20 @@ async function drivePick(){const s=curSong();if(!s)return;
   if(!SY.meta.on){toast('先にメニューの「Googleで自動バックアップ・同期」でログインしてください');location.hash='#/settings/sync';return}
   if(!(await ensureToken())){toast('Googleのログインが切れています。もう一度ログインしてください');return ACT.syncLogin()}
   try{await pickerLoad()}catch(e){return toast(e.message)}
-  // スマホではフォルダを開きにくい(ダブルタップが要る)ので、最初のタブはフォルダを使わずに音源ファイルを全部並べる
+  // 表示はいちばん最初に動いた形(フォルダつき1画面)のまま。タブを増やすとiPhoneで「アカウントにアクセスできません」になった
   const P=google.picker,MT='audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/m4a,audio/aac,audio/wav,audio/x-wav,audio/wave,audio/flac,audio/x-flac,audio/ogg,audio/aiff,audio/x-aiff,audio/webm';
-  const lb=(v,t)=>{try{if(v.setLabel)v.setLabel(t)}catch(e){}return v};
-  const all=lb(new P.DocsView(P.ViewId.DOCS).setMimeTypes(MT).setIncludeFolders(false).setMode(P.DocsViewMode.LIST),'すべての音源');
-  const shared=lb(new P.DocsView(P.ViewId.DOCS).setMimeTypes(MT).setIncludeFolders(false).setOwnedByMe(false).setMode(P.DocsViewMode.LIST),'共有された音源');
-  const folders=lb(new P.DocsView(P.ViewId.DOCS).setMimeTypes(MT).setIncludeFolders(true).setSelectFolderEnabled(false),'フォルダから');
-  const pk=new P.PickerBuilder().setDeveloperKey(GPICKER_KEY).setAppId(GAPP_ID).setOAuthToken(SY.meta.tok).setLocale('ja').setTitle('音源を選ぶ')
-    .addView(all).addView(shared).addView(folders).enableFeature(P.Feature.SUPPORT_DRIVES)
-    .setCallback(d=>{if(d[P.Response.ACTION]!==P.Action.PICKED)return;const f=d[P.Response.DOCUMENTS][0];if(f)drivePickDone(s,f[P.Document.ID],f[P.Document.NAME])}).build();
-  pk.setVisible(true)}
+  const view=new P.DocsView(P.ViewId.DOCS).setMimeTypes(MT).setIncludeFolders(true).setSelectFolderEnabled(false);
+  let pk=null;const close=()=>{const b=$('#pkClose');if(b)b.remove();try{pk&&pk.setVisible(false);pk&&pk.dispose()}catch(e){}};
+  const bd=new P.PickerBuilder().setDeveloperKey(GPICKER_KEY).setAppId(GAPP_ID).setOAuthToken(SY.meta.tok).setLocale('ja').setTitle('音源を選ぶ')
+    .addView(view).enableFeature(P.Feature.SUPPORT_DRIVES)
+    .setCallback(d=>{const a=d[P.Response.ACTION];if(a===P.Action.CANCEL){close();return}if(a!==P.Action.PICKED)return;close();const f=d[P.Response.DOCUMENTS][0];if(f)drivePickDone(s,f[P.Document.ID],f[P.Document.NAME])});
+  // スマホでは画面に収まる大きさにする
+  if(innerWidth<700)bd.setSize(innerWidth-8,Math.round(innerHeight*0.72));
+  pk=bd.build();pk.setVisible(true);
+  // 選択画面がエラーになると閉じるボタンが出ないことがあるので、こちらでも閉じるボタンを出す
+  const b=document.createElement('button');b.id='pkClose';b.textContent='✕ 選択画面を閉じる';
+  b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483647;padding:10px 18px;border-radius:999px;background:var(--panel);color:var(--fg,inherit);border:1px solid var(--line);box-shadow:0 6px 20px #0004;font-size:15px';
+  b.onclick=close;document.body.appendChild(b)}
 async function drivePickDone(s,id,name){toast('ドライブから読み込んでいます…');
   try{const b=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`)).blob();
     if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio)}const bid=uid();await putBlob(bid,b);AUP.have[bid]=true;
