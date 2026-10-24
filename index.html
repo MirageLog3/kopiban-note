@@ -655,7 +655,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:00';
+const APP_VER='10/25 8:03';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1369,7 +1369,13 @@ function initPlayer(){
   ['loadstart','waiting','seeking'].forEach(t=>a.addEventListener(t,()=>{if(a.getAttribute('src')&&!a.paused)pl(true)}));
   ['canplay','loadedmetadata','playing','pause','error','emptied','seeked'].forEach(t=>a.addEventListener(t,()=>pl(false)));
   a.addEventListener('loadedmetadata',()=>{if(M.kind==='gd'){M.gdState='ready';updUrlStat()}});a.addEventListener('error',()=>{if(M.kind!=='gd'||!a.getAttribute('src'))return;const s=curSong(),id=s&&gdId(s.url);
-    if(id&&a.getAttribute('src')===gdSrc(id)){a.src=gdSrcOld(id);return}M.gdState='error';updUrlStat()});
+    if(id&&a.getAttribute('src')===gdSrc(id)){a.src=gdSrcOld(id);return}M.gdState='error';M.gdWhy='';updUrlStat();
+    if(id)fetch(gdSrc(id),{headers:{Range:'bytes=0-1'}}).then(async r=>{let w='';if(r.ok)w='(Googleからは読めています。もう一度読み込むと聴けるかもしれません)';
+      else{try{const j=await r.json();const e=j.error||{},rs=(e.errors&&e.errors[0]&&e.errors[0].reason)||'';
+        w=rs==='notFound'?'(ファイルが見つかりません。共有がまだ「リンクを知っている全員」になっていないか、ファイルが消されたかもしれません)'
+          :rs==='cannotDownloadFile'||rs==='downloadQuotaExceeded'?'(Googleがこのファイルのダウンロードを止めています。少し時間をおいてみてください)'
+          :'(Googleからの返事: '+r.status+' '+(rs||e.message||'')+')'}catch(_){w='(Googleからの返事: '+r.status+')'}}
+      M.gdWhy=w;updUrlStat()}).catch(()=>{})});
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
   setInterval(()=>{if((M.kind==='yt'||M.kind==='sp')&&$('#player').style.display!=='none')onTime()},250);
   // スマホ用のコンパクトな再生バー(1行): 再生ボタン・シークバー・時間
@@ -1403,7 +1409,7 @@ const songMedia=s=>s&&(s.audio?'audio':ytId(s.url)?'yt':spId(s.url)?'sp':gdId(s.
 function urlStatHTML(s){const u=(s&&s.url||'').trim();if(!u)return '';
   if(spId(u))return spStatHTML(s);
   if(gdId(u)){if(s.audio)return `<span class="sub">Googleドライブのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとドライブのリンクで再生します)。</span>`;
-    return M.gdState==='error'?`<span class="ng">✕ 読み込めませんでした。ドライブで、そのファイルの共有が「リンクを知っている全員」になっているか確かめてください。とても大きいファイル(100MBくらいより上)は読めないことがあります。</span>`
+    return M.gdState==='error'?`<span class="ng">✕ 読み込めませんでした${M.gdWhy||''}。<button class="ghost" data-act="gdRetry" style="padding:2px 8px">もう一度読み込む</button> ドライブで、そのファイルの共有が「リンクを知っている全員」になっているか確かめてください。とても大きいファイル(100MBくらいより上)は読めないことがあります。</span>`
       :M.gdState==='ready'?`<span class="ok">✓ Googleドライブの音源を読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`:`<span class="sub"><span class="spin"></span>Googleドライブの音源を読み込んでいます…</span>`}
   if(!ytId(u))return `<span class="ng">${/spotify\.link|spotify\.app\.link/.test(u)?'Spotifyの短いリンクはここでは読めません。一度リンクを開いて、アドレス欄の「open.spotify.com/track/…」のリンクを貼ってください。'
     :/spotify\.com/.test(u)?'Spotifyは曲のリンクだけ再生できます(アルバムやプレイリストのリンクは不可)。曲の「共有」→「リンクをコピー」で貼ってください。'
@@ -2935,6 +2941,7 @@ const ACT={
       <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button><button data-act="pmDrive">Googleドライブから選ぶ</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
   pmDrive(){ACT.lbClose();drivePick()},
+  gdRetry(){const s=curSong(),id=s&&gdId(s.url);if(!id)return;M.gdState='loading';M.gdWhy='';updUrlStat();$('#pa').src=gdSrc(id)},
   dsaShare(){const d=DSA;ACT.lbClose();if(d)driveShareLink(d.s,d.id)},
   dsaFile(){const d=DSA;ACT.lbClose();if(d)drivePickDone(d.s,d.id,d.name)},
   drivePick(){drivePick()},
