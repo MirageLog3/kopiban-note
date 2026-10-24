@@ -407,6 +407,8 @@ h1{font-size:24px;margin:4px 0 6px}
 .place-now{font-size:18px;font-weight:700;margin:2px 0}
 #syncBar{position:fixed;left:12px;right:12px;z-index:16;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--panel);box-shadow:0 4px 16px var(--shadow);font-size:14px}
 #syncBar span{flex:1;min-width:0}
+.sync-row.sure{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}button.sync-row{text-align:left;display:block;width:100%}
+.sync-pick{display:grid;gap:6px;max-height:40vh;overflow-y:auto}.sync-row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:6px}
 .bar.lr .cells{box-shadow:0 0 0 2px var(--accent);border-radius:4px}
 .loop-bar{position:sticky;top:var(--toph,52px);z-index:6;display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:8px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);font-weight:600}.place-next{font-size:12px}
 #grid.placing .bar{cursor:pointer}#grid.placing .bar:hover .cells{outline:2px dashed var(--accent);outline-offset:1px}
@@ -658,8 +660,14 @@ async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!syncReady())re
     if(!f){SY.busy=false;return syncPush(true)}
     SY.meta.fileId=f.id;const ap=f.appProperties||{};
     if(ap.savedAt&&ap.savedAt!==SY.meta.at){
-      if((!SY.meta.at||syncDirty())&&!confirm(`「${ap.device||'ほかの端末'}」で ${fmtWhen(+ap.savedAt)} に保存したデータがドライブにあります。${SY.meta.at?'この端末でも変更があります。':''}\n\nOK: ${ap.device||'ほかの端末'}のデータを使う(この端末の変更は消えます)\nキャンセル: この端末のデータで上書きする`)){SY.meta.at=ap.savedAt;SY.busy=false;return syncPush(true)}
-      const data=await (await gapi(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json();syncApply(data,ap)}
+      const data=await (await gapi(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json();
+      if(!SY.meta.at||syncDirty()){const lo=syncLocalOnly(data);
+        if(lo.items.length||lo.changed){const ans=await syncAsk(ap,lo);await syncKeep(f.id,ap);
+          if(ans.mode==='local'){SY.meta.at=ap.savedAt;SY.busy=false;return syncPush(true)}
+          syncMerge(data,lo.items.filter(x=>ans.ids.has(x.key)));syncApply(data,ap);
+          if(ans.ids.size){SY.meta.hash='';syncSave();SY.busy=false;return syncPush(true)}}
+        else syncApply(data,ap)}
+      else syncApply(data,ap)}
     else if(syncDirty()){SY.busy=false;return syncPush(true)}
     SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
   SY.busy=false;syncUI()}
@@ -674,6 +682,53 @@ async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!syncReady())return 
       {method:f?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json();
     Object.assign(SY.meta,{fileId:r.id,at:savedAt,hash:syncHash(),last:+savedAt});syncSave();SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
   SY.busy=false;syncUI()}
+/* ドライブにもこの端末にもデータがあるとき: この端末にだけあるセトリ・曲を、選んでドライブのデータに足せるようにする。
+   最初から入っている見本(サンプル曲・〇月定例ライブ)は、はじめはチェックを外しておく */
+function syncLocalOnly(rd){const rs=new Set((rd.songs||[]).map(x=>x.id)),rl=new Set((rd.setlists||[]).map(x=>x.id)),items=[],inSl=new Set();
+  S.setlists.filter(sl=>!rl.has(sl.id)).forEach(sl=>{const songs=sl.songIds.map(songById).filter(s=>s&&!rs.has(s.id));songs.forEach(s=>inSl.add(s.id));const g=S.gigs.find(x=>x.id===sl.gigId);
+    items.push({key:'sl:'+sl.id,kind:'sl',sl,songs,label:`セトリ「${(g&&!g.regular?g.name+' ':'')+bandNameOf(sl.bandId)}」(${songs.length}曲)`,sample:!!g&&g.name==='〇月定例ライブ'&&songs.every(s=>s.title==='サンプル曲')})});
+  S.songs.filter(s=>!rs.has(s.id)&&!inSl.has(s.id)).forEach(s=>items.push({key:'so:'+s.id,kind:'so',songs:[s],label:`曲「${s.title}」`,sample:s.title==='サンプル曲'}));
+  const changed=S.songs.filter(s=>{const r=(rd.songs||[]).find(x=>x.id===s.id);return r&&JSON.stringify(r)!==JSON.stringify(s)}).length;
+  return {items,changed}}
+function syncMerge(rd,picked){['bands','songs','setlists','gigs','markers'].forEach(k=>rd[k]=rd[k]||[]);
+  const bandOf=id=>{if(rd.bands.some(b=>b.id===id))return id;const lb=S.bands.find(b=>b.id===id);if(!lb)return rd.bands[0]&&rd.bands[0].id;
+    const same=rd.bands.find(b=>b.name===lb.name);if(same)return same.id;rd.bands.push(JSON.parse(JSON.stringify(lb)));return lb.id};
+  picked.forEach(it=>{it.songs.forEach(s=>{if(!rd.songs.some(x=>x.id===s.id))rd.songs.push(Object.assign(JSON.parse(JSON.stringify(s)),{bandId:bandOf(s.bandId)}))});
+    if(it.kind==='sl'){const sl=JSON.parse(JSON.stringify(it.sl));sl.bandId=bandOf(sl.bandId);
+      if(!rd.gigs.some(g=>g.id===sl.gigId)){const g=S.gigs.find(x=>x.id===sl.gigId);if(g)rd.gigs.push(JSON.parse(JSON.stringify(g)))}
+      sl.songIds=sl.songIds.filter(id=>rd.songs.some(x=>x.id===id));rd.setlists.push(sl)}});
+  S.markers.forEach(m=>{if(!rd.markers.some(x=>x.name===m.name))rd.markers.push(JSON.parse(JSON.stringify(m)))})}
+// どちらを残すかの画面(押されるまで待つ)
+function syncAsk(ap,lo){return new Promise(ok=>{const dev=ap.device||'ほかの端末';
+  $('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal"><b>Googleドライブにもデータがあります</b>
+    <p class="note" style="margin:6px 0 8px">「${esc(dev)}」で ${fmtWhen(+ap.savedAt)} に保存したデータがあります。${lo.items.length?'この端末にだけあるものを、ドライブのデータに足して合わせられます。':''}</p>
+    ${lo.items.length?`<div class="sync-pick">${lo.items.map(x=>`<label class="sync-row"><input type="checkbox" value="${x.key}" ${x.sample?'':'checked'}> ${esc(x.label)}${x.sample?' <span class="sub">(最初から入っている見本)</span>':''}</label>`).join('')}</div>`:''}
+    ${lo.changed?`<p class="note" style="margin:8px 0 0">両方にある曲のうち${lo.changed}曲は、中身が違います。合わせるときは、ドライブのほうになります。</p>`:''}
+    <div class="hstack" style="margin-top:12px;flex-wrap:wrap"><button class="ghost" id="syLocal">この端末のデータで上書き</button><span class="spacer"></span><button class="primary" id="syMerge">${lo.items.length?'選んだものを足して合わせる':'ドライブのデータを使う'}</button></div></div>`;
+  const done=r=>{$('#overlay').innerHTML='';ok(r)};
+  $('#syMerge').onclick=()=>done({mode:'merge',ids:new Set([...document.querySelectorAll('.sync-pick input:checked')].map(c=>c.value))});
+  $('#syLocal').onclick=()=>{const b=$('#syLocal');if(b.dataset.sure)return done({mode:'local'});b.dataset.sure=1;b.textContent='本当に上書きする(ドライブのデータは消えます)'}})}
+/* 控え: どちらかを上書きする前に、消える側を必ず残しておく。
+   ドライブのデータ → ドライブに日付つきのコピー(kopiban-note-backup-…json)、この端末のデータ → この端末の中(syncPrev) */
+const bkStamp=t=>{const d=new Date(t);return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')};
+async function syncKeep(fileId,ap){try{await idb('kv','readwrite',s=>s.put({at:Date.now(),device:devName(),data:JSON.parse(JSON.stringify(syncData()))},'syncPrev'))}catch(e){}
+  try{await gapi(`https://www.googleapis.com/drive/v3/files/${fileId}/copy?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:`kopiban-note-backup-${bkStamp(+ap.savedAt||Date.now())}.json`,appProperties:{backup:'1',savedAt:String(ap.savedAt||''),device:ap.device||''}})})}catch(e){}}
+async function syncBackups(){const q=encodeURIComponent("name contains 'kopiban-note-backup-' and trashed=false");
+  const j=await (await gapi(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,appProperties)&pageSize=15`)).json();return j.files||[]}
+// 控えから戻す: 選んだ控えをこの端末に入れて、ドライブにも保存する(戻す前の今のドライブも控えに残す)
+async function syncRestoreOpen(){let list=[];const prev=await idb('kv','readonly',s=>s.get('syncPrev')).catch(()=>null);
+  if(syncReady())try{list=await syncBackups()}catch(e){}
+  const rows=[...(prev?[`<button class="sync-row" data-k="local">この端末の、同期する前のデータ<small class="sub" style="display:block">${fmtWhen(prev.at)} ・ ${(prev.data.songs||[]).length}曲</small></button>`]:[]),
+    ...list.map(f=>{const a=f.appProperties||{};return `<button class="sync-row" data-k="${f.id}">ドライブの控え(${esc(a.device||'')}${a.savedAt?' で '+fmtWhen(+a.savedAt)+' に保存':''})<small class="sub" style="display:block">控えを取った日時: ${fmtWhen(Date.parse(f.createdTime))}</small></button>`})];
+  $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal"><b>控えから戻す</b><p class="note" style="margin:6px 0 8px">同期でデータを上書きする前に、消える側を控えとして残しています。戻したいものを選んでください。今のデータも控えに残してから戻します。</p>
+    ${rows.length?`<div class="sync-pick">${rows.join('')}</div>`:'<p class="sub">まだ控えはありません。</p>'}${!syncReady()&&SY.meta.on?'<p class="note">ドライブの控えを見るには、先に「Googleで続ける」でログインしてください。</p>':''}
+    <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button data-act="lbClose">閉じる</button></div></div>`;
+  document.querySelectorAll('.sync-pick button').forEach(b=>b.onclick=async()=>{if(!b.dataset.sure){document.querySelectorAll('.sync-pick button').forEach(x=>{delete x.dataset.sure;x.classList.remove('sure')});b.dataset.sure=1;b.classList.add('sure');return toast('もう一度押すと、これに戻します')}
+    let data;try{data=b.dataset.k==='local'?prev.data:await (await gapi(`https://www.googleapis.com/drive/v3/files/${b.dataset.k}?alt=media`)).json()}catch(e){return toast('控えを読み込めませんでした')}
+    if(SY.meta.on&&syncReady()&&SY.meta.fileId)await syncKeep(SY.meta.fileId,{savedAt:SY.meta.at,device:'戻す前'});
+    H.busy=true;Object.assign(S,{bands:data.bands||S.bands,songs:data.songs||[],setlists:data.setlists||[],markers:data.markers||S.markers,gigs:data.gigs||S.gigs});H.busy=false;
+    $('#overlay').innerHTML='';save();render();toast('控えのデータに戻しました');if(SY.meta.on)syncPush(true)})}
 function syncSoon(){if(!SY.meta.on||H.busy)return;clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),4000);syncUI()}
 function syncOff(){if(!confirm('この端末の同期をやめますか？(ドライブのデータは消えません)'))return;
   try{if(SY.meta.tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(SY.meta.tok,()=>{})}catch(e){}SY.meta={};syncSave();syncUI();render()}
@@ -2123,7 +2178,7 @@ function settingCards(){return {news:newsCard(),
     ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
     ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
-    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div></div>`,
+    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}</div>`,
   backup:`<div class="card"><b>バックアップ</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">バックアップを書き出す</button><button data-act="import">バックアップから復元</button></div></div>`,
   tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたセトリが開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
@@ -2528,6 +2583,7 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
+  syncRestore(){syncRestoreOpen()},
   syncNudgeOff(){S.prefs.syncNudgeOff=true;render();toast('あとからでも ☰ メニューでログインできます')},
   syncNow(){if(!syncReady())return syncLogin();SY.err='';syncPull(true)},
   syncOff(){syncOff()},
