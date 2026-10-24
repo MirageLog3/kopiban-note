@@ -640,7 +640,7 @@ function gisLoad(){return window.google&&google.accounts?Promise.resolve():new P
 async function syncLogin(){if(!GCLIENT)return toast('同期はまだ準備中です');try{await gisLoad()}catch(e){return alert(e.message)}
   const tc=google.accounts.oauth2.initTokenClient({client_id:GCLIENT,scope:'https://www.googleapis.com/auth/drive.file',
     callback:r=>{if(r.error){SY.err='ログインできませんでした';syncUI();return}
-      Object.assign(SY.meta,{on:true,tok:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000});syncSave();SY.err='';syncPull(true)},
+      Object.assign(SY.meta,{on:true,tok:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000});syncSave();SY.err='';syncPull(true).then(()=>{if(R.name==='import'||R.name==='s')fillImport()})},
     error_callback:()=>{SY.err='ログインの画面が閉じられました';syncUI()}});
   tc.requestAccessToken({prompt:SY.meta.on?'':'consent'})}
 async function gapi(url,opt={}){const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+SY.meta.tok,...(opt.headers||{})}});
@@ -1868,17 +1868,24 @@ async function fillImport(){
     const isSl=!!d.setlist;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
     const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
-    el.innerHTML=`<div class="card noprint"><b>共有された${isSl?'セトリ':'曲'}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${isSl?'セトリ':'曲'}に追加」すると、あなたの端末だけにコピーが保存されます。編集しても共有した人には反映されません。</p>
+    el.innerHTML=`<div class="card noprint"><b>共有された${isSl?'セトリ':'曲'}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${isSl?'セトリ':'曲'}に追加」すると、${SY.meta.on?'あなたのアプリとGoogleドライブに':'あなたの端末だけに'}コピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
       <span class="sub">追加先バンド: ${esc(band().name)}</span>
       ${!isSl&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
       <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div>
-    ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'':`<div class="impcode"><b>ホーム画面に追加したアプリで使っている人へ</b>
-      <p class="note" style="margin:2px 0 6px">リンクはブラウザで開くので、アプリには入りません。このコードをコピーして、アプリの「☰ メニュー → 共有コードを読み込む」に貼り付けてください。</p>
-      <div class="hstack"><input id="impShow" readonly value="${esc(R.name==='s'?R.a:location.href)}" style="flex:1"><button data-act="copy" data-t="impShow">コピー</button></div></div>`}</div>${toc}${body}`;measureMaps()}
+    ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'':impAppHTML()}</div>${toc}${body}`;measureMaps()}
   catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
 let PENDING=null;
+// ホーム画面のアプリで使っている人への案内。Googleで同期していれば、ここで追加したものがドライブを通してアプリにも入る
+function impAppHTML(){const code=`<div class="hstack"><input id="impShow" readonly value="${esc(R.name==='s'?R.a:location.href)}" style="flex:1"><button data-act="copy" data-t="impShow">コピー</button></div>`;
+  if(GCLIENT&&SY.meta.on)return `<div class="impcode"><b>ホーム画面のアプリにも入ります</b>
+    <p class="note" style="margin:2px 0 6px">Googleでログインしているので、「追加」するとGoogleドライブに保存されて、同じGoogleでログインしているホーム画面のアプリにも自動で入ります。</p>
+    <details><summary class="sub">アプリでログインしていないときは</summary><p class="note" style="margin:4px 0 6px">このコードをコピーして、アプリの「☰ メニュー → 共有コードを読み込む」に貼り付けてください。</p>${code}</details></div>`;
+  return `<div class="impcode"><b>ホーム画面に追加したアプリで使っている人へ</b>
+    <p class="note" style="margin:2px 0 6px">リンクはブラウザで開くので、このままではアプリに入りません。</p>
+    ${GCLIENT?`<p class="note" style="margin:0 0 6px">アプリでGoogleにログインしているなら、ここでも同じGoogleでログインしてから「追加」すると、アプリにも自動で入ります。</p><div class="hstack" style="margin-bottom:8px"><button data-act="syncLogin">Googleでログイン</button></div><p class="note" style="margin:0 0 6px">ログインしない場合は、このコードをコピーして、アプリの「☰ メニュー → 共有コードを読み込む」に貼り付けてください。</p>`:'<p class="note" style="margin:0 0 6px">このコードをコピーして、アプリの「☰ メニュー → 共有コードを読み込む」に貼り付けてください。</p>'}
+    ${code}</div>`}
 /* ---------- settings ---------- */
 /* ---------- 使い方ガイド ---------- */
 // [見出し, 本文, ヘルプ([題, 中身]) があれば「？」ボタンで本文と入れ替えて表示]
@@ -1954,7 +1961,7 @@ const TOUR=[
   {on:'block',r:tBlk,sel:'.histbtns',kw:'アンドゥ 取り消し 間違えた',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 送る メンバー',h:'セトリごと共有',t:'右の「⋯」の「セトリを共有」で、曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。',need:hasSl},
-  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
+  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。写真と録音は、それぞれの端末にだけ残ります。'},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
@@ -2517,7 +2524,7 @@ const ACT={
     if(p.setlist){const evs=p.events||[],g={id:uid(),name:p.setlist,events:evs.filter(e=>e.type==='live')};S.gigs.push(g);
       const sl={id:uid(),bandId:band().id,gigId:g.id,name:p.setlist,songIds:p.songs.map(s=>s.id),events:evs.filter(e=>e.type!=='live')};S.setlists.push(sl);S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
     else{const s=p.songs[0];const c=$('#impSl');if(c&&c.checked&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id}
-    toast('追加しました')},
+    if(SY.meta.on){clearTimeout(SY.t);setTimeout(()=>syncPush(true),300);toast('追加しました。Googleドライブにも保存します')}else toast('追加しました')},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
