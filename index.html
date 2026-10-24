@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:45';
+const APP_VER='10/25 7:52';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1339,7 +1339,8 @@ function initPlayer(){
   <button class="ghost" data-act="audioPick" id="plPick" title="音源ファイルを入れる・差し替える">差し替え</button><button class="ghost" data-act="audioRemove" id="plRemove" title="この曲から音源を外す">外す</button></div>`;
   document.body.appendChild($('#ytWrap'));
   const a=$('#pa');a.preservesPitch=true;
-  a.addEventListener('loadedmetadata',()=>{if(M.kind==='gd'){M.gdState='ready';updUrlStat()}});a.addEventListener('error',()=>{if(M.kind==='gd'&&a.getAttribute('src')){M.gdState='error';updUrlStat()}});
+  a.addEventListener('loadedmetadata',()=>{if(M.kind==='gd'){M.gdState='ready';updUrlStat()}});a.addEventListener('error',()=>{if(M.kind!=='gd'||!a.getAttribute('src'))return;const s=curSong(),id=s&&gdId(s.url);
+    if(id&&a.getAttribute('src')===gdSrc(id)){a.src=gdSrcOld(id);return}M.gdState='error';updUrlStat()});
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
   setInterval(()=>{if((M.kind==='yt'||M.kind==='sp')&&$('#player').style.display!=='none')onTime()},250);
   // スマホ用のコンパクトな再生バー(1行): 再生ボタン・シークバー・時間
@@ -1363,7 +1364,8 @@ function onTime(){const s=playerSong();if(!s||!M.kind)return;const now=M.time();
   if(!syncOn(s)&&!MT.playing){if(cur&&!M.paused())follow(s.id,cur.id,!!PL.loop);else FOL=null}}
 // 再生元は「入れた音源ファイル」か、なければ「参考音源URLのYouTube」
 const gdId=u=>{const t=String(u||'');if(!/(drive|docs)\.google\.com/.test(t))return null;const m=t.match(/\/file\/d\/([\w-]{20,})/)||t.match(/[?&]id=([\w-]{20,})/);return m?m[1]:null};
-const gdSrc=id=>'https://drive.google.com/uc?export=download&id='+id;
+const gdSrc=id=>`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true&key=${GPICKER_KEY}`;
+const gdSrcOld=id=>'https://drive.google.com/uc?export=download&id='+id;
 const ytId=u=>{const m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/);return m?m[1]:null};
 // Spotifyは曲(トラック)のリンクだけ。open.spotify.com/intl-ja/track/… や spotify:track:… の形も読む
 const spId=u=>{const m=String(u||'').match(/(?:open\.spotify\.com\/(?:intl-[\w-]+\/)?(?:embed\/)?track\/|spotify:track:)([A-Za-z0-9]{22})/);return m?m[1]:null};
