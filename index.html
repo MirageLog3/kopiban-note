@@ -760,7 +760,7 @@ function syncSoon(){if(!SY.meta.on||H.busy)return;clearTimeout(SY.t);SY.t=setTim
 function syncOff(){if(!confirm('この端末の同期をやめますか？(ドライブのデータは消えません)'))return;
   try{if(SY.meta.tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(SY.meta.tok,()=>{})}catch(e){}SY.meta={};syncSave();syncUI();render()}
 // 画面の下に出す小さな表示: ログインが切れたときと、うまく保存できなかったとき
-function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady(),msg=need?(syncDirty()?'変更をドライブに保存するには':'ほかの端末の変更を取ってくるには'):SY.err;
+function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady(),msg=need?(syncDirty()?'未保存の変更があります':'ログインが切れました'):SY.err;
   if(!SY.meta.on||!msg||DEMO){if(b)b.remove();}else{if(!b){b=document.createElement('div');b.id='syncBar';document.body.appendChild(b)}
     b.innerHTML=need?`<span>☁ ${msg}</span><button class="primary" data-act="syncLogin">Googleで続ける</button>`:`<span>☁ ${esc(msg)}</span><button data-act="syncNow">もう一度</button>`;
     const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;b.style.bottom=(pb+10)+'px'}
