@@ -198,6 +198,10 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .pl-mini{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
 #pa{display:none!important}
 @media screen and (min-width:701px){.pm-more{display:none}#player .pl-mini{min-width:240px}#player .pl-in{flex-wrap:nowrap}#player .pl-name{flex:0 1 auto;min-width:0}#plPick,#plRemove,.pl-rate{white-space:nowrap;flex:none}}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pm-play.loading{color:transparent;position:relative}.pm-play.loading::after{content:'';position:absolute;inset:11px;border:3px solid #fff6;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+.dl-bar{height:4px;border-radius:2px;background:var(--line);margin-top:6px;overflow:hidden}.dl-bar i{display:block;height:100%;background:var(--accent);transition:width .2s}
 .pm-play{width:44px;height:44px;border-radius:50%;padding:0;font-size:18px;background:var(--accent);border-color:var(--accent);color:#fff;flex:0 0 auto}
 /* iPhoneの標準のシークバーは、0のときもつまみが右にずれて見えるので、線とつまみを自前で描く */
 #pmSeek{flex:1;min-width:0;height:28px;margin:0;padding:0;border:0;box-shadow:none;-webkit-appearance:none;appearance:none;background:transparent;--p:0%}
@@ -651,7 +655,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:54';
+const APP_VER='10/25 7:58';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -709,7 +713,11 @@ function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.ban
   if((R.name==='song'||R.name==='block'||R.name==='print')&&!songById(R.a))location.hash='#/';render();toast(`${ap.device||'ほかの端末'}のデータを取ってきました`)}
 // 取ってくる: ドライブのほうが新しければ読み込む。この端末でも変えていたら、どちらを残すか聞く
 /* 音源ファイルもドライブに置く: 入れた端末で上げておき、ほかの端末では、手元にないときだけドライブから取ってくる */
-const AUP={busy:false,get:{},have:{}};
+const AUP={busy:false,get:{},have:{},prog:{}};
+// 読み込みながら進み具合(0〜100)を知らせる
+async function blobProg(r,cb){const n=+r.headers.get('Content-Length')||0,rd=r.body&&r.body.getReader&&r.body.getReader();if(!n||!rd)return r.blob();
+  const ch=[];let got=0,last=-1;for(;;){const {done,value}=await rd.read();if(done)break;ch.push(value);got+=value.length;const p=Math.min(99,Math.floor(got/n*100));if(p!==last){last=p;cb(p)}}
+  return new Blob(ch,{type:r.headers.get('Content-Type')||''})}
 async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO||S.prefs.audioUp===false)return;if(!(await ensureToken()))return;AUP.busy=true;
   try{for(const s of S.songs){const a=s.audio;if(!a||a.drv)continue;const b=await getBlob(a.blobId);if(!b)continue;
       const ty=b.type||'application/octet-stream',meta={name:'kopiban-audio-'+a.name,appProperties:{kbAudio:a.blobId}};try{meta.parents=[await kbFolder()]}catch(e){}let id=null;
@@ -724,11 +732,11 @@ async function audioUp(){if(AUP.busy||!SY.meta.on||DEMO||S.prefs.audioUp===false
 // 手元にない音源を、ドライブから取ってくる。取れたら true
 async function audioFetch(s){const a=s&&s.audio;if(!a||!a.drv||AUP.get[a.blobId]===1)return false;if(!SY.meta.on||!(await ensureToken()))return false;
   AUP.get[a.blobId]=1;updAudioStat();
-  try{const b=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${a.drv}?alt=media`)).blob();await putBlob(a.blobId,b);AUP.get[a.blobId]=0;AUP.have[a.blobId]=true;updAudioStat();return true}
+  try{const b=await blobProg(await gapi_(`https://www.googleapis.com/drive/v3/files/${a.drv}?alt=media`),p=>{AUP.prog[a.blobId]=p;updAudioStat()});await putBlob(a.blobId,b);AUP.get[a.blobId]=0;AUP.have[a.blobId]=true;updAudioStat();return true}
   catch(e){AUP.get[a.blobId]='ng';updAudioStat();return false}}
 function audioDrvDel(a){if(!a||!a.drv||a.picked||!SY.meta.on)return;ensureToken().then(ok=>{if(ok)gapi_(`https://www.googleapis.com/drive/v3/files/${a.drv}`,{method:'DELETE'}).catch(()=>{})})}
 function audioStatHTML(s){const a=s.audio,id=a.blobId;
-  if(AUP.get[id]===1)return `${esc(a.name)} をGoogleドライブから読み込んでいます…`;
+  if(AUP.get[id]===1){const p=AUP.prog[id];return `<span class="spin"></span>${esc(a.name)} をGoogleドライブから読み込んでいます…${p!=null?' '+p+'%<div class="dl-bar"><i style="width:'+p+'%"></i></div>':''}`}
   if(AUP.have[id]===false){
     if(a.drv&&AUP.get[id]==='ng')return `<span class="ng">${esc(a.name)} をGoogleドライブから読み込めませんでした。通信を確かめて、曲を開き直してください。</span>`;
     if(a.drv)return `<span class="ng">${esc(a.name)} は別の端末で入れた音源です。メニューの「Googleで自動バックアップ・同期」でログインすると、この端末でも聴けます。</span>`;
@@ -1176,7 +1184,7 @@ function viewSong(){
       <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a></div>
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     <div id="ytSlot" ${songMedia(s)==='yt'?'':'hidden'}></div>
-    ${s.audio?`<p class="sub" id="audioStat" style="margin:8px 0 0">${audioStatHTML(s)}</p>`
+    ${s.audio?`<div class="sub" id="audioStat" style="margin:8px 0 0">${audioStatHTML(s)}</div>`
       :`<div class="hstack" id="audioDrop" style="margin-top:8px;flex-wrap:wrap"><button class="primary" data-act="audioPick">音源ファイルを入れる(wav / mp3 など)</button><button data-act="drivePick">Googleドライブから選ぶ</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
   <div class="hstack song-acts" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><button data-act="midiPick" title="Cubaseなどから書き出したMIDIファイルで、テンポ・拍子・マーカー(ブロック分け)を読み込む">MIDIを読み込む</button><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
   <div style="margin-top:14px">${strip(s,true)}</div>
@@ -1356,6 +1364,9 @@ function initPlayer(){
   <button class="ghost" data-act="audioPick" id="plPick" title="音源ファイルを入れる・差し替える">差し替え</button><button class="ghost" data-act="audioRemove" id="plRemove" title="この曲から音源を外す">外す</button></div>`;
   document.body.appendChild($('#ytWrap'));
   const a=$('#pa');a.preservesPitch=true;
+  const pl=on=>{const b=$('#pmPlay');if(b)b.classList.toggle('loading',on)};
+  ['loadstart','waiting','seeking'].forEach(t=>a.addEventListener(t,()=>{if(a.getAttribute('src')&&!a.paused)pl(true)}));
+  ['canplay','loadedmetadata','playing','pause','error','emptied','seeked'].forEach(t=>a.addEventListener(t,()=>pl(false)));
   a.addEventListener('loadedmetadata',()=>{if(M.kind==='gd'){M.gdState='ready';updUrlStat()}});a.addEventListener('error',()=>{if(M.kind!=='gd'||!a.getAttribute('src'))return;const s=curSong(),id=s&&gdId(s.url);
     if(id&&a.getAttribute('src')===gdSrc(id)){a.src=gdSrcOld(id);return}M.gdState='error';updUrlStat()});
   $('#plRate').onchange=e=>{M.rate(+e.target.value)};
@@ -1392,7 +1403,7 @@ function urlStatHTML(s){const u=(s&&s.url||'').trim();if(!u)return '';
   if(spId(u))return spStatHTML(s);
   if(gdId(u)){if(s.audio)return `<span class="sub">Googleドライブのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとドライブのリンクで再生します)。</span>`;
     return M.gdState==='error'?`<span class="ng">✕ 読み込めませんでした。ドライブで、そのファイルの共有が「リンクを知っている全員」になっているか確かめてください。とても大きいファイル(100MBくらいより上)は読めないことがあります。</span>`
-      :M.gdState==='ready'?`<span class="ok">✓ Googleドライブの音源を読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`:`<span class="sub">Googleドライブの音源を読み込んでいます…</span>`}
+      :M.gdState==='ready'?`<span class="ok">✓ Googleドライブの音源を読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`:`<span class="sub"><span class="spin"></span>Googleドライブの音源を読み込んでいます…</span>`}
   if(!ytId(u))return `<span class="ng">${/spotify\.link|spotify\.app\.link/.test(u)?'Spotifyの短いリンクはここでは読めません。一度リンクを開いて、アドレス欄の「open.spotify.com/track/…」のリンクを貼ってください。'
     :/spotify\.com/.test(u)?'Spotifyは曲のリンクだけ再生できます(アルバムやプレイリストのリンクは不可)。曲の「共有」→「リンクをコピー」で貼ってください。'
     :'このリンクはここでは再生できません(YouTube・YouTube Music・Spotify・Googleドライブのリンクだけ再生できます)。'}「開く ↗」でリンク先を開けます。</span>`;
@@ -1400,13 +1411,13 @@ function urlStatHTML(s){const u=(s&&s.url||'').trim();if(!u)return '';
   const st=M.ytState;
   return st==='error'?`<span class="ng">✕ ${M.ytErr===100?'動画が見つかりませんでした(削除されたか非公開かもしれません)。':M.ytErr===2?'リンクの形が正しくないようです。YouTubeの「共有」からコピーしたリンクを貼ってみてください。':M.ytErr===101||M.ytErr===150?'この動画はYouTube以外での再生が許可されていないため、ここでは再生できません。「開く ↗」でYouTubeを開いて聴いてください。':'YouTubeを読み込めませんでした。「開く ↗」でYouTubeを開いて聴いてください。'}</span>`
     :st==='ready'?`<span class="ok">✓ 読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>`
-    :`<span class="sub">YouTubeを読み込んでいます…</span>`}
+    :`<span class="sub"><span class="spin"></span>YouTubeを読み込んでいます…</span>`}
 function spStatHTML(s){
   if(s.audio)return `<span class="sub">Spotifyのリンクが入っています。今は音源ファイルの方を再生しています(ファイルを外すとSpotifyで再生します)。</span>`;
   const st=M.spState,note='<br>Spotifyはこのブラウザでログインしていると最後まで、していないと30秒の試聴だけ再生されます。速さは変えられません。';
   return st==='error'?`<span class="ng">✕ Spotifyを読み込めませんでした。通信状態を確かめるか、「開く ↗」でSpotifyを開いて聴いてください。</span>`
     :st==='ready'?`<span class="ok">✓ 読み込みました。画面のいちばん下のプレーヤーで再生できます。</span>${M.spDur>0&&M.spDur<=31?'<br><span class="ng">今は30秒の試聴になっています。最後まで聴くには、このブラウザでSpotifyにログインしてからページを開き直してください。</span>':''}<span class="sub">${note}</span>`
-    :`<span class="sub">Spotifyを読み込んでいます…</span>`}
+    :`<span class="sub"><span class="spin"></span>Spotifyを読み込んでいます…</span>`}
 function updUrlStat(){const el=$('#urlStat'),s=curSong();if(el&&s)el.innerHTML=urlStatHTML(s)}
 // Spotifyの埋め込みは再生位置を0.5秒おきくらいにしか教えてくれないので、最後に届いた位置からの経過時間で今の位置を補う
 const SPM={
@@ -1518,8 +1529,8 @@ async function driveShareLink(s,id){toast('共有の設定をしています…'
   if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio);s.audio=null}
   s.url='https://drive.google.com/file/d/'+id+'/view?usp=sharing';PL.songId=null;save();render();
   toast(ok?'共有して、リンクを入れました':'共有の設定は変えられませんでした(自分のファイルではないかも)。リンクは入れたので、ドライブで「リンクを知っている全員」になっているか確かめてください')}
-async function drivePickDone(s,id,name){toast('ドライブから読み込んでいます…');
-  try{const b=await (await gapi_(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`)).blob();
+async function drivePickDone(s,id,name){const show=p=>{const el=$('#songAudio .url-stat');if(el)el.innerHTML=`<span class="sub"><span class="spin"></span>ドライブから読み込んでいます…${p!=null?' '+p+'%<div class="dl-bar"><i style="width:'+p+'%"></i></div>':''}</span>`};show(null);
+  try{const b=await blobProg(await gapi_(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`),show);
     if(s.audio){delBlob(s.audio.blobId);audioDrvDel(s.audio)}const bid=uid();await putBlob(bid,b);AUP.have[bid]=true;
     s.audio={blobId:bid,name:String(name||'音源').replace(/\.\w+$/,''),drv:id,picked:true};save();render();toast('ドライブの音源を入れました')}
   catch(e){toast('ドライブから読み込めませんでした'+(e.message&&e.message!=='auth'?'('+e.message+')':''))}}
