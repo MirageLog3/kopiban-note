@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:33';
+const APP_VER='10/25 7:40';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1460,7 +1460,14 @@ function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<
 function pickerLoad(){return new Promise((ok,ng)=>{if(window.google&&google.picker)return ok();
   const go=()=>gapi.load('picker',{callback:ok,onerror:()=>ng(new Error('読み込めませんでした'))});
   if(window.gapi)return go();const sc=document.createElement('script');sc.src='https://apis.google.com/js/api.js';sc.onload=go;sc.onerror=()=>ng(new Error('Googleの画面を読み込めませんでした'));document.head.appendChild(sc)})}
-async function drivePick(){const s=curSong();if(!s)return;
+// iPhone・iPadは、Safariの「サイト越えトラッキングを防ぐ」がオンだとGoogleの選択画面がエラーになる。最初に一度だけ説明する
+function drivePick(){if(IS_IOS&&!S.prefs.pickerOk){
+    $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal"><div class="hstack"><b>Googleドライブから選ぶ</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+      <p class="note" style="margin:6px 0 12px">iPhone・iPadでは、設定アプリの「アプリ」→「Safari」→「サイト越えトラッキングを防ぐ」がオフのときだけ、Googleの選択画面が使えます。オンのままなら「音源ファイルを入れる」を押して、ファイルアプリの「ブラウズ」→「Googleドライブ」から選べます。</p>
+      <div class="sync-pick"><button class="sync-row" data-act="pickerOkGo"><b>選択画面を開く</b><small class="sub" style="display:block">設定をオフにしてある。次からはこの説明を出さない</small></button>
+      <button class="sync-row" data-act="pickerFiles"><b>ファイルアプリから選ぶ</b><small class="sub" style="display:block">「音源ファイルを入れる」と同じ</small></button></div></div>`;return}
+  drivePickGo()}
+async function drivePickGo(){const s=curSong();if(!s)return;
   if(!SY.meta.on){toast('先にメニューの「Googleで自動バックアップ・同期」でログインしてください');location.hash='#/settings/sync';return}
   if(!(await ensureToken())){toast('Googleのログインが切れています。もう一度ログインしてください');return ACT.syncLogin()}
   try{await pickerLoad()}catch(e){return toast(e.message)}
@@ -2884,6 +2891,8 @@ const ACT={
   pmPick(){ACT.lbClose();ACT.audioPick()},
   pmDrive(){ACT.lbClose();drivePick()},
   drivePick(){drivePick()},
+  pickerOkGo(){S.prefs.pickerOk=true;save();ACT.lbClose();drivePickGo()},
+  pickerFiles(){ACT.lbClose();ACT.audioPick()},
   pmRemove(){ACT.lbClose();ACT.audioRemove()},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
     try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「☰ メニュー → 共有コードを読み込む」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
