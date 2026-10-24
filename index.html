@@ -666,10 +666,31 @@ const syncDirty=()=>SY.meta.hash!==syncHash();
 const fmtWhen=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`};
 function gisLoad(){return window.google&&google.accounts?Promise.resolve():new Promise((ok,ng)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=ok;s.onerror=()=>ng(new Error('Googleのログイン画面を読み込めませんでした'));document.head.appendChild(s)})}
 // ログイン(ボタンを押したときだけ呼ぶ。押していないときに窓を開くとブラウザに止められるため)
-async function syncLogin(){if(!GCLIENT)return toast('同期はまだ準備中です');try{await gisLoad()}catch(e){return alert(e.message)}
+/* ログインを長持ちさせる: 最初のログインで受け取った「長持ちする鍵」は共有の置き場(Cloudflare)に預けて、アプリは合言葉(sid)だけ持つ。
+   1時間で切れる鍵は、sid を送ってボタンなしで取り直す。置き場の準備ができていないときは、今までどおり1時間ごとに「Googleで続ける」 */
+const AUTH_API=()=>SHARE_API?SHARE_API.replace(/\/?$/,'/')+'auth/':'';
+async function authPost(path,body){const r=await fetch(AUTH_API()+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});let j={};try{j=await r.json()}catch(e){}return [r.status,j]}
+// 鍵が切れていたら、合言葉で黙って取り直す。取れたら true
+async function ensureToken(){if(syncReady())return true;if(!SY.meta.sid||!AUTH_API())return false;
+  try{const [s,j]=await authPost('refresh',{sid:SY.meta.sid});
+    if(s===200&&j.access_token){Object.assign(SY.meta,{tok:j.access_token,exp:Date.now()+(+j.expires_in||3600)*1000});syncSave();return true}
+    if(s===401){delete SY.meta.sid;syncSave()}}catch(e){}
+  return false}
+function loginDone(tok,exp,sid){Object.assign(SY.meta,{on:true,tok,exp:Date.now()+(+exp||3600)*1000});if(sid)SY.meta.sid=sid;syncSave();SY.err='';
+  syncPull(true).then(()=>{if(R.name==='import'||R.name==='s')fillImport()})}
+async function syncLogin(){if(!GCLIENT)return toast('同期はまだ準備中です');
+  if(SY.meta.sid&&await ensureToken()){SY.err='';syncUI();return syncPull(true)}
+  try{await gisLoad()}catch(e){return alert(e.message)}
+  // 置き場が使えるなら「コード」をもらって置き場で鍵に換える(長持ち)。だめなら今までの方法
+  if(AUTH_API()&&!SY.noLong){const cc=google.accounts.oauth2.initCodeClient({client_id:GCLIENT,scope:'https://www.googleapis.com/auth/drive.file',ux_mode:'popup',prompt:'consent',
+      callback:async r=>{if(r.error||!r.code){SY.err='ログインできませんでした';syncUI();return}
+        try{const [s,j]=await authPost('exchange',{code:r.code});if(s===200&&j.access_token)return loginDone(j.access_token,j.expires_in,j.sid);
+          if(s===501){SY.noLong=true;return syncLogin()}}catch(e){}
+        SY.err='ログインできませんでした';syncUI()},
+      error_callback:()=>{SY.err='ログインの画面が閉じられました';syncUI()}});
+    return cc.requestCode()}
   const tc=google.accounts.oauth2.initTokenClient({client_id:GCLIENT,scope:'https://www.googleapis.com/auth/drive.file',
-    callback:r=>{if(r.error){SY.err='ログインできませんでした';syncUI();return}
-      Object.assign(SY.meta,{on:true,tok:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000});syncSave();SY.err='';syncPull(true).then(()=>{if(R.name==='import'||R.name==='s')fillImport()})},
+    callback:r=>{if(r.error){SY.err='ログインできませんでした';syncUI();return}loginDone(r.access_token,r.expires_in)},
     error_callback:()=>{SY.err='ログインの画面が閉じられました';syncUI()}});
   tc.requestAccessToken({prompt:SY.meta.on?'':'consent'})}
 async function gapi(url,opt={}){const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+SY.meta.tok,...(opt.headers||{})}});
@@ -682,7 +703,7 @@ function syncApply(data,ap){H.busy=true;Object.assign(S,{bands:data.bands||S.ban
   Object.assign(SY.meta,{at:ap.savedAt,hash:syncHash()});syncSave();
   if((R.name==='song'||R.name==='block'||R.name==='print')&&!songById(R.a))location.hash='#/';render();toast(`${ap.device||'ほかの端末'}のデータを取ってきました`)}
 // 取ってくる: ドライブのほうが新しければ読み込む。この端末でも変えていたら、どちらを残すか聞く
-async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!syncReady())return syncUI();SY.busy=true;SY.lastPull=Date.now();syncUI();
+async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!(await ensureToken()))return syncUI();SY.busy=true;SY.lastPull=Date.now();syncUI();
   try{const f=await syncFind();
     if(!f){SY.busy=false;return syncPush(true)}
     SY.meta.fileId=f.id;const ap=f.appProperties||{};
@@ -699,7 +720,7 @@ async function syncPull(force){if(!SY.meta.on||SY.busy)return;if(!syncReady())re
     SY.err=''}catch(e){SY.err=e.message==='auth'?'':e.message}
   SY.busy=false;syncUI()}
 // 保存: 送る前に、ほかの端末が先に保存していないか確かめる
-async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!syncReady())return syncUI();if(SY.busy){clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),3000);return}
+async function syncPush(now){if(!SY.meta.on||DEMO)return;if(!(await ensureToken()))return syncUI();if(SY.busy){clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),3000);return}
   if(!now&&!syncDirty())return;SY.busy=true;syncUI();
   try{let f=SY.meta.fileId?await syncFind():null;const ap=f&&f.appProperties||{};
     if(f&&ap.savedAt&&SY.meta.at&&ap.savedAt!==SY.meta.at){SY.busy=false;return syncPull()}
@@ -758,9 +779,10 @@ async function syncRestoreOpen(){let list=[];const prev=await idb('kv','readonly
     $('#overlay').innerHTML='';save();render();toast('控えのデータに戻しました');if(SY.meta.on)syncPush(true)})}
 function syncSoon(){if(!SY.meta.on||H.busy)return;clearTimeout(SY.t);SY.t=setTimeout(()=>syncPush(),4000);syncUI()}
 function syncOff(){if(!confirm('この端末の同期をやめますか？(ドライブのデータは消えません)'))return;
+  try{if(SY.meta.sid)authPost('logout',{sid:SY.meta.sid})}catch(e){}
   try{if(SY.meta.tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(SY.meta.tok,()=>{})}catch(e){}SY.meta={};syncSave();syncUI();render()}
 // 画面の下に出す小さな表示: ログインが切れたときと、うまく保存できなかったとき
-function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady(),msg=need?(syncDirty()?'未保存の変更があります':'ログインが切れました'):SY.err;
+function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady()&&!SY.meta.sid,msg=need?(syncDirty()?'未保存の変更があります':'ログインが切れました'):SY.err;
   if(!SY.meta.on||!msg||DEMO){if(b)b.remove();}else{if(!b){b=document.createElement('div');b.id='syncBar';document.body.appendChild(b)}
     b.innerHTML=need?`<span>☁ ${msg}</span><button class="primary" data-act="syncLogin">Googleで続ける</button>`:`<span>☁ ${esc(msg)}</span><button data-act="syncNow">もう一度</button>`;
     const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;b.style.bottom=(pb+10)+'px'}
