@@ -648,7 +648,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 5:25';
+const APP_VER='10/25 7:00';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -800,7 +800,7 @@ function histTrack(){if(H.busy||!S)return;const cur=histSnap();if(H.last===null)
 function histBtns(){const u=$('#undoB'),r=$('#redoB');if(u)u.disabled=!H.past.length;if(r)r.disabled=!H.future.length}
 function histApply(json){H.busy=true;const [b,s,sl,m,g]=JSON.parse(json);Object.assign(S,{bands:b,songs:s,setlists:sl,markers:m});if(g)S.gigs=g;H.last=json;H.t=0;
   $('#overlay').innerHTML='';
-  if((R.name==='song'||R.name==='block'||R.name==='print')&&!songById(R.a)){P=null;H.busy=false;location.hash='#/songs';return}
+  if((R.name==='song'||R.name==='block'||R.name==='print')&&!songById(R.a)){P=null;H.busy=false;location.hash='#/bands';return}
   if(P){const bl=curBlock();P=bl&&bl.bars[P.bar]?Object.assign(parseChord(bl.bars[P.bar].cells[P.slot]||''),{bar:P.bar,slot:P.slot}):null}
   render();H.busy=false;histBtns()}
 function undo(){if(!H.past.length)return toast('これ以上は戻せません');H.future.push(H.last);histApply(H.past.pop());toast('↶ 元に戻しました')}
@@ -862,7 +862,7 @@ function gigSorted(){const t=todayStr(),reg=S.gigs.filter(g=>g.regular),pinned=S
   return {reg,up:pinned.concat(up),past}}
 const songById=id=>S.songs.find(s=>s.id===id);
 const bandSongs=()=>S.songs.filter(s=>s.bandId===band().id);
-// バンドなしの曲: バンドを消すときに「曲は残す」を選んだ曲。曲のタブの「バンドなし」に並ぶ
+// バンドなしの曲: バンドを消すときに「曲は残す」を選んだ曲。バンドのタブの「バンドなしの曲」に並ぶ
 const NOBAND='__none';
 const orphanSongs=()=>S.songs.filter(s=>!S.bands.some(b=>b.id===s.bandId));
 const bandSetlists=()=>S.setlists.filter(x=>x.bandId===band().id);
@@ -909,7 +909,7 @@ const ICON_UNDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentCo
 const ICON_REDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>';
 function topbar(tab){
   return `<header class="top"><div class="brand"><img class="brand-i" src="icon-192.png" alt=""><span class="brand-t"> コピバン練習ノート</span></div>
-  <nav><a href="#/" class="${tab==='setlist'?'on':''}">イベント</a><a href="#/bands" class="${tab==='bands'?'on':''}">バンド</a><a href="#/songs" class="${tab==='songs'?'on':''}">曲</a></nav>
+  <nav><a href="#/" class="${tab==='setlist'?'on':''}">イベント</a><a href="#/bands" class="${tab==='bands'?'on':''}">バンド</a></nav>
   <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
   <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・同期など)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
 /* ---------- バンドの切り替え(セトリと曲の画面のいちばん上)。曲もセトリもバンドごとに分かれる ---------- */
@@ -1068,14 +1068,25 @@ const bandGigs=bid=>S.setlists.filter(x=>x.bandId===bid).map(x=>({sl:x,g:gigOf(x
 function bandCard(b){const n=S.songs.filter(s=>s.bandId===b.id).length,t=todayStr(),gs=bandGigs(b.id).filter(o=>!(slDate(o)&&slDate(o)<t));
   return `<a class="card bandcard ${isOrigBand(b.id)?'orig':''}" href="#/bands/${b.id}"><div class="hstack"><b>${esc(b.name)}</b><span class="sub">${n}曲</span><span class="spacer"></span><span class="sub">›</span></div>
     <div class="sub" style="margin-top:2px">${gs.length?gs.map(o=>esc(o.g.name)+(slDate(o)?' '+md(slDate(o)):'')).join(' ・ '):'出るイベントはまだありません'}</div></a>`}
-function viewBands(){const og=S.bands.filter(b=>isOrigBand(b.id)),cp=S.bands.filter(b=>!isOrigBand(b.id));
+let SFQ='';
+const sfNorm=t=>String(t||'').toLowerCase().replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)).replace(/\s+/g,'');
+function songFindList(){const q=sfNorm(SFQ);if(!q)return '';const hits=[];
+  S.songs.forEach(s=>{let why='';if(!sfNorm(s.title).includes(q)){for(const b of s.blocks||[]){
+      const f=[[b.name,'ブロック'],[b.note,'メモ'],[(b.lyrLines||[]).join(' '),'歌詞']].find(([v])=>sfNorm(v).includes(q));if(f){why=(f[1]?f[1]+': ':'')+String(f[0]).replace(/\s+/g,' ').slice(0,40);break}}
+      if(!why)return}hits.push({s,why})});
+  if(!hits.length)return '<div class="empty">見つかりませんでした</div>';
+  return `<div class="list cards">${hits.slice(0,40).map(({s,why})=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${S.bands.some(b=>b.id===s.bandId)?esc(bandNameOf(s.bandId)):'バンドなし'} ・ ${songMeta(s)}</div>${why?`<div class="sub">${esc(why)}</div>`:''}${strip(s)}</a></div>`).join('')}</div>`}
+document.addEventListener('input',e=>{if(e.target.id!=='songQ')return;SFQ=e.target.value;const l=$('#songRes'),o=$('#bandsBody');if(l)l.innerHTML=songFindList();if(o)o.hidden=!!SFQ.trim()});
+function viewBands(){S.cur.setlist=null;const og=S.bands.filter(b=>isOrigBand(b.id)),cp=S.bands.filter(b=>!isOrigBand(b.id));
   return topbar('bands')+`<main><div class="slhead"><h1>バンド</h1><span class="spacer"></span><button class="primary" data-act="newBandHere">＋ バンド</button></div>
+  <input id="songQ" class="tut-q" type="search" value="${esc(SFQ)}" placeholder="曲を探す(曲名・メモ・歌詞)" aria-label="曲を探す" autocomplete="off" style="margin:4px 0 10px">
+  <div id="songRes">${songFindList()}</div><div id="bandsBody" ${SFQ.trim()?'hidden':''}>
   <p class="sub" style="margin:0 0 6px">イベントが決まる前でも、バンドと曲を先に作っておけます。日程が決まったら、バンドを開いて「＋ イベントに出る」で入れます。</p>
   ${og.length?`<div class="home-sec"><b>オリジナル</b></div>${og.map(bandCard).join('')}`:''}
   <div class="home-sec"><b>コピバン</b></div>${cp.map(bandCard).join('')||'<div class="empty">まだコピバンのバンドはありません</div>'}
-  ${orphanSongs().length?`<a class="card bandcard" href="#/songs" data-act="pickBand" data-id="${NOBAND}"><b>バンドなしの曲</b> <span class="sub">${orphanSongs().length}曲 ・ どのバンドにも入っていない曲</span></a>`:''}</main>`}
+  ${orphanSongs().length?`<a class="card bandcard" href="#/songs" data-act="pickBand" data-id="${NOBAND}"><b>バンドなしの曲</b> <span class="sub">${orphanSongs().length}曲 ・ どのバンドにも入っていない曲</span></a>`:''}</div></main>`}
 function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace('#/bands');return ''}
-  S.cur.band=b.id;const songs=S.songs.filter(s=>s.bandId===b.id),t=todayStr(),gs=bandGigs(b.id),og=isOrigBand(b.id),osl=origSets().find(x=>x.bandId===b.id);
+  S.cur.band=b.id;S.cur.setlist=null;const songs=S.songs.filter(s=>s.bandId===b.id),t=todayStr(),gs=bandGigs(b.id),og=isOrigBand(b.id),osl=origSets().find(x=>x.bandId===b.id);
   return topbar('bands')+`<main><a class="back" href="#/bands">‹ バンド</a>
   <div class="slhead"><input class="h1in nameedit" value="${esc(b.name)}" data-input="bandNameId" data-id="${b.id}" aria-label="バンドの名前" enterkeyhint="done"><button class="ghost slmore" data-act="bandMore" data-b="${b.id}" aria-label="バンドのメニュー">⋯</button></div>
   <p class="sub gigsub">${og?`オリジナル ・ <a href="#/setlist/${osl.id}">曲順とスタジオの予定 ›</a>`:`コピバン ・ <a href="javascript:void 0" data-act="makeOrig" data-b="${b.id}">オリジナルにする</a>`}</p>
@@ -1083,26 +1094,23 @@ function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace(
   <div class="list cards">${gs.map(o=>`<div class="row ${slDate(o)&&slDate(o)<t?'pastrow':''}"><a class="body" href="#/setlist/${o.sl.id}"><div class="title">${esc(o.g.name)}</div><div class="sub">${slDate(o)?dayLbl(slDate(o)):'日付未定'} ・ ${o.sl.songIds.filter(songById).length}曲</div></a><span class="sub">${slDate(o)&&slDate(o)>=t?daysLeft(slDate(o)):''} ›</span></div>`).join('')||'<div class="empty">まだ出るイベントはありません</div>'}</div>
   <div class="adds"><button data-act="joinGig" data-b="${b.id}">＋ イベントに出る</button></div>
   <div class="sec">曲 (${songs.length})</div>
-  <div class="list cards">${songs.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}</a></div>`).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
+  <div class="list cards">${songs.map(s=>{const n=S.setlists.filter(x=>x.songIds.includes(s.id)).length;
+    return `<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}${n?' ・ イベント'+n+'件':''}</div>${strip(s)}${tagChips(s)}</a>
+    <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}" title="この曲を別のバンドへ移す">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`}).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
   <div class="adds"><button class="primary" data-act="newSong">＋ 新しい曲</button></div></main>`}
 function viewSongs(){
-  if(S.cur.band===NOBAND){const os=orphanSongs();if(os.length)return topbar('songs')+`<main>${bandBar()}<h1>バンドなしの曲</h1>
+  if(S.cur.band===NOBAND){const os=orphanSongs();if(os.length)return topbar('bands')+`<main><a class="back" href="#/bands">‹ バンド</a><h1>バンドなしの曲</h1>
     <p class="sub">バンドを消したときに残した曲です。「移す」でどれかのバンドに入れられます。</p>
     <div class="list cards">${os.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}</a>
     <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`).join('')}</div></main>`;S.cur.band=S.bands[0].id}
-  const songs=bandSongs();
-  return topbar('songs')+`<main>${bandBar()}<div class="slhead"><h1>${esc(band().name)} の曲</h1><button class="ghost" data-act="renameBand" data-id="${band().id}" style="margin-left:auto">名前を変更</button></div><p class="sub">ここには「${esc(band().name)}」の曲だけが並びます。同じ曲をいくつかのイベントで使っても、中身は1つなので直せば全部に反映されます。</p>
-  <div class="list cards">${songs.map(s=>{const n=bandSetlists().filter(x=>x.songIds.includes(s.id)).length;
-    return `<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)} ・ イベント${n}件</div>${strip(s)}${tagChips(s)}</a>
-    <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}" title="この曲を別のバンドへ移す">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`}).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
-  <div class="adds"><button class="primary" data-act="newSong">＋ 新しい曲</button></div></main>`}
-
+  location.replace('#/bands/'+band().id);return ''
+}
 function viewSong(){
   const s=songById(R.a);if(!s)return topbar('')+`<main><div class="empty">曲が見つかりません</div></main>`;
   const sl=S.setlists.find(x=>x.id===S.cur.setlist);
   const counts={};s.blocks.forEach(b=>counts[b.type]=(counts[b.type]||0));
   return topbar('')+`<main>
-  <a class="back" href="${sl?'#/setlist/'+sl.id:'#/songs'}">‹ ${sl?esc(bandNameOf(sl.bandId)+'(' +gigOf(sl).name+')'):'曲'}</a>
+  <a class="back" href="${sl?'#/setlist/'+sl.id:S.bands.some(b=>b.id===s.bandId)?'#/bands/'+s.bandId:'#/bands'}">‹ ${sl?esc(bandNameOf(sl.bandId)+'(' +gigOf(sl).name+')'):S.bands.some(b=>b.id===s.bandId)?esc(bandNameOf(s.bandId)):'バンド'}</a>
   <input class="name nameedit" style="display:block;font-size:24px;font-weight:700;padding:4px 0;width:100%" value="${esc(s.title)}" data-input="songField" data-k="title" aria-label="曲名">
   <div class="hstack meta" id="songInfo">
     <label>テンポ<input value="${esc(s.bpm)}" data-input="songField" data-k="bpm" placeholder="例 84"></label>
@@ -2112,7 +2120,7 @@ function impAppHTML(){const code=`<div class="hstack"><input id="impShow" readon
 // [見出し, 本文, ヘルプ([題, 中身]) があれば「？」ボタンで本文と入れ替えて表示]
 const TUT=[
   ['ようこそ！','コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>まずは使い方の流れを確認してみましょう。'],
-  ['曲を追加する','上の「曲」から「＋ 曲を追加」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
+  ['曲を追加する','上の「バンド」からバンドを開いて「＋ 新しい曲」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
   ['コードを入れる','追加したブロックを開くと、さらに<b>グリッド付きのボックス</b>が現れます。<b>1グリッド = 8分音符1つ分</b>、<b>グリッドで区切られたボックス = 1小節</b>です。ボックスの空白部分をタップ・クリックすると、専用のキーボードが現れます。<b>小節の頭やコードが変わる部分</b>にメモをしていきましょう。<br>コード名がわからない場合は「コード判定」で鍵盤から探せます。',
     ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。当ツールではこの記法に慣れていない人のためにキーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すことで、コード名入力や和音でのコード名判定の際にドレミ表記のまま入力することができるので、慣れるまで活用するとよいでしょう。また、楽曲分析を目的としていたり、移調を考えていたりする方向けに「ディグリー」ボタンもあるので是非ご活用ください。']],
   ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)や、YouTube・YouTube Music・SpotifyのURLを入れると、各ブロックの頭から再生・ループ再生もできます。適切に拍子とテンポを設定することで、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
@@ -2156,7 +2164,7 @@ const TOUR=[
   {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
   {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、出るバンドを足します。何組か掛け持ちするときは、同じイベントにバンドを並べます。2日間のイベントなら、本番を1日ずつ足して、バンドの画面で「出る日」を選べます。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、バンドには星(1〜3)をつけて並び順を選べます。'},
   {r:tSl,sel:'main',whole:true,h:'バンドの画面',t:'イベントに出る1つのバンドの、曲順(セトリ)とスタジオの予定をまとめる画面です。いちばん上の「‹」でイベントに戻れます。',need:hasSl},
-  {on:'songs',r:()=> '#/songs',sel:'.bandbar',kw:'バンド 移す 曲一覧',h:'バンドごとの曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。「曲」の画面では、曲がバンドごとに分かれて並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲は「移す」で別のバンドへ移せます。'},
+  {on:'bands',r:()=> '#/bands',sel:'#songQ',kw:'バンド 移す 曲一覧 検索 探す',h:'バンドと曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。曲はバンドの中に並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲は、バンドの画面の「移す」で別のバンドへ移せます。いちばん上の「曲を探す」では、すべてのバンドの曲から、曲名・メモ・歌詞で探せます。'},
   {on:'setlist',r:tSl,sel:'.sec.hstack',adv:1,kw:'練習 日程 カレンダー',h:'スタジオの予定',t:'バンドのスタジオ練習の日程を入れておけます。本番の日時はイベントの画面で1回だけ入れます。カレンダーへの追加やメンバーへの共有もできます。',need:hasSl},
   {core:1,r:tSl,sel:'main .list .row',h:'曲を開く',t:'このバンドの曲順です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'曲順に入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body',need:slHasSong},
   // 曲の画面
@@ -2306,7 +2314,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2487,7 +2495,7 @@ function gigPickHTML(exclude){const gs=S.gigs.filter(g=>g.id!==exclude);
   return `<label class="nm-band">移す先のイベント<select id="nmGig" onchange="document.getElementById('nmGigNew').style.display=this.value==='__new'?'':'none'">${gs.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}<option value="__new" ${gs.length?'':'selected'}>＋ 新しいイベントを作る</option></select>
   <input id="nmGigNew" placeholder="新しいイベントの名前(例 OBライブ)" style="${gs.length?'display:none':''}"></label>`}
 function newBand(here){nameModal('新しいバンド','メンバーが違えば別のバンドにします。<b>オリジナルバンドはそのバンド名</b>、<b>サークルのコピバンはライブや組ごとの名前</b>を入れてください。曲と曲順はバンドごとに分かれるので、混ざりません。',
-  ['オリジナル: 「(自分のバンド名)」','コピバン: 「軽音サークル OBライブ」'],'',n=>{S.cur.band=mkBand(n);location.hash=here?'#/bands/'+S.cur.band:'#/songs';render()})}
+  ['オリジナル: 「(自分のバンド名)」','コピバン: 「軽音サークル OBライブ」'],'',n=>{S.cur.band=mkBand(n);location.hash='#/bands/'+S.cur.band;render()})}
 const ACT={
   goBlock:t=>location.hash=`#/block/${R.a}/${t.dataset.id}`,
   newSetlist,newBand,
@@ -2853,11 +2861,11 @@ const ACT={
     if(!n){if(!confirm(`バンド「${b.name}」と、その曲順・予定を削除しますか？`))return;return ACT.delBandGo({dataset:{keep:'1'}})}
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal"><div class="hstack"><b>バンド「${esc(b.name)}」を削除</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
       <p class="note" style="margin:6px 0 12px">このバンドの曲順とスタジオの予定は消えます。${n}曲の曲はどうしますか？</p>
-      <div class="sync-pick"><button class="sync-row" data-act="delBandGo" data-keep="1"><b>曲は残す</b><small class="sub" style="display:block">曲のタブの「バンドなし」に残ります。あとで別のバンドへ移せます</small></button>
+      <div class="sync-pick"><button class="sync-row" data-act="delBandGo" data-keep="1"><b>曲は残す</b><small class="sub" style="display:block">バンドのタブの「バンドなしの曲」に残ります。あとで別のバンドへ移せます</small></button>
       <button class="sync-row danger" data-act="delBandGo" data-keep=""><b>曲もまとめて消す</b><small class="sub" style="display:block">曲の写真と録音も消えます</small></button></div></div>`},
   delBandGo(t){const b=band(),keep=!!t.dataset.keep;ACT.lbClose();
     if(!keep){const songs=S.songs.filter(s=>s.bandId===b.id);songBlobIds(songs).forEach(delBlob);S.songs=S.songs.filter(s=>s.bandId!==b.id)}
-    S.setlists=S.setlists.filter(x=>x.bandId!==b.id);S.bands=S.bands.filter(x=>x!==b);S.cur.band=S.bands[0].id;S.cur.setlist=null;location.hash=R.name==='bands'?'#/bands':'#/songs';render();toast(keep?'バンドを削除しました(曲は「バンドなし」に残しました)':'バンドを削除しました')},
+    S.setlists=S.setlists.filter(x=>x.bandId!==b.id);S.bands=S.bands.filter(x=>x!==b);S.cur.band=S.bands[0].id;S.cur.setlist=null;location.hash='#/bands';render();toast(keep?'バンドを削除しました(曲は「バンドなし」に残しました)':'バンドを削除しました')},
 };
 const CHG={
   band(t){if(t.value==='__new'){newBand();if(t.value==='__new')render();return}S.cur.band=t.value;S.cur.setlist=null;location.hash='#/';render()},
