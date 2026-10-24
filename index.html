@@ -651,7 +651,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 7:40';
+const APP_VER='10/25 7:43';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1222,6 +1222,8 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
 // 音源同期: 「始めるブロックの頭の位置」から、曲の構成(テンポ・拍子・小節数)だけで拍の時刻を並べる。ブロックの頭では合わせ直さない。
 // 始めるブロックより前(テンポのない前奏など)は鳴らさない
 const MS={ev:null,evKey:'',last:null,lastMt:null};
+// アプリを裏にすると、タイマーが1秒に1回くらいまで遅くなる。そのあいだは先の拍までまとめて予約しておく
+const bgAhead=()=>document.hidden?2.5:0;
 const syncAnchor=s=>s.blocks.find(b=>b.id===s.mAnchor)||s.blocks[0];
 function syncEvents(s){const off=+s.mOffset||0;const ev=[];let t=off;const ai=Math.max(0,s.blocks.indexOf(syncAnchor(s)));
   s.blocks.slice(ai).forEach(bl=>bl.bars.forEach((bar,bi)=>{const {n,d}=barBeats(bl,bar,s);
@@ -1251,8 +1253,8 @@ function syncTick(){const s=playerSong();
   if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
   const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
   syncEv(s);const mt=M.time(),pr=mediaRate();
-  if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6)MS.last=mt-0.001;
-  MS.lastMt=mt;const horizon=mt+0.12*pr;let cur=null;
+  if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6+bgAhead())MS.last=mt-0.001;
+  MS.lastMt=mt;const horizon=mt+(0.12+bgAhead())*pr;let cur=null;
   for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc);(e.subs||[]).forEach(o=>clickAt(ctx.currentTime+Math.max(0,(e.t+o-mt)/pr),-1))}
   MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur,false,cur?(mt-cur.t)/cur.dur:0)}
 setInterval(syncTick,20);
@@ -1276,7 +1278,7 @@ async function mStart(s,blocks,loopId,rg){mStop();HANDS=false;const tok=MT.tok;c
   MT.pass=clicksFor(s,blocks,barsOf);if(!MT.pass.ev.length)return;
   const pre=S.prefs.mCount!==false?clicksFor(s,[blocks[0]],()=>[rg?rg.from:0]):{ev:[],total:0};
   Object.assign(MT,{pre:pre.ev,preDur:pre.total,i:0,start:MT.ctx.currentTime+0.12,vis:[],playing:true,songId:s.id,loop:loopId||null});
-  MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15){clickAt(e.at,e.acc);if(!e.count)(e.subs||[]).forEach(o=>clickAt(e.at+o,-1));MT.vis.push(e);MT.i++}
+  MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15+bgAhead()){clickAt(e.at,e.acc);if(!e.count)(e.subs||[]).forEach(o=>clickAt(e.at+o,-1));MT.vis.push(e);MT.i++}
     if(!e&&MT.vis.length&&MT.ctx.currentTime>MT.vis[MT.vis.length-1].at+0.6)mStop()},25);
   const draw=()=>{if(!MT.playing)return;const now=MT.ctx.currentTime;let cur=null;while(MT.vis.length>1&&MT.vis[1].at<=now)MT.vis.shift();if(MT.vis[0]&&MT.vis[0].at<=now)cur=MT.vis[0];
     mPaint(cur,false,cur?(now-cur.at)/cur.dur:0);MT.raf=requestAnimationFrame(draw)};draw()}
