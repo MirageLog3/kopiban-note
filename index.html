@@ -1908,8 +1908,8 @@ async function openShare(kind){
     // 予定は [種類(0=スタジオ 1=本番), 日付, 開始, 終了, 場所] の並びで入れる。終わった予定は送らない
     const evs=slAllEvents(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));hasSt=evs.length>0;withSt=hasSt&&S.prefs.shareStudio!==false;
     const sb=S.bands.find(x=>x.id===sl.bandId);var bytes=await packBytes(trimA([3,gnm,withSt?evs.map(evArr):null,songs.map(songArr),[sb?oidOf(sb):null,sb?sb.name:null,songs.map(oidOf),oidOf(sl)]]))}
-  else if(kind==='band'){const b=band(),songs=S.songs.filter(s=>s.bandId===b.id),sls=S.setlists.filter(x=>x.bandId===b.id);
-    if(!songs.length)return toast('このバンドには曲がありません');title=`バンド「${b.name}」(${songs.length}曲)`;
+  else if(kind==='band'){const b=band(),all=S.songs.filter(s=>s.bandId===b.id),withSongs=!!S.prefs.shareBandSongs,songs=withSongs?all:[],sls=S.setlists.filter(x=>x.bandId===b.id);
+    title=withSongs?`バンド「${b.name}」(${songs.length}曲)`:`バンド「${b.name}」`;
     var bytes=await packBytes([4,b.name,oidOf(b),songs.map(songArr),songs.map(oidOf),sls.map(sl=>{const g=gigOf(sl);
       const evs=slAllEvents(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));
       return trimA([g.name,g.regular?1:0,U(evs.map(evArr)),sl.songIds.map(id=>songs.findIndex(s=>s.id===id)).filter(i=>i>=0),oidOf(sl)])})])}
@@ -1917,7 +1917,8 @@ async function openShare(kind){
   code=b64u(bytes);const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-  <p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置・参考音源のリンク(YouTube・Spotifyなど)と、それに合わせてメトロノームを鳴らす設定が入ります。音源ファイル・写真・録音は入りません。</p>
+  ${kind==='band'?`<label class="hstack" style="margin:0 0 6px;font-size:14px"><input type="checkbox" data-change="shareBandSongs" ${S.prefs.shareBandSongs?'checked':''}> 曲も入れる</label><p class="note" style="margin:0 0 8px">${S.prefs.shareBandSongs?'バンドの曲ぜんぶと、セトリの曲順・これからの予定が入ります。':'バンドの名前と、セトリ・これからの予定だけが入ります(曲は入りません)。曲はあとから1曲ずつ「共有」で送ると、受け取った人の同じバンドに入ります。'}</p>`:''}
+  ${kind==='band'&&!S.prefs.shareBandSongs?'':`<p class="note">構成・コード・歌詞・テキストメモ・ブロックの頭の位置・参考音源のリンク(YouTube・Spotifyなど)と、それに合わせてメトロノームを鳴らす設定が入ります。音源ファイル・写真・録音は入りません。</p>`}
   ${hasSt?`<label class="hstack" style="margin:0 0 10px;font-size:14px"><input type="checkbox" data-change="shareStudio" ${withSt?'checked':''}> スタジオ・本番の予定も入れる <span class="sub">(${slAllEvents(curSetlist()).filter(e=>!(e.date&&e.date<todayStr())&&(e.date||e.place)).length}件)</span></label>`:''}
   ${navigator.share?`<button class="primary sendbtn" data-act="nativeShare" data-title="${esc(title)}">LINEなどのアプリで送る</button>`:''}
   <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
@@ -2060,7 +2061,7 @@ const TOUR=[
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cpOpen]',adv:1,kw:'コピー 貼り付け 2番 複製',h:'コピペ',t:'「コピペ」で、マス1つ・何小節か・ブロック全部のコードをコピーして、ほかの場所に貼り付けられます。別のブロックや別の曲にも貼れるので、2番やくり返しの部分を書くときに便利です。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',kw:'アンドゥ 取り消し 間違えた',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
-  {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 送る メンバー',h:'セトリごと共有',t:'右の「⋯」の「セトリを共有」で、曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。同じ「⋯」の「バンドごと共有」なら、そのバンドの曲とセトリをまとめて渡せます。前に受け取ったバンドの曲がもう一度届いたときは、同じバンドに入って、新しい版に更新できます(写真・録音・自分のメモは残ります)。',need:hasSl},
+  {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 送る メンバー',h:'セトリごと共有',t:'右の「⋯」の「セトリを共有」で、曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。同じ「⋯」の「バンドごと共有」なら、バンドとセトリをまとめて渡せます(「曲も入れる」で曲も一緒に)。前に受け取ったバンドの曲がもう一度届いたときは、同じバンドに入って、新しい版に更新できます(写真・録音・自分のメモは残ります)。',need:hasSl},
   {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。写真と録音は、それぞれの端末にだけ残ります。'},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
@@ -2699,6 +2700,7 @@ const CHG={
   mkName(t){const m=S.markers[+t.dataset.i],n=t.value.trim();if(!n||n===m.name){render();return}
     if(S.markers.some(x=>x.name===n)){toast('同じ名前があります');render();return}
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.map(x=>x===m.name?n:x)));m.name=n;render()},
+  shareBandSongs(t){S.prefs.shareBandSongs=t.checked;save();openShare('band')},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
   studioTime(t){const {e:st}=evFind(t.dataset.id);if(!st)return;const k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
     st[k]=h?h+':'+m:'';const s=$('#evSum-'+st.id);if(s)s.innerHTML=studioSum(st);save()},
