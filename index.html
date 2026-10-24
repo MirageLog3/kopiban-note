@@ -1951,7 +1951,7 @@ async function fillImport(){
     const tbName=tb?tb.name:isBand?d.band.name+'(新しく作ります)':band().name;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
     const toc=isBand?`<div class="card noprint"><b>バンド「${esc(d.band.name)}」</b> <span class="sub">${songs.length}曲</span>${(d.setlists||[]).map(x=>`<div style="margin-top:6px">${esc(x.regular?'普段の練習':x.name)} <span class="sub">${x.idx.length}曲</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
-    el.innerHTML=`<div class="card noprint"><b>共有された${what}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${what}に追加」すると、${SY.meta.on?'あなたのアプリとGoogleドライブに':'あなたの端末だけに'}コピーが保存されます。編集しても共有した人には反映されません。</p>
+    el.innerHTML=`<div class="card noprint"><b>共有された${what}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。${S.prefs.tutDone?'':'このアプリが初めてなら、追加したあとに使い方の案内が出ます。'}「自分の${what}に追加」すると、${SY.meta.on?'あなたのアプリとGoogleドライブに':'あなたの端末だけに'}コピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
       <span class="sub">追加先バンド: ${esc(tbName)}${tb?'(前に受け取ったバンド)':''}</span>
@@ -1963,6 +1963,11 @@ async function fillImport(){
     ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'':impAppHTML()}</div>${toc}${body}`;measureMaps()}
   catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
 let PENDING=null;
+// 共有リンクから初めて使い始めた人に、受け取った曲を使って使い方の案内を勧める(押しつけない)
+function tutOffer(){if(S.prefs.tutDone||$('#tour'))return;
+  $('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal"><b>コピバン練習ノートへようこそ</b>
+    <p class="note" style="margin:6px 0 12px">いま受け取った曲を使って、画面の見方を1分くらいで案内します。あとからでも「☰ メニュー → 使い方を見る」で見られます。</p>
+    <div class="hstack"><button class="ghost" data-act="tutOfferNo">今はいい</button><span class="spacer"></span><button class="primary" data-act="tutOfferGo">案内を見る</button></div></div>`}
 /* 前に受け取った曲を新しい版にする。曲のidとバンドは変えない。写真・録音のメモと、自分で書いたテキストメモは、同じ位置・同じ種類のブロックに残す。
    更新の前の曲は、この端末の中に控えとして残す */
 function impUpdateSong(ex,s){try{idb('kv','readwrite',st=>st.put({at:Date.now(),song:JSON.parse(JSON.stringify(ex))},'impPrev:'+ex.id))}catch(e){}
@@ -2447,6 +2452,8 @@ const ACT={
   tourTap(){tourTap()},
   tourEnd(){tourEnd()},
   tourStart(){tourStart()},
+  tutOfferGo(){ACT.lbClose();tourStart()},
+  tutOfferNo(){S.prefs.tutDone=true;save();ACT.lbClose()},
   tutHelpPage(){HQ=TQ;ACT.lbClose();location.hash='#/help'},
   tutSet(t){const k=t.dataset.k;ACT.tutEnd();if(k==='menu')location.hash='#/settings';else location.hash='#/settings/'+k},
   tutGo(t){TUTI=+t.dataset.v;TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
@@ -2637,7 +2644,8 @@ const ACT={
         sl={id:uid(),bandId:bid,gigId:g.id,name:p.setlist,songIds:p.songs.map((_,i)=>idMap[i]),events:evs.filter(e=>e.type!=='live'),oid:p.slOid||undefined};S.setlists.push(sl)}
       S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
     else{const id=idMap[0];const c=$('#impSl');if(added.length&&c&&c.checked&&curSetlist())curSetlist().songIds.push(id);save();location.hash='#/song/'+id}
-    if(SY.meta.on){clearTimeout(SY.t);setTimeout(()=>syncPush(true),300);toast(msg+'。Googleドライブにも保存します')}else toast(msg)},
+    if(SY.meta.on){clearTimeout(SY.t);setTimeout(()=>syncPush(true),300);toast(msg+'。Googleドライブにも保存します')}else toast(msg);
+    if(!S.prefs.tutDone)setTimeout(tutOffer,900)},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
