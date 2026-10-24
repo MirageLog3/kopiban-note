@@ -426,6 +426,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 #syncBar{position:fixed;left:12px;right:12px;z-index:16;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--panel);box-shadow:0 4px 16px var(--shadow);font-size:14px}
 #syncBar span{flex:1;min-width:0}
 .sync-row.sure{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}button.sync-row{text-align:left;display:block;width:100%}
+.filebk{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.filebk summary{cursor:pointer;color:var(--sub);font-size:14px}
 .sync-pick{display:grid;gap:6px;max-height:40vh;overflow-y:auto}.sync-row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:6px}
 .bar.lr .cells{box-shadow:0 0 0 2px var(--accent);border-radius:4px}
 .loop-bar{position:sticky;top:var(--toph,52px);z-index:6;display:flex;align-items:center;gap:8px;margin:6px 0 8px;padding:8px 12px;border:1px solid var(--accent);border-radius:6px;background:var(--panel);font-weight:600}.place-next{font-size:12px}
@@ -890,7 +891,7 @@ function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
 const MENU=[['tut','📖','使い方を見る'],['help','🔍','ヘルプ・機能を探す'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンドの管理'],['markers','🏷','マーカーの編集'],
-  ['sync','☁️','Googleで自動バックアップ・同期'],['backup','💾','ファイルに書き出す・読み込む'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
+  ['sync','☁️','Googleで自動バックアップ・同期'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
   <div class="mline"><span>コードの表示</span><span class="mseg">${[['abc','C D E'],['doremi','ドレミ'],['degree','ディグリー']].map(([v,l])=>`<button class="${codeView()===v?'on':''}" data-act="menuCode" data-v="${v}">${l}</button>`).join('')}</span></div></div>`}
@@ -2054,7 +2055,7 @@ const TUT=[
   ['メンバーに共有','曲やバンドの画面の「共有」を押すと、共有用のリンクと共有コードができます。受け取ったリンクや「☰ メニュー」から入力したコードで、曲の構成や曲順・予定を自分の端末に取り込んで、自由に書き込むことができます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
     ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。この場合、再び同じ曲順を編集したり、内容を確認したりしたい場合はそのアプリ内のブラウザから見る必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー」から共有コードを読み込むことで曲や曲順などを受け取ることができます。']],
   ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
-    ['データの扱い','・曲や曲順・予定は、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、「☰ メニュー → Googleで自動バックアップ・同期」でログインするか、ときどき「ファイルに書き出す」で保存しておくと安心です。']]];
+    ['データの扱い','・曲や曲順・予定は、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと安心です。']]];
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
 function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');if(!p)return;let mh=0,mp=0;const cur=p.innerHTML;
@@ -2117,7 +2118,7 @@ const TOUR=[
   {on:'block',r:tBlk,sel:'.histbtns',kw:'アンドゥ 取り消し 間違えた',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
-  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期やファイルへの書き出しも、このメニューにあります。',help:TUT[4][2]},
+  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期も、このメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。写真と録音は、それぞれの端末にだけ残ります。'},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
@@ -2130,7 +2131,7 @@ const TG=()=>TGS().map(s=>[s.h,s.g||s.t,s.help,s.grp,!!s.adv,s.kw||'']);
 /* ---------- 機能を探す ----------
    使い方の目次の上の欄に言葉を入れると、項目名・説明・よく使われる言い方(kw)から探して絞り込む。
    使い方の項目にない設定(バックアップなど)も、ここから開けるようにする */
-const TEXTRA=[['ファイルに書き出す・読み込む','データをファイルに書き出す・ファイルから戻す','バックアップ 保存 復元 移行 エクスポート インポート','backup'],
+const TEXTRA=[['ファイルで保存する','Googleを使わずに、データをファイルに書き出す・ファイルから戻す(「Googleで自動バックアップ・同期」の中)','バックアップ 保存 復元 移行 エクスポート インポート ファイル','sync'],
   ['マーカーの編集','ブロックにつけるマーカー(キメ・テンポ注意など)の名前と色を変える','マーカー 目印 色 キメ','markers'],
   ['バンドの管理','バンドの名前を変える・追加する・削除する','バンド 名前 変更 削除 追加','band'],
   ['テーマ・表示の切り替え','ダーク・ライト、コードの表示(アルファベット・ドレミ・ディグリー)','ダーク ライト テーマ 色 ドレミ ディグリー 表示','menu'],
@@ -2267,7 +2268,7 @@ function settingCards(){return {news:newsCard(),
     ・iPhone: Safariで開いて、下の共有ボタン → 「ホーム画面に追加」<br>
     ・Android: Chromeのメニュー(︙) → 「ホーム画面に追加」<br>
     ${STORE_OK?'✓ この端末では、データが自動で消されない設定になっています。<br>':'ホーム画面に追加して使うと、しばらく開かなくてもデータが消えにくくなります。<br>'}
-    ※ホーム画面のアプリとブラウザでは、保存されるデータが別々になります。「ファイルに書き出す・読み込む」か、Googleでの同期でデータを移してから使ってください。</p></div>`,
+    ※ホーム画面のアプリとブラウザでは、保存されるデータが別々になります。「☰ メニュー → Googleで自動バックアップ・同期」でデータを移してから使ってください(Googleを使わない場合は、その中の「ファイルで保存する」で移せます)。</p></div>`,
   markers:`<div class="card"><b>マーカー</b><p class="note">ブロックに付けるマーカーです(キメ・テンポ注意など)。名前と色は自由に変えられて、曲の一覧で注意が必要な箇所がひと目で分かります。</p>
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>`,
@@ -2279,8 +2280,10 @@ function settingCards(){return {news:newsCard(),
     ・ドライブには「${SYNC_NAME}」というファイルが1つできます。このアプリはほかのファイルを見ることはできません<br>
     ・どちらの端末でも変更していたときは、どちらを残すか聞きます</p>
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
-    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}</div>`,
-  backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">データはこのPCのブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
+    <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}
+    <details class="filebk"><summary>Googleを使わずに、ファイルで保存する</summary><p class="note" style="margin:6px 0 8px">データを1つのファイルに書き出して、あとで読み込めます。写真と録音も入ります。Googleにログインしないで機種変更するときなどに使います。</p>
+      <div class="hstack"><button data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></details></div>`,
+  backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">データはこの端末のブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></div>`,
   tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたバンドの画面が開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
 function b64(blob){return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob)})}
