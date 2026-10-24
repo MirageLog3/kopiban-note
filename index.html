@@ -655,7 +655,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:15';
+const APP_VER='10/25 8:22';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1233,7 +1233,7 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
       <label class="sub m-rate">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label></div>
     <div class="m-row m-vol"><span class="sub">音量</span><label class="sub" title="メトロノームの音量">🥁<input type="range" min="0" max="2" step="0.05" value="${S.prefs.mVol??1}" data-input="mVol"></label>
       ${songMedia(s)?`<label class="sub" title="音源の音量">🎵<input type="range" min="0" max="1" step="0.05" value="${S.prefs.aVol??1}" data-input="aVol"></label>`:''}</div>
-    <div class="m-row"><label class="sub">刻み <select data-change="mSub">${MSUB.map(([v,l])=>`<option value="${v}" ${(s.mSub||'')===v?'selected':''}>${l}</option>`).join('')}</select></label>${s.blocks.some(b=>/\/8$/.test(b.meter||s.meter||''))&&['8','sw'].includes(s.mSub||'')?'<span class="sub" style="flex-basis:100%">8分の拍子(7/8など)は拍がもう8分なので、そこでは「8分」は拍ごとと同じに鳴ります。細かく刻むなら16分を選んでください</span>':''}
+    <div class="m-row"><label class="sub">刻み <select data-change="mSub">${MSUB.map(([v,l])=>`<option value="${v}" ${(s.mSub||'')===v?'selected':''}>${l}</option>`).join('')}</select></label>${s.blocks.some(b=>/\/8$/.test(b.meter||s.meter||''))&&['8','sw'].includes(s.mSub||'')?'<span class="sub" style="flex-basis:100%">8分の拍子(7/8など)は、拍が既に8分音符なので「8分」は拍ごとと同じ鳴り方になります。細かく刻むときは16分を選んでください</span>':''}
       <label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label></div>
     ${songMedia(s)?`<div class="m-sync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 音源に合わせて鳴らす</label>
       ${s.mSync?`<div class="sub m-offlab">メトロノームを始めるブロック</div>
