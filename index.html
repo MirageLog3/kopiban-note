@@ -295,7 +295,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .memo-item{display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:8px}
 .memo-item audio{flex:1;height:34px}
 .memo-item input{width:220px}
-.memo-item textarea{flex:1;min-height:60px;resize:vertical}
+.memo-item textarea{flex:1;min-height:60px;resize:vertical}.memo-tx{flex-wrap:wrap;align-items:flex-start}.memo-btns{display:flex;flex-direction:column;gap:4px}.memo-links{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 12px}.memo-links:empty{display:none}.memo-links a{font-size:13px;word-break:break-all}.host-memo .memobar .sub{display:none}
 .rec{background:var(--rec);border-color:var(--rec);color:#fff;font-weight:700}
 .lb{position:fixed;inset:0;z-index:50;background:#000e;overflow:auto;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 .lb img{max-width:96vw;max-height:96vh;cursor:zoom-in}
@@ -649,7 +649,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:40';
+const APP_VER='10/25 9:20';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1062,7 +1062,8 @@ function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   <div class="list">${sets.map((x,i)=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
     return `<div class="row" ${cust?`data-drag="gb" data-idx="${i}"`:''}>${cust?'<span class="handle">⋮⋮</span>':''}<a class="body" href="#/setlist/${x.id}"><div class="title">${esc(bandNameOf(x.bandId))}</div><div class="sub">${slDayNo(x)?slDayNo(x)+'日目 ・ ':''}${n}曲${nx?' ・ 次のスタジオ '+studioSum(nx).replace(/<[^>]+>/g,''):''}</div></a>
       <span class="stars" role="group" aria-label="優先度">${[1,2,3].map(k=>`<button class="ghost ${(x.stars||0)>=k?'on':''}" data-act="setStar" data-id="${x.id}" data-n="${k}" aria-label="星${k}つ">★</button>`).join('')}</span></div>`}).join('')||(g.regular?'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、ライブが決まっていないバンドを入れてください</div>':'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、このイベントに出るバンドを入れてください</div>')}</div>
-  <div class="adds"><button class="primary" data-act="gigAddBand" data-id="${g.id}">＋ バンドを追加</button></div></main>`}
+  <div class="adds"><button class="primary" data-act="gigAddBand" data-id="${g.id}">＋ バンドを追加</button></div>
+  ${g.regular?'':memoSec(g)}</main>`}
 function viewSetlist(){
   if(!R.a)return viewHome();
   const sl=S.setlists.find(x=>x.id===R.a);if(!sl){location.replace('#/');return ''}
@@ -1087,6 +1088,7 @@ function viewSetlist(){
       <div class="rowbtns"><button data-act="slRemove" data-i="${i}" title="この曲順から外す(曲は消えません)">外す</button></div></div>`).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
   <div class="adds"><button class="primary" data-act="newSongToSetlist">＋ 新しい曲</button>
     ${others.length?`<select data-change="addExisting"><option value="">既存の曲を追加…</option>${others.map(s=>`<option value="${s.id}">${esc(s.title)}</option>`).join('')}</select>`:''}</div>
+  ${(()=>{const bb=S.bands.find(x=>x.id===sl.bandId);return bb?memoSec(bb):''})()}
   </main>`}
 
 /* ---------- バンドのタブ ----------
@@ -1127,7 +1129,8 @@ function viewBand(){const b=S.bands.find(x=>x.id===R.a);if(!b){location.replace(
   <div class="list cards">${songs.map(s=>{const n=S.setlists.filter(x=>x.songIds.includes(s.id)).length;
     return `<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}${n?' ・ イベント'+n+'件':''}</div>${strip(s)}${tagChips(s)}</a>
     <div class="rowbtns"><button class="ghost" data-act="moveSong" data-id="${s.id}" title="この曲を別のバンドへ移す">移す</button><button data-act="delSong" data-id="${s.id}">削除</button></div></div>`}).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
-  <div class="adds"><button class="primary" data-act="newSong">＋ 新しい曲</button></div></main>`}
+  <div class="adds"><button class="primary" data-act="newSong">＋ 新しい曲</button></div>
+  ${memoSec(b)}</main>`}
 function viewSongs(){
   if(S.cur.band===NOBAND){const os=orphanSongs();if(os.length)return topbar('bands')+`<main><a class="back" href="#/bands">‹ バンド</a><h1>バンドなしの曲</h1>
     <p class="sub">バンドを消したときに残した曲です。「移す」でどれかのバンドに入れられます。</p>
@@ -1885,16 +1888,23 @@ function renderSheet(focus){
 }
 
 /* ---------- memo tab ---------- */
+function memoHost(){if(R.name==='block')return curBlock();
+  let o=null;if(R.name==='bands'&&R.a)o=S.bands.find(x=>x.id===R.a);else if(R.name==='setlist'&&R.a){const sl=S.setlists.find(x=>x.id===R.a);o=sl&&S.bands.find(x=>x.id===sl.bandId)}else if(R.name==='gig')o=gigById(R.a);
+  if(o&&!o.memos)o.memos=[];return o}
+const memoUrls=t=>[...new Set(String(t||'').match(/https?:\/\/[^\s<>"'「」]+/g)||[])];
+const memoLinks=t=>memoUrls(t).map(u=>{let n=u;try{const x=new URL(u);n=x.hostname.replace(/^www\./,'')+(x.pathname.length>1?x.pathname.slice(0,18)+(x.pathname.length>18?'…':''):'')}catch(e){}return `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)} ↗</a>`}).join('');
+// バンド・イベントのメモ欄(中身はブロックのメモと同じ)
+function memoSec(o){if(!o.memos)o.memos=[];return `<div class="sec">メモ${o.memos.length?' ('+o.memos.length+')':''}</div><div class="host-memo">${memoTab(o)}</div>`}
 function memoTab(bl){
   const photos=bl.memos.filter(m=>m.kind==='photo'),audios=bl.memos.filter(m=>m.kind==='audio'),texts=bl.memos.filter(m=>m.kind==='text');
   return `<div class="memobar"><button data-act="pickFiles">写真・音声ファイルを追加</button>
-    <button class="${rec?'rec':''}" data-act="rec">${rec?'■ 録音停止 <span id="recT">0:00</span>':'● このブロックに録音する'}</button>
+    <button class="${rec?'rec':''}" data-act="rec">${rec?'■ 録音停止 <span id="recT">0:00</span>':R.name==='block'?'● このブロックに録音する':'● 録音する'}</button>
     <button data-act="addText">テキスト</button><span class="sub">Ctrl+V で画像貼り付け・ファイルのドラッグ&ドロップもOK</span></div>
   <div class="drop" id="drop">
     ${photos.length?boardHTML(bl):''}
     ${audios.length?`<div class="sec">ボイスメモ</div>${audios.map(m=>`<div class="memo-item">🎙<input value="${esc(m.name)}" data-input="memoName" data-id="${m.id}"><audio controls preload="metadata" data-blob="${m.blobId}"></audio><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
-    ${texts.length?`<div class="sec">テキスト</div>${texts.map(m=>`<div class="memo-item"><textarea data-input="memoText" data-id="${m.id}" placeholder="例: 最後の小節だけ繰り返しじゃない！">${esc(m.text)}</textarea><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
-    ${bl.memos.length?'':'<div class="empty">手書きの採譜写真やボイスメモ、注意書きテキストなどをここにまとめて置けます</div>'}
+    ${texts.length?`<div class="sec">テキスト</div>${texts.map(m=>`<div class="memo-item memo-tx"><textarea data-input="memoText" data-id="${m.id}" placeholder="${R.name==='block'?'例: 最後の小節だけ繰り返しじゃない！':'例: 練習音源のリンク、集合時間など'}">${esc(m.text)}</textarea><div class="memo-btns"><button class="ghost" data-act="memoCopy" data-id="${m.id}">コピー</button><button class="ghost" data-act="delMemo" data-id="${m.id}" aria-label="削除">✕</button></div><div class="memo-links" id="ml-${m.id}">${memoLinks(m.text)}</div></div>`).join('')}`:''}
+    ${bl.memos.length?'':`<div class="empty">${R.name==='block'?'手書きの採譜写真やボイスメモ、注意書きテキストなどをここにまとめて置けます':'リンク、手書きメモの写真、ボイスメモ、テキストなどを置けます'}</div>`}
   </div>`}
 // 写真ボード: 幅1000の仮想キャンバスに写真を自由に置く。表示は画面幅×拡大率で縮尺する
 let BZ=1;
@@ -1906,7 +1916,7 @@ function boardHTML(bl){const photos=bl.memos.filter(m=>m.kind==='photo');
     <img data-blob="${m.blobId}" draggable="false" alt=""><input class="bp-cap" value="${esc(m.name||'')}" data-input="memoName" data-id="${m.id}" placeholder="説明">
     <span class="bp-rs">◢</span><button class="bp-del" data-act="delMemo" data-id="${m.id}" title="削除">✕</button></div>`).join('')}</div></div></div>`}
 function boardH(bl){return Math.max(700,...bl.memos.filter(m=>m.kind==='photo').map(m=>m.y+(m.h||m.w*0.75)+60))}
-function layoutBoard(){const w=$('#boardWrap'),b=$('#board'),sz=$('#boardSizer'),bl=curBlock();if(!w||!b||!bl)return;
+function layoutBoard(){const w=$('#boardWrap'),b=$('#board'),sz=$('#boardSizer'),bl=memoHost();if(!w||!b||!bl)return;
   const k=w.clientWidth/1000*BZ,H=boardH(bl);b.style.height=H+'px';b.style.transform=`scale(${k})`;sz.style.width=1000*k+'px';sz.style.height=H*k+'px';
   const z=$('#bzv');if(z)z.textContent=Math.round(BZ*100)+'%';
   b.querySelectorAll('.bp img').forEach(img=>{const m=findMemo(img.closest('.bp').dataset.mid).m;
@@ -1935,20 +1945,21 @@ document.addEventListener('wheel',e=>{if(!e.ctrlKey||!(e.target.closest&&e.targe
 window.addEventListener('resize',()=>layoutBoard());
 const stamp=()=>{const d=new Date();return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`};
 async function addMemoBlob(bl,kind,blob,name){const id=uid();await putBlob(id,blob);bl.memos.push({id:uid(),kind,blobId:id,name,ts:Date.now()});save()}
-async function handleFiles(files){const bl=curBlock();if(!bl)return;let n=0;
+async function handleFiles(files){const bl=memoHost();if(!bl)return;let n=0;
   for(const f of files){if(f.type.startsWith('image/')){await addMemoBlob(bl,'photo',f,f.name&&f.name!=='image.png'?f.name.replace(/\.\w+$/,''):'');n++}
     else if(f.type.startsWith('audio/')||f.type.startsWith('video/')){await addMemoBlob(bl,'audio',f,f.name.replace(/\.\w+$/,''));n++}}
   if(!n)toast('画像か音声ファイルを選んでください');
-  if(R.c!=='memo')location.hash=`#/block/${R.a}/${R.b}/memo`;else render()}
+  if(R.name==='block'&&R.c!=='memo')location.hash=`#/block/${R.a}/${R.b}/memo`;else render()}
 async function toggleRec(){
   if(rec){rec.mr.stop();return}
   try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const mr=new MediaRecorder(stream);const chunks=[];
     mr.ondataavailable=e=>chunks.push(e.data);
     mr.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());clearInterval(rec.timer);const bl=rec.block;rec=null;
       await addMemoBlob(bl,'audio',new Blob(chunks,{type:mr.mimeType||'audio/webm'}),'録音 '+stamp());render()};
-    mr.start();rec={mr,block:curBlock(),t0:Date.now(),timer:setInterval(()=>{const e=$('#recT');if(e){const s=Math.floor((Date.now()-rec.t0)/1000);e.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}},250)};render()}
+    mr.start();rec={mr,block:memoHost(),t0:Date.now(),timer:setInterval(()=>{const e=$('#recT');if(e){const s=Math.floor((Date.now()-rec.t0)/1000);e.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}},250)};render()}
   catch(err){alert('マイクを使えませんでした。ブラウザのマイク許可を確認してください。\n'+err.message)}}
-function findMemo(id){for(const s of S.songs)for(const b of s.blocks){const m=b.memos.find(m=>m.id===id);if(m)return {m,b}}return {}}
+function findMemo(id){for(const s of S.songs)for(const b of s.blocks){const m=b.memos.find(m=>m.id===id);if(m)return {m,b}}
+  for(const b of [...S.bands,...S.gigs]){const m=(b.memos||[]).find(m=>m.id===id);if(m)return {m,b}}return {}}
 
 /* ---------- print / PDF ---------- */
 function viewPrint(){
@@ -2361,7 +2372,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2576,7 +2587,7 @@ const ACT={
   renameGig(t){const g=gigById(t.dataset.id);nameModal('イベントの名前を変更','<b>ライブや企画の名前</b>をつけておくと探しやすいです。',['「11月定例ライブ」「OBライブ」'],g.name,n=>{g.name=n;gigSets(g).forEach(x=>x.name=n);render()})},
   delGig(t){const g=gigById(t.dataset.id);if(!g||g.regular)return;const n=gigSets(g).length;
     if(!confirm(`イベント「${g.name}」を削除しますか？`+(n?`\n出るバンド${n}組の曲順と予定も消えます(曲そのものは残ります)`:'')))return;
-    S.setlists=S.setlists.filter(x=>x.gigId!==g.id);S.gigs=S.gigs.filter(x=>x!==g);location.hash='#/';render()},
+    (g.memos||[]).forEach(m=>{if(m.blobId)delBlob(m.blobId)});S.setlists=S.setlists.filter(x=>x.gigId!==g.id);S.gigs=S.gigs.filter(x=>x!==g);location.hash='#/';render()},
   gigAddBand(t){const g=gigById(t.dataset.id);const has=gigSets(g).map(x=>x.bandId);
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
     <div class="hstack"><b>${g.regular?`「${esc(g.name)}」のバンド`:`「${esc(g.name)}」に出るバンド`}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
@@ -2894,7 +2905,9 @@ const ACT={
   bMark(t){const b=curSong().blocks.find(x=>x.id===t.dataset.id);b.start=Math.round(M.time()*10)/10;save();render();toast(`「${b.name}」の頭を ${fmtT(b.start)} にしました`)},
   pickFiles(){pickMode='memo';const f=$('#filePick');f.accept='image/*,audio/*,video/*';f.value='';f.click()},
   rec:toggleRec,
-  addText(){curBlock().memos.push({id:uid(),kind:'text',text:'',ts:Date.now()});render();const a=document.querySelectorAll('textarea');a[a.length-1]?.focus()},
+  addText(){memoHost().memos.push({id:uid(),kind:'text',text:'',ts:Date.now()});render();const a=document.querySelectorAll('textarea');a[a.length-1]?.focus()},
+  memoCopy(t){const m=findMemo(t.dataset.id).m;if(!m||!m.text)return toast('テキストが空です');
+    (navigator.clipboard?navigator.clipboard.writeText(m.text):Promise.reject()).then(()=>toast('コピーしました'),()=>{const a=t.closest('.memo-item').querySelector('textarea');a.select();document.execCommand('copy');toast('コピーしました')})},
   delMemo(t){const {m,b}=findMemo(t.dataset.id);if(!m||!confirm('このメモを削除しますか？'))return;if(m.blobId)delBlob(m.blobId);b.memos=b.memos.filter(x=>x!==m);render()},
   async lb(t){$('#overlay').innerHTML=`<div class="lb" data-act="lbClose"><img src="${await blobURL(t.dataset.id)}" data-act="lbZoom"></div><button class="lbx" data-act="lbClose">✕</button>`},
   lbZoom(t,e){e.stopPropagation();t.parentElement.classList.toggle('zoom')},
@@ -2977,7 +2990,7 @@ const INP={
   mVol(t){S.prefs.mVol=+t.value},
   aVol(t){S.prefs.aVol=+t.value;applyAVol()},
   memoName(t){findMemo(t.dataset.id).m.name=t.value},
-  memoText(t){findMemo(t.dataset.id).m.text=t.value},
+  memoText(t){findMemo(t.dataset.id).m.text=t.value;const l=$('#ml-'+t.dataset.id);if(l)l.innerHTML=memoLinks(t.value)},
   bandName(t){band().name=t.value},
   bandNameId(t){const b=S.bands.find(x=>x.id===t.dataset.id);if(b)b.name=t.value},
   gigNameId(t){const g=gigById(t.dataset.id);if(!g)return;g.name=t.value;gigSets(g).forEach(x=>x.name=t.value)},
@@ -3044,7 +3057,7 @@ document.addEventListener('drop',e=>{
 document.addEventListener('dragend',()=>{drag=null;document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'))});
 window.addEventListener('dragover',e=>{if(!drag)e.preventDefault()});
 window.addEventListener('drop',e=>{if(!drag)e.preventDefault()});
-document.addEventListener('paste',e=>{if(R.name!=='block'||/INPUT|TEXTAREA/.test(e.target.tagName))return;
+document.addEventListener('paste',e=>{if(!(R.name==='block'||$('.host-memo'))||/INPUT|TEXTAREA/.test(e.target.tagName))return;
   const files=[...e.clipboardData.files];if(files.length){e.preventDefault();handleFiles(files)}});
 $('#filePick').addEventListener('change',e=>{const fs=[...e.target.files];if(pickMode==='midi')loadMidi(fs[0]);else if(pickMode==='song')setSongAudio(curSong(),fs[0]);else handleFiles(fs)});
 $('#importPick').addEventListener('change',e=>{if(e.target.files[0])doImport(e.target.files[0])});
