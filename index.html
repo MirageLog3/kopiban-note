@@ -1868,15 +1868,22 @@ function fromKanji(s){const len=((s.charCodeAt(0)-KB)<<14)|(s.charCodeAt(1)-KB),
   for(let i=2;i<s.length&&j<len;i++){acc=(acc<<14)|(s.charCodeAt(i)-KB);bits+=14;while(bits>=8&&j<len){bits-=8;out[j++]=(acc>>bits)&255}acc&=(1<<bits)-1}return out}
 async function packData(d){return b64u(await packBytes(d))}
 const packSong=s=>packData([2,songArr(s)]);
+/* 共有の目印: 曲・バンド・セトリに、最初に作った人の端末でのidを「oid」として持たせて送る。
+   受け取った側は、2回目以降に同じ目印のものが届いたら、同じバンドに入れて、同じ曲は更新できるようにする */
+const oidOf=x=>x.oid||x.id;
+const evArr=e=>trimA([e.type==='live'?1:0,U(e.date),U(e.start),U(e.end),U(e.place)]);
+const arrEv=a=>({type:a[0]===1?'live':'studio',date:a[1]||'',start:a[2]||'',end:a[3]||'',place:a[4]||''});
 async function unpackShared(code){
   code=code.trim().replace(/^.*#\/import\//,'');try{code=decodeURIComponent(code)}catch(_){}code=code.replace(/\s+/g,'');
   const bytes=code.charCodeAt(0)>=KB?fromKanji(code):Uint8Array.from(atob(code.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
   const ds=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   const d=JSON.parse(await new Response(ds).text());
-  if(Array.isArray(d)&&d[0]===2)return {songs:[arrSong(d[1])]};
+  if(Array.isArray(d)&&d[0]===2){const m=d[2]||[];return {songs:[arrSong(d[1])],oids:m[0]?[m[0]]:[],bandOid:m[1]||null,bandName:m[2]||null}}
+  if(Array.isArray(d)&&d[0]===4)return {band:{name:d[1]||'共有されたバンド',oid:d[2]},songs:(d[3]||[]).map(arrSong),oids:d[4]||[],
+    setlists:(d[5]||[]).map(x=>({name:x[0]||'イベント',regular:!!x[1],events:(x[2]||[]).map(arrEv),idx:x[3]||[],oid:x[4]||null}))};
   if(Array.isArray(d)&&d[0]===3){const x=d[2];
     const events=!x?[]:Array.isArray(x)?x.map(a=>({type:a[0]===1?'live':'studio',date:a[1]||'',start:a[2]||'',end:a[3]||'',place:a[4]||''})):[{type:'studio',date:x.d||'',start:x.s||'',end:x.e||'',place:x.p||''}];
-    return {setlist:d[1]||'共有セトリ',events,songs:(d[3]||[]).map(arrSong)}}
+    const m=d[4]||[];return {setlist:d[1]||'共有セトリ',events,songs:(d[3]||[]).map(arrSong),bandOid:m[0]||null,bandName:m[1]||null,oids:m[2]||[],slOid:m[3]||null}}
   if(d&&d.v===1&&Array.isArray(d.b))return {songs:[d]};
   if(d&&d.v===1&&Array.isArray(d.songs))return {setlist:d.sl||'共有セトリ',songs:d.songs,events:d.st?[{type:'studio',date:d.st.d||'',start:d.st.s||'',end:d.st.e||'',place:d.st.p||''}]:[]};
   throw new Error('形式が違います')}
@@ -1900,8 +1907,13 @@ async function openShare(kind){
     if(!songs.length)return toast('セトリに曲がありません');const gnm=gigOf(sl).name;title=`セトリ「${gnm} ${bandNameOf(sl.bandId)}」(${songs.length}曲)`;
     // 予定は [種類(0=スタジオ 1=本番), 日付, 開始, 終了, 場所] の並びで入れる。終わった予定は送らない
     const evs=slAllEvents(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));hasSt=evs.length>0;withSt=hasSt&&S.prefs.shareStudio!==false;
-    var bytes=await packBytes(trimA([3,gnm,withSt?evs.map(e=>trimA([e.type==='live'?1:0,U(e.date),U(e.start),U(e.end),U(e.place)])):null,songs.map(songArr)]))}
-  else{const s=curSong();title=`「${s.title}」`;var bytes=await packBytes([2,songArr(s)])}
+    const sb=S.bands.find(x=>x.id===sl.bandId);var bytes=await packBytes(trimA([3,gnm,withSt?evs.map(evArr):null,songs.map(songArr),[sb?oidOf(sb):null,sb?sb.name:null,songs.map(oidOf),oidOf(sl)]]))}
+  else if(kind==='band'){const b=band(),songs=S.songs.filter(s=>s.bandId===b.id),sls=S.setlists.filter(x=>x.bandId===b.id);
+    if(!songs.length)return toast('このバンドには曲がありません');title=`バンド「${b.name}」(${songs.length}曲)`;
+    var bytes=await packBytes([4,b.name,oidOf(b),songs.map(songArr),songs.map(oidOf),sls.map(sl=>{const g=gigOf(sl);
+      const evs=slAllEvents(sl).filter(e=>(e.date||e.start||e.place)&&!(e.date&&e.date<todayStr()));
+      return trimA([g.name,g.regular?1:0,U(evs.map(evArr)),sl.songIds.map(id=>songs.findIndex(s=>s.id===id)).filter(i=>i>=0),oidOf(sl)])})])}
+  else{const s=curSong(),b=S.bands.find(x=>x.id===s.bandId);title=`「${s.title}」`;var bytes=await packBytes([2,songArr(s),[oidOf(s),b?oidOf(b):null,b?b.name:null]])}
   code=b64u(bytes);const link=shareBase()+'#/import/'+code;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>${esc(title)}を共有</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
@@ -1931,19 +1943,35 @@ function viewImport(){
 let impTab='map';
 async function fillImport(){
   const el=$('#impBody');if(!el)return;
-  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromSharedFull(x,band().id));PENDING={setlist:d.setlist,songs,events:(d.events||[]).map(e=>Object.assign({id:uid()},e))};
-    const isSl=!!d.setlist;
+  try{const d=await unpackShared(R.name==='s'?await fetchShort(R.a):R.a);const songs=d.songs.map(x=>songFromSharedFull(x,band().id));PENDING={setlist:d.setlist,songs,events:(d.events||[]).map(e=>Object.assign({id:uid()},e)),oids:d.oids||[],bandOid:d.bandOid,bandName:d.bandName,slOid:d.slOid,band:d.band,setlists:d.setlists};
+    const isSl=!!d.setlist,isBand=!!d.band,what=isBand?'バンド':isSl?'セトリ':'曲';
+    // 前に受け取ったバンド・曲があるか(目印で探す)
+    const ob=isBand?d.band.oid:d.bandOid,tb=ob&&S.bands.find(x=>x.oid===ob||x.id===ob);
+    const same=(d.oids||[]).filter(o=>o&&S.songs.some(x=>x.oid===o||x.id===o)).length;
+    const tbName=tb?tb.name:isBand?d.band.name+'(新しく作ります)':band().name;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
-    const toc=isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
-    el.innerHTML=`<div class="card noprint"><b>共有された${isSl?'セトリ':'曲'}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${isSl?'セトリ':'曲'}に追加」すると、${SY.meta.on?'あなたのアプリとGoogleドライブに':'あなたの端末だけに'}コピーが保存されます。編集しても共有した人には反映されません。</p>
+    const toc=isBand?`<div class="card noprint"><b>バンド「${esc(d.band.name)}」</b> <span class="sub">${songs.length}曲</span>${(d.setlists||[]).map(x=>`<div style="margin-top:6px">${esc(x.regular?'普段の練習':x.name)} <span class="sub">${x.idx.length}曲</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
+    el.innerHTML=`<div class="card noprint"><b>共有された${what}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。「自分の${what}に追加」すると、${SY.meta.on?'あなたのアプリとGoogleドライブに':'あなたの端末だけに'}コピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
-      <span class="sub">追加先バンド: ${esc(band().name)}</span>
-      ${!isSl&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
-      <button class="primary" data-act="doImportSong">自分の${isSl?'セトリ':'曲'}に追加</button></div>
+      <span class="sub">追加先バンド: ${esc(tbName)}${tb?'(前に受け取ったバンド)':''}</span>
+      ${!isSl&&!isBand&&!same&&!tb&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> セトリ「${esc(curSetlist().name)}」にも入れる</label>`:''}
+      <button class="primary" data-act="doImportSong">自分の${what}に${same?'追加・更新':'追加'}</button></div>
+    ${same?`<div class="impcode"><b>前に受け取った曲の新しい版が${same}曲あります</b>
+      <label class="hstack" style="margin-top:6px;font-size:14px"><input type="radio" name="impMode" value="update" checked> 新しい版に更新する<span class="sub">(写真・録音・自分のテキストメモは残します)</span></label>
+      <label class="hstack" style="margin-top:4px;font-size:14px"><input type="radio" name="impMode" value="add"> 別の曲として追加する</label></div>`:''}
     ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'':impAppHTML()}</div>${toc}${body}`;measureMaps()}
   catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
 let PENDING=null;
+/* 前に受け取った曲を新しい版にする。曲のidとバンドは変えない。写真・録音のメモと、自分で書いたテキストメモは、同じ位置・同じ種類のブロックに残す。
+   更新の前の曲は、この端末の中に控えとして残す */
+function impUpdateSong(ex,s){try{idb('kv','readwrite',st=>st.put({at:Date.now(),song:JSON.parse(JSON.stringify(ex))},'impPrev:'+ex.id))}catch(e){}
+  const old=ex.blocks;
+  s.blocks.forEach((b,i)=>{const o=old[i]&&old[i].type===b.type?old[i]:old.find(x=>x.type===b.type&&x.name===b.name);if(!o)return;
+    const txt=new Set(b.memos.filter(m=>m.kind==='text').map(m=>m.text));b.memos=b.memos.concat((o.memos||[]).filter(m=>m.kind!=='text'||!txt.has(m.text)))});
+  const anchorIdx=s.mAnchor?s.blocks.findIndex(b=>b.id===s.mAnchor):-1;
+  Object.assign(ex,{title:s.title,bpm:s.bpm,meter:s.meter,key:s.key,url:s.url,blocks:s.blocks});
+  if('mSync' in s)Object.assign(ex,{mSync:s.mSync,mOffset:s.mOffset,mSub:s.mSub});if(anchorIdx>=0)ex.mAnchor=s.blocks[anchorIdx].id}
 // ホーム画面のアプリで使っている人への案内。Googleで同期していれば、ここで追加したものがドライブを通してアプリにも入る
 function impAppHTML(){const code=`<div class="hstack"><input id="impShow" readonly value="${esc(R.name==='s'?R.a:location.href)}" style="flex:1"><button data-act="copy" data-t="impShow">コピー</button></div>`;
   if(GCLIENT&&SY.meta.on)return `<div class="impcode"><b>ホーム画面のアプリにも入ります</b>
@@ -2027,7 +2055,7 @@ const TOUR=[
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cpOpen]',adv:1,kw:'コピー 貼り付け 2番 複製',h:'コピペ',t:'「コピペ」で、マス1つ・何小節か・ブロック全部のコードをコピーして、ほかの場所に貼り付けられます。別のブロックや別の曲にも貼れるので、2番やくり返しの部分を書くときに便利です。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',kw:'アンドゥ 取り消し 間違えた',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
-  {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 送る メンバー',h:'セトリごと共有',t:'右の「⋯」の「セトリを共有」で、曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。',need:hasSl},
+  {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 送る メンバー',h:'セトリごと共有',t:'右の「⋯」の「セトリを共有」で、曲順やスタジオ・本番の予定もまとめて、セトリごとメンバーに共有できます。同じ「⋯」の「バンドごと共有」なら、そのバンドの曲とセトリをまとめて渡せます。前に受け取ったバンドの曲がもう一度届いたときは、同じバンドに入って、新しい版に更新できます(写真・録音・自分のメモは残ります)。',need:hasSl},
   {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示方法の切り替え、バックアップもこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。写真と録音は、それぞれの端末にだけ残ります。'},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
@@ -2152,7 +2180,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['バンドごと共有を追加(セトリの「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2312,7 +2340,7 @@ const ACT={
   goBlock:t=>location.hash=`#/block/${R.a}/${t.dataset.id}`,
   newSetlist,newBand,
   // ⋯ の下に出す小さいメニュー
-  slMore(t){popMenu(t,[['renameBand','バンドの名前を変更'],['shareSetlist','セトリを共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
+  slMore(t){popMenu(t,[['renameBand','バンドの名前を変更'],['shareSetlist','セトリを共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
   gigMore(t){const g=gigById(t.dataset.id);popMenu(t,`<button data-act="popDo" data-v="renameGig" data-id="${g.id}">名前を変更</button>`+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
   newGig,
   // バンドの名前を変える。どの画面から呼んでも、いま見ているバンド(セトリのバンド → 曲一覧のバンド)の名前を変える
@@ -2585,13 +2613,31 @@ const ACT={
     try{const u=await isgd(i.value);i.value=u;$('#shLen').textContent='('+u.length+'文字)';$('#shNote').textContent='短くしました。このリンクを開くと元の共有ページに飛びます。';t.textContent='✓ 短縮済み'}
     catch(e){t.disabled=false;t.textContent='短くする';toast('短縮できませんでした: '+e.message)}},
   shareSetlist:()=>openShare('setlist'),
+  shareBand:()=>openShare('band'),
   impTab(t){impTab=t.dataset.v;fillImport()},
   async copy(t){const i=$('#'+t.dataset.t);i.select();try{await navigator.clipboard.writeText(i.value)}catch(e){document.execCommand('copy')}toast('コピーしました')},
-  doImportSong(){const p=PENDING;if(!p)return;S.songs.push(...p.songs);ensureMarkers(p.songs.flatMap(s=>s.blocks.flatMap(b=>b.tags)));PENDING=null;
-    if(p.setlist){const evs=p.events||[],g={id:uid(),name:p.setlist,events:evs.filter(e=>e.type==='live')};S.gigs.push(g);
-      const sl={id:uid(),bandId:band().id,gigId:g.id,name:p.setlist,songIds:p.songs.map(s=>s.id),events:evs.filter(e=>e.type!=='live')};S.setlists.push(sl);S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
-    else{const s=p.songs[0];const c=$('#impSl');if(c&&c.checked&&curSetlist())curSetlist().songIds.push(s.id);save();location.hash='#/song/'+s.id}
-    if(SY.meta.on){clearTimeout(SY.t);setTimeout(()=>syncPush(true),300);toast('追加しました。Googleドライブにも保存します')}else toast('追加しました')},
+  doImportSong(){const p=PENDING;if(!p)return;const mode=(document.querySelector('input[name=impMode]:checked')||{}).value||'update';
+    // 入れるバンド: 前に受け取ったバンドがあればそこ。バンドごとの共有で初めてなら新しく作る
+    let bid=band().id;const ob=p.band?p.band.oid:p.bandOid;let tb=ob&&S.bands.find(x=>x.oid===ob||x.id===ob);
+    if(!tb&&p.band){tb={id:uid(),name:p.band.name,oid:ob};S.bands.push(tb)}if(tb)bid=tb.id;
+    const idMap={},added=[],updated=[];
+    p.songs.forEach((s,i)=>{const o=p.oids[i],ex=o&&S.songs.find(x=>x.oid===o||x.id===o);
+      if(ex&&mode==='update'){impUpdateSong(ex,s);idMap[i]=ex.id;updated.push(ex)}else{s.bandId=bid;if(o&&!ex)s.oid=o;S.songs.push(s);idMap[i]=s.id;added.push(s)}});
+    ensureMarkers(p.songs.flatMap(s=>s.blocks.flatMap(b=>b.tags)));PENDING=null;
+    const msg=`${added.length?added.length+'曲を追加':''}${added.length&&updated.length?'、':''}${updated.length?updated.length+'曲を更新':''}しました`;
+    if(p.band){S.cur.band=bid;
+      (p.setlists||[]).forEach(x=>{const ids=x.idx.map(i=>idMap[i]).filter(Boolean);let sl=x.oid&&S.setlists.find(y=>y.oid===x.oid||y.id===x.oid);
+        if(sl){sl.songIds=ids;return}let g;
+        if(x.regular)g=S.gigs.find(y=>y.regular);else{g={id:uid(),name:x.name,events:x.events.filter(e=>e.type==='live').map(e=>Object.assign({id:uid()},e))};S.gigs.push(g)}
+        S.setlists.push({id:uid(),bandId:bid,gigId:g.id,name:g.name,songIds:ids,events:x.events.filter(e=>x.regular||e.type!=='live').map(e=>Object.assign({id:uid()},e)),oid:x.oid||undefined})});
+      save();location.hash='#/'}
+    else if(p.setlist){const evs=p.events||[];let sl=p.slOid&&S.setlists.find(y=>y.oid===p.slOid||y.id===p.slOid);
+      if(sl){sl.songIds=p.songs.map((_,i)=>idMap[i]);if(evs.length)sl.events=evs.filter(e=>e.type!=='live')}
+      else{const g={id:uid(),name:p.setlist,events:evs.filter(e=>e.type==='live')};S.gigs.push(g);
+        sl={id:uid(),bandId:bid,gigId:g.id,name:p.setlist,songIds:p.songs.map((_,i)=>idMap[i]),events:evs.filter(e=>e.type!=='live'),oid:p.slOid||undefined};S.setlists.push(sl)}
+      S.cur.setlist=sl.id;save();location.hash='#/setlist/'+sl.id}
+    else{const id=idMap[0];const c=$('#impSl');if(added.length&&c&&c.checked&&curSetlist())curSetlist().songIds.push(id);save();location.hash='#/song/'+id}
+    if(SY.meta.on){clearTimeout(SY.t);setTimeout(()=>syncPush(true),300);toast(msg+'。Googleドライブにも保存します')}else toast(msg)},
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
