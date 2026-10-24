@@ -917,7 +917,7 @@ function buildIcs(ev,uidv){const e=s=>String(s).replace(/\\/g,'\\\\').replace(/\
     ...alarm('-P1D'),...(ev.allDay?[]:alarm('-PT1H')),'END:VEVENT','END:VCALENDAR'].filter(Boolean).join('\r\n')}
 function liveSum(g){const e=evSorted(g).filter(x=>x.type==='live').find(x=>x.date&&x.date>=todayStr())||evSorted(g).find(x=>x.date);return e?studioSum(e):''}
 function gigCard(g){const sets=gigSets(g),d=gigDate(g);
-  return `<div class="card gig ${g.regular?'':'studio live'}"><a class="ghd" href="#/gig/${g.id}"><span class="gn">${esc(g.name)}</span>${g.regular?'<span class="gd">日付のない練習</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
+  return `<div class="card gig ${g.regular?'':'studio live'}"><a class="ghd" href="#/gig/${g.id}"><span class="gn">${esc(g.name)}</span>${g.regular?'<span class="gd">ライブの予定がないバンド</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
   <div class="gbands">${sets.map(x=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
     return `<a class="gband" href="#/setlist/${x.id}">${esc(bandNameOf(x.bandId))}<span class="sub">${n}曲${nx?' ・ 次のスタジオ '+nx.date.slice(5).replace('-','/'):''}</span></a>`}).join('')||`<div class="gempty">まだバンドがありません</div>`}</div></div>`}
 // Googleにログインしていない人に、自動バックアップを一度だけ勧める(「今はしない」で消える。強制はしない)
@@ -931,10 +931,10 @@ function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   const sets=gigSets(g);
   return topbar('setlist')+`<main><a class="back" href="#/">‹ イベント一覧</a>
   <div class="slhead"><h1>${esc(g.name)}</h1><button class="ghost slmore" data-act="gigMore" data-id="${g.id}" title="名前の変更・削除" aria-label="イベントのメニュー">⋯</button></div>
-  ${g.regular?'<p class="sub gigsub">オリジナルバンドの普段のスタジオなど、ライブの日付がない練習をまとめる場所です。</p>':evSection(g,'live')}
-  <div class="sec">出るバンド (${sets.length})</div>
+  ${g.regular?'<p class="sub gigsub">ライブが決まっていないバンドの、曲とスタジオ練習をまとめる場所です。</p>':evSection(g,'live')}
+  <div class="sec">${g.regular?'バンド':'出るバンド'} (${sets.length})</div>
   <div class="list">${sets.map(x=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
-    return `<div class="row"><a class="body" href="#/setlist/${x.id}"><div class="title">${esc(bandNameOf(x.bandId))}</div><div class="sub">${n}曲${nx?' ・ 次のスタジオ '+studioSum(nx).replace(/<[^>]+>/g,''):''}</div></a><span class="sub">›</span></div>`}).join('')||'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、このイベントに出るバンドを入れてください</div>'}</div>
+    return `<div class="row"><a class="body" href="#/setlist/${x.id}"><div class="title">${esc(bandNameOf(x.bandId))}</div><div class="sub">${n}曲${nx?' ・ 次のスタジオ '+studioSum(nx).replace(/<[^>]+>/g,''):''}</div></a><span class="sub">›</span></div>`}).join('')||(g.regular?'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、ライブが決まっていないバンドを入れてください</div>':'<div class="empty">まだバンドがありません。「＋ バンドを追加」で、このイベントに出るバンドを入れてください</div>')}</div>
   <div class="adds"><button class="primary" data-act="gigAddBand" data-id="${g.id}">＋ バンドを追加</button></div></main>`}
 function viewSetlist(){
   if(!R.a)return viewHome();
@@ -2313,7 +2313,7 @@ const ACT={
     S.setlists=S.setlists.filter(x=>x.gigId!==g.id);S.gigs=S.gigs.filter(x=>x!==g);location.hash='#/';render()},
   gigAddBand(t){const g=gigById(t.dataset.id);const has=gigSets(g).map(x=>x.bandId);
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
-    <div class="hstack"><b>「${esc(g.name)}」に出るバンド</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+    <div class="hstack"><b>${g.regular?`「${esc(g.name)}」のバンド`:`「${esc(g.name)}」に出るバンド`}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
     <p class="note" style="margin:6px 0 4px">前からあるバンドを選ぶと、そのバンドの曲をこのイベントでも使えます。コピバンなど新しく組むバンドは「＋ 新しいバンドを作る」で。</p>${bandPickHTML('バンド',S.bands.find(b=>!has.includes(b.id))?S.bands.find(b=>!has.includes(b.id)).id:'__new')}
     <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="gigAddOk" data-id="${g.id}">追加</button></div></div>`},
   gigAddOk(t){const g=gigById(t.dataset.id),bs=$('#nmBand'),bn=(($('#nmBandNew')||{}).value||'').trim();if(!bs)return;if(bs.value==='__new'&&!bn)return toast('新しいバンドの名前を入れてください');
