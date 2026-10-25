@@ -672,7 +672,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 21:57';
+const APP_VER='10/25 21:58';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -994,7 +994,7 @@ const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','コードを入れる'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
   ['sync','cloud','Googleで自動バックアップ・同期'],['app','phone','スマホでアプリとして使う'],['tips','bulb','使い方のコツ'],['support','heart','開発を応援する']];
 // 開発者への応援(投げ銭)はOFUSEのページを別タブで開くだけ。アプリの機能は何も変わらない
-const SUPPORT_URL='https://ofuse.me/miragelog3';
+const SUPPORT_URL='https://ofuse.me/miragelog3/letter';
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
   <div class="mline"><span>コードの表示</span><span class="mseg">${[['abc','C D E'],['doremi','ドレミ'],['degree','ディグリー']].map(([v,l])=>`<button class="${codeView()===v?'on':''}" data-act="menuCode" data-v="${v}">${l}</button>`).join('')}</span></div></div>`}
