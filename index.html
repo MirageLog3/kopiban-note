@@ -698,7 +698,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 23:07';
+const APP_VER='10/25 23:15';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2579,7 +2579,9 @@ function firstTourRest(orig){const home=()=> '#/events',st=[];
     {r:tSong,lv:2,sel:'#songInfo',h:'曲の画面',t:'曲の画面です。いちばん上でテンポ・拍子・キーを入れます。メトロノームはこのテンポと拍子で鳴ります。',need:tourSong},
     {r:tSong,lv:2,sel:'#songAudio',h:'音源',t:'ここに音源を入れます。YouTubeやGoogleドライブのリンク、音源ファイルを入れると、画面のいちばん下の再生バーで聴けます。',need:tourSong},
     {r:tSong,lv:2,sel:'main .list .row:has(a.body[href^="#/block/"])',h:'ブロックを開く',t:'その下が曲の構成です。イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。光っているブロックを押してみましょう。',tap:'main .list .row a.body[href^="#/block/"]',need:tourBlock},
-    {r:tBlk,lv:3,whole:true,sel:'main',h:'ブロックの画面',t:'ブロックの画面です。ここにコードやメモ、キメなどの目印を書き込んでいきます。',need:tourBlock,before:tNoCell});
+    {r:tBlk,lv:3,whole:true,sel:'main',h:'ブロックの画面',t:'ブロックの画面です。ここにコードやメモ、キメなどの目印を書き込んでいきます。',need:tourBlock,before:tNoCell},
+    {r:tBlk,lv:3,sel:'#grid .bar',h:'小節とマス',t:'下のボックス1つが1小節です。中の1マスは8分音符1つ分で、4/4拍子なら1小節に8マスあります。マスを押すとコードを書けて、空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
+    {r:tSong,lv:2,sel:'.lyr-open',h:'歌詞',t:'曲の画面の「歌詞をまとめて入れる」に歌詞の全文を貼り付けると、行ごとにブロックへ割り振れます。入れた歌詞は小節の下に出て、「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong});
   const hs=TOUR.find(s=>s.notApp);if(hs&&!IS_APP())st.push({...hs,t:hs.tt||hs.t,r:()=>location.hash||'#/',h:'ホーム画面に追加'});
   st.push({r:()=>location.hash||'#/',sel:'.menubtn',h:'このアプリではこんなことができます！',t:'気になるものを押すと、その使い方が開きます。あとから「☰ メニュー → 使い方を見る」でも見られます。',feats:1});
   return st.filter(s=>!s.need||s.need())}
