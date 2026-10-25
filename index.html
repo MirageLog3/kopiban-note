@@ -491,9 +491,9 @@ body.has-player #sheet .sheet{bottom:54px}
 .slpick{display:flex;align-items:center;gap:8px;min-width:0;background:none;border:none;box-shadow:none!important;padding:4px 0;font-size:24px;font-weight:700;color:var(--text);text-align:left}
 .slpick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.slpick i{font-style:normal;font-size:15px;color:var(--sub);flex:none}
 .tmap{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:12px;margin:0 0 6px}.tmap span{padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--sub)}.tmap span.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}.tmap i{color:var(--sub);font-style:normal}
-.tmapf{margin:8px 0 2px}.tnest{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:5px 8px;margin-top:5px;font-size:13px;line-height:1.4}.tnest b{margin-right:6px}.tnest .sub{font-size:12px}.tmapf>.tnest{margin-top:0}
+.tmapf{margin:10px 0 2px;padding:10px 12px;border-radius:10px;background:var(--panel2,var(--bg));display:grid;gap:6px}.tm-row{display:flex;align-items:baseline;gap:6px;font-size:14px;line-height:1.3;white-space:nowrap}.tm-row i{font-style:normal;color:var(--sub)}.tm-row b{flex:none}.tm-row .sub{font-size:12px;overflow:hidden;text-overflow:ellipsis}
 .tap-hint{font-size:13px;color:var(--accent);font-weight:700;align-self:center}
-.tour-ask{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.tour-ask .hstack{justify-content:flex-end}
+.tour-ask{margin-top:12px}.tour-bub .hstack:has(+ .tour-ask){display:none}.tut-step:has(.tour-skip){display:flex;align-items:center}.tour-skip{margin-left:auto;padding:2px 8px;font-size:13px;color:var(--sub)}.tour-ask .hstack{justify-content:flex-end}
 .slmore{margin-left:auto;font-size:22px;line-height:1;padding:6px 12px;flex:none}
 .pop-bg{position:fixed;inset:0;z-index:40}
 .popmenu{position:fixed;z-index:41;min-width:210px;max-width:92vw;max-height:60dvh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 10px 30px var(--shadow)}
@@ -668,7 +668,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 19:28';
+const APP_VER='10/25 19:32';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2344,7 +2344,7 @@ const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.sta
 // core: 初めて開いたときの案内(曲を開いてコードを1つ入れるまで)。それ以外は「使い方を見る」だけに出る
 // g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない  grp: 目次での見出し(なければ画面から決める)
 const TOUR=[
-  {core:1,r:()=> '#/',sel:null,h:'ようこそ！',map:1,tt:'バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数)をまとめるノートです。中身は、外から順にこんな入れ子になっています。',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。',ask:'自分たちの曲をやるオリジナルバンドはある？'},
+  {core:1,r:()=> '#/',sel:null,h:'ようこそ！',map:1,tt:'バンドでコピーする曲の<b>構成</b>(イントロやサビの順番と小節数)をまとめるノートです。中身はこの順につながっています。',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。',ask:'自分たちの曲をやるオリジナルバンドはある？'},
   {core:1,notApp:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',tt:'スマホで使うなら、書き込む前にホーム画面に追加してください(iPhoneは、ブラウザで書いた内容がホーム画面のアプリに引き継がれません)。ブラウザの共有ボタンや ︙ から「ホーム画面に追加」を選べます。',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
     g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
   {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
@@ -2430,8 +2430,8 @@ const tgNext=i=>{for(let j=i+1;j<TGS().length;j++)if(tgCan(j))return j;return -1
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
 function tourStart(){ACT.lbClose();THINT=false;if(!DEMO&&needDemo())demoOn();TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need())&&!(s.notApp&&IS_APP())).map(s=>s.tt?{...s,t:s.tt}:s).map(s=>s.notApp?{...s,r:()=>location.hash||'#/',h:'ホーム画面に追加'}:s);{const i=TSTEPS.findIndex(s=>s.notApp);if(i>=0){const [x]=TSTEPS.splice(i,1);TSTEPS.splice(TSTEPS.length-1,0,x)}}TI=0;TH=false;tourGo()}
 // オリジナルバンドがある人: イベントの前に、ホームの「オリジナル」の段からバンドを開く手順を足す
-const TMAP=[['ホーム','ライブや企画のイベント(自分たちのバンドは「オリジナル」)'],['バンド','出るバンドと、その曲順・スタジオの予定'],['曲','1曲の構成'],['ブロック','イントロ・Aメロ・サビなど。中にコードやメモ']];
-function tourMapFull(){const n=i=>i>=TMAP.length?'':`<div class="tnest"><b>${TMAP[i][0]}</b><span class="sub">${TMAP[i][1]}</span>${n(i+1)}</div>`;return `<div class="tmapf">${n(0)}</div>`}
+const TMAP=[['ホーム','イベントの一覧'],['バンド','曲順とスタジオの予定'],['曲','1曲の構成'],['ブロック','イントロやサビ。中にコード']];
+function tourMapFull(){return `<div class="tmapf">${TMAP.map((m,i)=>`<div class="tm-row" style="padding-left:${i*18}px">${i?'<i>└</i>':''}<b>${m[0]}</b><span class="sub">${m[1]}</span></div>`).join('')}</div>`}
 function tourMapMini(lv){return `<div class="tmap">${TMAP.map((m,i)=>`<span class="${i===lv?'on':''}">${m[0]}</span>`).join('<i>›</i>')}</div>`}
 function tourOrigSteps(){const os=origSets().find(x=>x.songIds.some(id=>{const s=songById(id);return s&&s.blocks.length}));
   if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルの段',lv:0,t:'自分たちのバンドは、ホームのいちばん上の「オリジナル」に並びます。光っているバンドをタップして開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
@@ -2456,7 +2456,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   const el=tourEl(st);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
   const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
   bub.classList.remove('in');
-  bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}</div>${!THINT&&st.lv!=null?tourMapMini(st.lv):''}<b class="tour-h">${st.h}</b>
+  bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}${st.ask&&!THINT?'<button class="ghost tour-skip" data-act="tourEnd">スキップ</button>':''}</div>${!THINT&&st.lv!=null?tourMapMini(st.lv):''}<b class="tour-h">${st.h}</b>
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>${!THINT&&st.map&&!showH?tourMapFull():''}
     ${DEMO?`<p class="sub" style="margin:6px 0 0;font-size:12px">※ イベントや曲がないので、見本を表示しています(閉じると元に戻ります)</p>`:''}
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
