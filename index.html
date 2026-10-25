@@ -447,6 +447,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .gig-sorthd{margin:14px 0 6px}.gig-sorthd select{font-size:13px;padding:4px 6px}.pinmk{font-size:12px;margin-right:4px}
 .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}.swatch{display:flex;align-items:center;gap:8px;text-align:left}.swatch span{width:18px;height:18px;border-radius:50%;flex:none}.swatch.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .home-sec{margin:14px 2px 6px;font-size:15px}.card.orig,.card.bandcard{display:block;color:inherit;padding:10px 14px}.card.orig{background-image:linear-gradient(90deg,var(--bc,var(--accent)) 0 5px,transparent 5px)}.card.bandcard.bcol{background-image:linear-gradient(90deg,var(--bc) 0 5px,transparent 5px)}.gband[style*="--bb"]{position:relative}.gband[style*="--bb"]::before{content:"";position:absolute;left:9px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--bb)}.row.pastrow{opacity:.6}.gband.origb{box-shadow:inset 3px 0 0 var(--accent)}
+#ctxFix{position:fixed;left:12px;right:12px;z-index:17;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--panel);box-shadow:0 4px 16px var(--shadow);font-size:14px}#ctxFix span{flex:1}
 #syncBar{position:fixed;left:12px;right:12px;z-index:16;max-width:520px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--panel);box-shadow:0 4px 16px var(--shadow);font-size:14px}
 #syncBar span{flex:1;min-width:0}
 .sync-row.sure{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}button.sync-row{text-align:left;display:block;width:100%}
@@ -700,7 +701,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 6:31';
+const APP_VER='10/26 6:34';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1365,7 +1366,11 @@ const syncOn=s=>!!(s&&s.mSync&&songMedia(s));
 const preAnchor=(s,b)=>syncOn(s)&&s.blocks.indexOf(b)<s.blocks.indexOf(syncAnchor(s));
 function blockTime(s,b){if(syncOn(s)&&!preAnchor(s,b)){const e=syncEv(s).find(x=>x.bid===b.id);return e?e.t:null}return b.start}
 function ensureCtx(){const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return null;MT.ctx=MT.ctx||new Ctx();if(MT.ctx.state!=='running')MT.ctx.resume();return MT.ctx}
-['pointerdown','keydown'].forEach(t=>document.addEventListener(t,()=>{if(MT.ctx&&MT.ctx.state!=='running')MT.ctx.resume()},true));
+['pointerdown','keydown'].forEach(t=>document.addEventListener(t,()=>{if(MT.ctx&&MT.ctx.state!=='running')ctxReady()},true));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&MT.ctx&&MT.ctx.state!=='running')try{MT.ctx.resume()}catch(_){}});
+function ctxWarn(on){let b=$('#ctxFix');if(!on){if(b)b.remove();return}if(b)return;b=document.createElement('div');b.id='ctxFix';
+  b.innerHTML='<span>メトロノームの音が止まっています</span><button class="primary" data-act="ctxFix">押して戻す</button>';document.body.appendChild(b);
+  const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;b.style.bottom=(pb+10)+'px'}
 // 再生ボタンを押したときに、音を鳴らす準備を確実にする。
 // iPhoneでは音源を読み込み直したりすると音の出口(AudioContext)が止まったまま戻らないことがあるので、
 // 戻らなければ作り直す(音源の音量調整でこの出口を使っているときは作り直せないので、戻すのを試すだけ)。
@@ -1380,8 +1385,9 @@ async function ctxReady(){const Ctx=window.AudioContext||window.webkitAudioConte
 function mediaRate(){try{return M.kind==='sp'?1:M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
 const devLat=()=>{try{return +(localStorage.getItem('kbLat')||0)||0}catch(_){return 0}};
 function syncTick(){const s=playerSong();
-  if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
-  const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
+  if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.bad){MS.bad=0;ctxWarn(false)}if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
+  const ctx=ensureCtx();if(!ctx||ctx.state!=='running'){MS.bad=MS.bad||performance.now();if(performance.now()-MS.bad>1500)ctxWarn(true);return}
+  if(MS.bad){MS.bad=0;ctxWarn(false)}
   syncEv(s);const mt=M.time(),pr=mediaRate(),ms=mt+devLat()*pr;
   if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6+bgAhead())MS.last=ms-0.001;
   MS.lastMt=mt;const horizon=ms+(0.3+bgAhead())*pr;let cur=null;
@@ -1568,7 +1574,7 @@ function loadYT(id){
   if(M.yt&&M.yt.cueVideoById){M.yt.cueVideoById(id);return}
   const make=()=>{M.yt=new YT.Player('yt',{width:'240',height:'135',videoId:id,playerVars:{playsinline:1,rel:0},
     events:{onReady(){M.yt.setPlaybackRate(+$('#plRate').value);applyAVol();if(M.ytState!=='error')M.ytState='ready';updUrlStat()},
-      onStateChange(e){if(e.data===5||e.data===1){if(M.ytState!=='error'||e.data===1)M.ytState='ready';updUrlStat()}},
+      onStateChange(e){if(e.data===1&&MT.ctx&&MT.ctx.state!=='running')try{MT.ctx.resume()}catch(_){}if(e.data===5||e.data===1){if(M.ytState!=='error'||e.data===1)M.ytState='ready';updUrlStat()}},
       onError(e){M.ytState='error';M.ytErr=e.data;updUrlStat();toast('YouTubeを再生できませんでした(コード '+e.data+')。公開版のページで開くと再生できます')}}})};
   if(window.YT&&window.YT.Player)make();else{window.onYouTubeIframeAPIReady=make;if(!$('#ytapi')){const sc=document.createElement('script');sc.id='ytapi';sc.src='https://www.youtube.com/iframe_api';document.head.appendChild(sc)}}}
 function loadSP(id){
@@ -2688,7 +2694,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-26',items:['画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
+  {d:'2026-10-26',items:['YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
   {d:'2026-10-25',items:['使い始めにGoogleでのログインが必要になりました。スマホ(iPhone・Android)はホーム画面に追加して使います','バンドにも色を付けられるように(バンドの ⋯ → 色を変える)','ホームの次の予定で、本番はオレンジ・スタジオは青に色分け。ホームの初めの並びをオリジナルバンド→近いイベント→次の予定→最近開いた曲に','上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものを選べて、順番は ⋮⋮ をつかんで変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
@@ -3176,6 +3182,7 @@ const ACT={
   lyrFs(t){S.prefs.lyrFs=Math.min(40,Math.max(14,(S.prefs.lyrFs||22)+ +t.dataset.v));save();const m=$('main.lyrv');if(m)m.style.setProperty('--lfs',S.prefs.lyrFs+'px')},
   lyrTap(t){const s=curSong();if(S.prefs.lyrHide){t.classList.toggle('open');return}
     if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===t.dataset.bid&&x.bar===+t.dataset.bar);if(e){ctxReady();MS.last=null;M.seek(Math.max(0,e.t-0.05));M.play()}}},
+  async ctxFix(){await ctxReady();MS.last=null;MS.bad=0;ctxWarn(false);if(!MT.ctx||MT.ctx.state!=='running')toast('戻せませんでした。音源を一度止めて、▶ で再生し直してください')},
   pmPlay(){ctxReady();MS.last=null;M.paused()?M.play():M.pause()},
   pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?s.audio.name:k==='gd'?'▶ Googleドライブ(参考音源URL)':k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
     popMenu(t,`<div class="sub" style="padding:8px 12px;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</div><hr>
