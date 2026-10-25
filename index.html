@@ -198,6 +198,8 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .pl-mini{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
 #pa{display:none!important}
 @media screen and (min-width:701px){.pm-more{display:none}#player .pl-mini{min-width:240px}#player .pl-in{flex-wrap:nowrap}#player .pl-name{flex:0 1 auto;min-width:0}#plPick,#plRemove,.pl-rate{white-space:nowrap;flex:none}}
+.blkmore{padding:6px 8px;align-self:center}.blkmore .ic{width:20px;height:20px}
+.ic{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}.mi .ic{width:20px;height:20px;color:var(--sub)}.counts .ic{width:14px;height:14px;margin-right:1px}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .pm-play.loading{color:transparent;position:relative}.pm-play.loading::after{content:'';position:absolute;inset:11px;border:3px solid #fff6;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
@@ -302,6 +304,8 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .memo-item audio{flex:1;height:34px}
 .memo-item input{width:220px}
 .memo-item textarea{flex:1;min-height:60px;resize:vertical}.memo-tx{flex-wrap:wrap;align-items:flex-start}.memo-btns{display:flex;flex-direction:column;gap:4px}.memo-links{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 12px}.memo-links:empty{display:none}.memo-links a{font-size:13px;word-break:break-all}.host-memo .memobar .sub{display:none}
+@media (pointer:coarse){.fine-only{display:none!important}}
+.host-memo .drop:has(>.empty:only-child){min-height:0;padding:8px 10px;border-width:1px}.host-memo .drop:has(>.empty:only-child)>.empty{display:none}.host-memo .drop:has(>.empty:only-child)::before{content:'ここにファイルをドラッグして追加';color:var(--sub);font-size:13px}@media (pointer:coarse){.host-memo .drop:has(>.empty:only-child){display:none}}
 .rec{background:var(--rec);border-color:var(--rec);color:#fff;font-weight:700}
 .lb{position:fixed;inset:0;z-index:50;background:#000e;overflow:auto;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 .lb img{max-width:96vw;max-height:96vh;cursor:zoom-in}
@@ -338,7 +342,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .help-sec{font-size:17px;margin:22px 0 4px}.help-grp{font-size:13px;color:var(--sub);margin:14px 0 6px;font-weight:600}
 .help-item{display:block;margin:0 0 8px;scroll-margin-top:70px}.help-item .note{margin:4px 0 0}.help-more{margin-top:6px}.help-more summary{cursor:pointer;color:var(--accent);font-size:14px}.help-play{margin-top:6px;padding-left:0;color:var(--accent)}a.help-link{color:inherit}
 .tut-toc h4{margin:10px 0 4px;font-size:12px;color:var(--sub);font-weight:600}.tut-toc button{display:block;width:100%;text-align:left;padding:8px 12px;margin:4px 0}
-.song-audio{margin-top:12px}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
+.song-audio{margin-top:12px}.mstat:empty{display:none}.song-audio.closed>:not(:first-child):not(#ytSlot){display:none}.song-audio.closed #ytFind{display:none!important}.a-src{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.song-acts{margin-top:10px;gap:8px}.song-acts button{padding:8px 14px}
 .brow.bq{display:flex;gap:10px;align-items:flex-start}.brow.bq input[type=number]{width:80px}
 .bandbar{display:flex;gap:6px;overflow-x:auto;margin:0 0 14px;padding:2px 0 4px;scrollbar-width:thin}
 .bandbar button{white-space:nowrap;padding:7px 14px;font-size:14px;flex:none}
@@ -599,6 +603,9 @@ body.dragging-row{user-select:none;-webkit-user-select:none}
 <input type="file" id="importPick" accept=".json,application/json" hidden>
 <script>
 'use strict';
+// アイコン: 絵文字の代わりに、線で描いた小さな絵を使う(文字と同じ色・大きさ)
+const ICONS={"book":"<path d=\"M4 19.5A2.5 2.5 0 0 1 6.5 17H20\"/><path d=\"M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\"/>","search":"<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/>","bell":"<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\"/><path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\"/>","inbox":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m7 10 5 5 5-5\"/><path d=\"M12 15V3\"/>","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/>","tag":"<path d=\"M12 2H2v10l9.3 9.3a1 1 0 0 0 1.4 0l8.6-8.6a1 1 0 0 0 0-1.4z\"/><circle cx=\"7\" cy=\"7\" r=\"1.5\"/>","cloud":"<path d=\"M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9Z\"/>","phone":"<rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\"/><path d=\"M12 18h.01\"/>","bulb":"<path d=\"M9 18h6\"/><path d=\"M10 22h4\"/><path d=\"M15.1 14c.2-1 .7-1.7 1.4-2.5A4.6 4.6 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.8 1.3 1.5 1.4 2.5\"/>","repeat":"<path d=\"m17 2 4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"m7 22-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/>","flag":"<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"/><path d=\"M4 22v-7\"/>","music":"<path d=\"M9 18V5l12-2v13\"/><circle cx=\"6\" cy=\"18\" r=\"3\"/><circle cx=\"18\" cy=\"16\" r=\"3\"/>","mic":"<rect x=\"9\" y=\"2\" width=\"6\" height=\"12\" rx=\"3\"/><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\"/><path d=\"M12 19v3\"/>","camera":"<path d=\"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/>","text":"<path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z\"/><path d=\"M8 13h8\"/><path d=\"M8 17h5\"/>","metro":"<path d=\"M9 3h6l3 18H6z\"/><path d=\"M12 16l5-9\"/><path d=\"M8 16h8\"/>","pin":"<path d=\"M12 17v5\"/><path d=\"M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"/>","sun":"<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4\"/>","moon":"<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>","auto":"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 3a9 9 0 0 0 0 18z\" fill=\"currentColor\"/>","cal":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>","more":"<circle cx=\"5\" cy=\"12\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"12\" r=\"1.3\" fill=\"currentColor\"/><circle cx=\"19\" cy=\"12\" r=\"1.3\" fill=\"currentColor\"/>"};
+const IC=k=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]||''}</svg>`;
 const TYPES={
   In:{label:'イントロ',short:'In',color:'#7b8794'},
   A:{label:'Aメロ',short:'A',color:'#009e73'},
@@ -657,7 +664,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:36';
+const APP_VER='10/25 8:59';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -843,7 +850,7 @@ function syncOff(){if(!confirm('この端末の同期をやめますか？(ド�
 // 画面の下に出す小さな表示: ログインが切れたときと、うまく保存できなかったとき
 function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady()&&!SY.meta.sid,msg=need?(syncDirty()?'未保存の変更があります':'ログインが切れました'):SY.err;
   if(!SY.meta.on||!msg||DEMO){if(b)b.remove();}else{if(!b){b=document.createElement('div');b.id='syncBar';document.body.appendChild(b)}
-    b.innerHTML=need?`<span>☁ ${msg}</span><button class="primary" data-act="syncLogin">Googleで続ける</button>`:`<span>☁ ${esc(msg)}</span><button data-act="syncNow">もう一度</button>`;
+    b.innerHTML=need?`<span>${IC('cloud')} ${msg}</span><button class="primary" data-act="syncLogin">Googleで続ける</button>`:`<span>${IC('cloud')} ${esc(msg)}</span><button data-act="syncNow">もう一度</button>`;
     const pb=($('#player')&&$('#player').style.display!=='none'&&$('#player').offsetHeight)||0;b.style.bottom=(pb+10)+'px'}
   const st=$('#syncStat');if(st)st.innerHTML=syncStatText()}
 function syncStatText(){if(!SY.meta.on)return 'まだ同期していません';if(SY.busy)return '同期しています…';
@@ -976,19 +983,19 @@ function bandBar(){const on=S.cur.band===NOBAND?NOBAND:band().id,orf=orphanSongs
 function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
-const MENU=[['tut','📖','使い方を見る'],['help','🔍','ヘルプ・機能を探す'],['news','🆕','お知らせ'],['share','📥','共有コードを読み込む'],['band','🎸','バンドの管理'],['markers','🏷','マーカーの編集'],
-  ['sync','☁️','Googleで自動バックアップ・同期'],['app','📱','スマホでアプリとして使う'],['tips','📝','使い方のコツ']];
+const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','共有コードを読み込む'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
+  ['sync','cloud','Googleで自動バックアップ・同期'],['app','phone','スマホでアプリとして使う'],['tips','bulb','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
   <div class="mline"><span>コードの表示</span><span class="mseg">${[['abc','C D E'],['doremi','ドレミ'],['degree','ディグリー']].map(([v,l])=>`<button class="${codeView()===v?'on':''}" data-act="menuCode" data-v="${v}">${l}</button>`).join('')}</span></div></div>`}
 // コードの表示は「アルファベット / ドレミ / ディグリー」のどれか1つ
 const codeView=()=>S.prefs.degree?'degree':S.prefs.doremi?'doremi':'abc';
 function setCodeView(v){S.prefs.degree=v==='degree';S.prefs.doremi=v==='doremi';save();render()}
-function menuList(){return `<div class="mlist">${MENU.filter(([k])=>k!=='sync'||GCLIENT).map(([k,i,l])=>k==='help'?`<a class="mrow" href="#/help"><span class="mi">${i}</span>${l}<span class="spacer"></span><span class="sub">›</span></a>`:k==='tut'?`<button class="mrow" data-act="menuTut"><span class="mi">${i}</span>${l}<span class="spacer"></span><span class="sub">›</span></button>`
-  :`<a class="mrow" href="#/settings/${k}"><span class="mi">${i}</span>${l}${k==='news'&&newsUnseen()?'<span class="newdot"></span>':''}<span class="spacer"></span><span class="sub">›</span></a>`).join('')}</div><p class="sub" style="margin:10px 4px 0;font-size:12px">版: ${APP_VER}</p>`}
+function menuList(){return `<div class="mlist">${MENU.filter(([k])=>k!=='sync'||GCLIENT).map(([k,i,l])=>k==='help'?`<a class="mrow" href="#/help"><span class="mi">${IC(i)}</span>${l}<span class="spacer"></span><span class="sub">›</span></a>`:k==='tut'?`<button class="mrow" data-act="menuTut"><span class="mi">${IC(i)}</span>${l}<span class="spacer"></span><span class="sub">›</span></button>`
+  :`<a class="mrow" href="#/settings/${k}"><span class="mi">${IC(i)}</span>${l}${k==='news'&&newsUnseen()?'<span class="newdot"></span>':''}<span class="spacer"></span><span class="sub">›</span></a>`).join('')}</div><p class="sub" style="margin:10px 4px 0;font-size:12px">版: ${APP_VER}</p>`}
 function menuHTML(){return `<div class="drawer-bg" data-act="lbClose"></div><aside class="drawer"><div class="hstack"><b>メニュー</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
   <div class="msec">表示</div>${menuDisp()}<div class="msec">設定・その他</div>${menuList()}</aside>`}
-const THEMES={auto:'◐ 自動',light:'☀ ライト',dark:'☾ ダーク'};
+const THEMES={auto:IC('auto')+' 自動',light:IC('sun')+' ライト',dark:IC('moon')+' ダーク'};
 
 // 色の上に載せる文字は、色の明るさで白か黒を選んで読みやすくする
 const ink=h=>{const n=parseInt(h.slice(1,7),16),L=[n>>16,(n>>8)&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4});return .2126*L[0]+.7152*L[1]+.0722*L[2]>.25?'#000d':'#fff'};
@@ -1002,7 +1009,7 @@ function daysLeft(d){if(!d)return '';const t=new Date(d+'T00:00');const n=new Da
   return x>0?`あと${x}日`:x===0?'今日':'終了'}
 /* ---------- 予定(スタジオ・本番) ----------
    セトリごとに何個でも持てる。前の形(sl.studio 1つだけ)は開いたときに予定1件に移す */
-let CALID=null;const EV_T={studio:{l:'スタジオ',i:'🎸'},live:{l:'本番',i:'🎤'}};
+let CALID=null;const EV_T={studio:{l:'スタジオ',i:''},live:{l:'本番',i:''}};
 function slEvents(sl){if(!sl.events){sl.events=[];const st=sl.studio;if(st&&(st.date||st.start||st.place))sl.events.push({id:uid(),type:'studio',date:st.date||'',start:st.start||'',end:st.end||'',place:st.place||''})}
   delete sl.studio;return sl.events}
 const todayStr=()=>{const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')};
@@ -1026,8 +1033,8 @@ function evCard(e,isNext){const T=EV_T[e.type]||EV_T.studio;
     <div class="hstack" style="margin-top:10px"><button data-act="calMenu" data-id="${e.id}">カレンダーに追加・予定を送る</button></div></div>`}
 // type: 'studio'(セトリ=バンドのスタジオ) か 'live'(イベントの本番)
 function evSection(sl,type){type=type||'studio';const T=EV_T[type],all=evSorted(sl).filter(e=>(e.type==='live')===(type==='live')),t=todayStr(),up=all.filter(e=>!e.date||e.date>=t),past=all.filter(e=>e.date&&e.date<t).reverse();const nx=up.find(e=>e.date);
-  return `<div class="sec hstack"><span>${type==='live'?'本番の日時':'スタジオの予定'}</span><span class="spacer"></span><button data-act="evAdd" data-v="${type}" ${sl.bandId?'':`data-g="${sl.id}"`}>＋ ${T.i} ${T.l}</button></div>
-  ${up.map(e=>evCard(e,e===nx)).join('')||`<div class="empty" style="padding:14px">${type==='live'?'本番の日時はまだありません。「＋ 本番」で入れられます':'スタジオの予定はまだありません。「＋ スタジオ」で追加できます'}</div>`}
+  return `<div class="sec hstack"><span>${type==='live'?'本番の日時':'スタジオの予定'}</span><span class="spacer"></span><button data-act="evAdd" data-v="${type}" ${sl.bandId?'':`data-g="${sl.id}"`}>＋ ${T.l}</button></div>
+  ${up.map(e=>evCard(e,e===nx)).join('')||`<div class="empty" style="padding:14px">${type==='live'?'本番の日時はまだありません':'スタジオの予定はまだありません'}</div>`}
   ${past.length?`<button class="foldbtn" data-act="uiToggle" data-k="pastEv" style="margin:4px 0 8px">終わった予定 (${past.length}) ${UI('pastEv')?'▾':'▸'}</button>${UI('pastEv')?`<div class="evpast">${past.map(e=>evCard(e,false)).join('')}</div>`:''}`:''}`}
 function timeSel(k,v,id){const [h,m]=(v||'').split(':');
   const hs=['<option value="">--</option>',...Array.from({length:24},(_,i)=>{const x=String(i).padStart(2,'0');return `<option ${x===h?'selected':''}>${x}</option>`})].join('');
@@ -1071,14 +1078,14 @@ function origCard(sl){const n=sl.songIds.filter(songById).length,t=todayStr(),st
   const nx=[st&&'次のスタジオ '+md(st.date),lv&&'ライブ '+md(gigDate(lv.g))+' '+lv.g.name].filter(Boolean).join(' ・ ');
   return `<a class="card orig" href="#/setlist/${sl.id}"><div class="hstack"><b>${esc(bandNameOf(sl.bandId))}</b><span class="sub">${n}曲</span><span class="spacer"></span><span class="sub">›</span></div><div class="sub" style="margin-top:2px">${esc(nx||'予定はまだありません')}</div></a>`}
 function gigCard(g){const sets=gigSetsSorted(g),d=gigDate(g);
-  return `<div class="card gig ${g.regular?'':'studio live'}"${g.color?` style="--bc:${g.color};--live:${g.color}"`:''}><a class="ghd" href="#/gig/${g.id}"><span class="gn">${g.pin?'<span class="pinmk" title="ピン留め">📌</span>':''}${esc(g.name)}</span>${g.regular?'<span class="gd">ライブの予定がないバンド</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
+  return `<div class="card gig ${g.regular?'':'studio live'}"${g.color?` style="--bc:${g.color};--live:${g.color}"`:''}><a class="ghd" href="#/gig/${g.id}"><span class="gn">${g.pin?'<span class="pinmk" title="ピン留め">'+IC('pin')+'</span>':''}${esc(g.name)}</span>${g.regular?'<span class="gd">ライブの予定がないバンド</span>':`<span class="gd">${liveSum(g)||'日付未定'}</span>`}${d?`<b>${daysLeft(d)}</b>`:''}<span class="sub">›</span></a>
   <div class="gbands">${sets.map(x=>{const n=x.songIds.filter(songById).length,nx=evSorted(x).find(e=>e.date&&e.date>=todayStr());
     return `<a class="gband ${!g.regular&&isOrigBand(x.bandId)?'origb':''}" href="#/setlist/${x.id}">${esc(bandNameOf(x.bandId))}${starTxt(x.stars)}<span class="sub">${slDayNo(x)?slDayNo(x)+'日目 ・ ':''}${n}曲${nx?' ・ 次のスタジオ '+nx.date.slice(5).replace('-','/'):''}</span></a>`}).join('')||`<div class="gempty">まだバンドがありません</div>`}</div></div>`}
 // Googleにログインしていない人に、自動バックアップを一度だけ勧める(「今はしない」で消える。強制はしない)
-const syncNudge=()=>GCLIENT&&!SY.meta.on&&!DEMO&&S.prefs.tutDone&&!S.prefs.syncNudgeOff?`<div class="card sync-nudge"><b>☁ データを自動でバックアップ</b><p class="note" style="margin:4px 0 8px">Googleでログインしておくと、データが自分のGoogleドライブに自動で保存されます。スマホを替えたときや、PCで使いたいときも安心です。</p><div class="hstack"><button class="primary" data-act="syncLogin">Googleでログイン</button><button class="ghost" data-act="syncNudgeOff">今はしない</button></div></div>`:'';
+const syncNudge=()=>GCLIENT&&!SY.meta.on&&!DEMO&&S.prefs.tutDone&&!S.prefs.syncNudgeOff?`<div class="card sync-nudge"><b>${IC('cloud')} データを自動でバックアップ</b><p class="note" style="margin:4px 0 8px">Googleでログインすると、データが自分のGoogleドライブに自動で保存されます。</p><div class="hstack"><button class="primary" data-act="syncLogin">Googleでログイン</button><button class="ghost" data-act="syncNudgeOff">今はしない</button></div></div>`:'';
 function viewHome(){const {reg,up,past}=gigSorted();const os=origSets(),rg=reg[0];
   return topbar('setlist')+`<main><div class="slhead"><h1>イベント</h1><span class="spacer"></span><button class="primary" data-act="newGig">＋ イベント</button></div>
-  <p class="sub" style="margin:0 0 6px">ライブやイベントごとに、出るバンドとその曲順をまとめます。${os.length?'':'自分たちのオリジナルバンドは、<a href="javascript:void 0" data-act="gigAddBand" data-id="'+(rg?rg.id:'')+'">「＋ オリジナルバンド」</a>から入れると、上にバンドの段ができます。'}</p>
+  ${os.length?'':`<p style="margin:0 0 6px"><a href="javascript:void 0" data-act="gigAddBand" data-id="${rg?rg.id:''}">＋ オリジナルバンド</a></p>`}
   ${syncNudge()}
   ${os.length?`<div class="hstack home-sec"><b>オリジナル</b><span class="spacer"></span><button class="ghost" data-act="gigAddBand" data-id="${rg.id}">＋ オリジナルバンド</button></div>${os.map(origCard).join('')}<div class="home-sec"><b>これからのイベント</b></div>`:''}
   ${up.map(gigCard).join('')}${!up.length&&os.length?'<div class="empty">まだ予定しているイベントはありません</div>':''}
@@ -1144,7 +1151,6 @@ function viewBands(){S.cur.setlist=null;const og=S.bands.filter(b=>isOrigBand(b.
   return topbar('bands')+`<main><div class="slhead"><h1>バンド</h1><span class="spacer"></span><button class="primary" data-act="newBandHere">＋ バンド</button></div>
   <input id="songQ" class="tut-q" type="search" value="${esc(SFQ)}" placeholder="曲を探す(曲名・メモ・歌詞)" aria-label="曲を探す" autocomplete="off" style="margin:4px 0 10px">
   <div id="songRes">${songFindList()}</div><div id="bandsBody" ${SFQ.trim()?'hidden':''}>
-  <p class="sub" style="margin:0 0 6px">イベントが決まる前でも、バンドと曲を先に作っておけます。日程が決まったら、バンドを開いて「＋ イベントに出る」で入れます。</p>
   ${og.length?`<div class="home-sec"><b>オリジナル</b></div>${og.map(bandCard).join('')}`:''}
   <div class="home-sec"><b>コピバン</b></div>${cp.map(bandCard).join('')||'<div class="empty">まだコピバンのバンドはありません</div>'}
   ${orphanSongs().length?`<a class="card bandcard" href="#/songs" data-act="pickBand" data-id="${NOBAND}"><b>バンドなしの曲</b> <span class="sub">${orphanSongs().length}曲 ・ どのバンドにも入っていない曲</span></a>`:''}</div></main>`}
@@ -1181,25 +1187,25 @@ function viewSong(){
     <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
     <label>キー(調)<input value="${esc(s.key)}" data-input="songField" data-k="key" placeholder="例 Em"></label>
   </div>
-  <div class="card song-audio" id="songAudio"><div class="hstack" style="gap:14px"><b>音源</b><a class="back" id="ytFind" href="https://www.youtube.com/results?search_query=${encodeURIComponent(s.title)}" target="_blank" rel="noopener" style="padding:0;white-space:nowrap;${s.url?'display:none':''}">YouTubeで探す ↗</a></div>
+  <div style="margin-top:12px">${strip(s,true)}</div>
+  <div class="card song-audio ${audioOpen(s)?'':'closed'}" id="songAudio"><div class="hstack" style="gap:14px">${songMedia(s)?`<button class="foldbtn" data-act="uiToggle" data-k="saudio">音源 ${audioOpen(s)?'▾':'▸'}</button><span class="sub a-src">${esc(mediaLabel(s))}</span>`:'<b>音源</b>'}<a class="back" id="ytFind" href="https://www.youtube.com/results?search_query=${encodeURIComponent(s.title)}" target="_blank" rel="noopener" style="padding:0;white-space:nowrap;${s.url?'display:none':''}">YouTubeで探す ↗</a></div>
     <div class="hstack" style="margin-top:6px"><label class="sub" style="flex:1;display:flex;flex-direction:column;gap:2px">参考音源URL<input style="width:100%" value="${esc(s.url)}" data-input="songField" data-k="url" placeholder="YouTube・Spotify・Googleドライブのリンクを貼り付け"></label>
       <a class="back" id="urlOpen" href="${esc(s.url)}" target="_blank" rel="noopener" style="align-self:flex-end;padding:8px;${s.url?'':'display:none'}">開く ↗</a></div>
     <div class="url-stat" id="urlStat">${urlStatHTML(s)}</div>
     <div id="ytSlot" ${songMedia(s)==='yt'?'':'hidden'}></div>
     ${s.audio?`<div class="sub" id="audioStat" style="margin:8px 0 0">${audioStatHTML(s)}</div>`
-      :`<div class="hstack" id="audioDrop" style="margin-top:8px;flex-wrap:wrap"><button class="primary" data-act="audioPick">音源ファイルを入れる(wav / mp3 など)</button><button data-act="drivePick">Googleドライブから選ぶ</button><span class="sub">ファイルをここにドラッグしてもOK</span></div>`}</div>
-  <div class="hstack song-acts" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><button data-act="midiPick" title="Cubaseなどから書き出したMIDIファイルで、テンポ・拍子・マーカー(ブロック分け)を読み込む">MIDIを読み込む</button><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
-  <div style="margin-top:14px">${strip(s,true)}</div>
+      :`<div class="hstack" id="audioDrop" style="margin-top:8px;flex-wrap:wrap"><button data-act="audioPick">ファイルを入れる</button><button data-act="drivePick">Googleドライブから選ぶ</button><span class="sub fine-only">ファイルをここにドラッグしてもOK</span></div>`}</div>
   ${metroCard(s)}
-  <div class="sec">構成</div><p class="sub sec-hint">⋮⋮ をつかんで並べ替え${songMedia(s)?' ・ 曲を流しながら各ブロックの頭で ⏱ を押すと、▶ でそこから再生、🔁 でそのブロックを繰り返せます':''}</p>
+  <div class="sec">構成</div>
   <div class="lyr-open hstack"><button class="foldbtn" data-act="lyrAllOpen">歌詞をまとめて入れる</button>${songHasLyr(s)?`<a href="#/lyrics/${s.id}"><button class="foldbtn">歌詞カード</button></a>`:''}</div>
   <div class="list cards">${s.blocks.map((b,i)=>{const ph=b.memos.filter(m=>m.kind==='photo').length,au=b.memos.filter(m=>m.kind==='audio').length,tx=b.memos.filter(m=>m.kind==='text').length;
     return `<div class="row" data-drag="blk" data-idx="${i}" data-bid="${b.id}"><span class="handle">⋮⋮</span><span class="cbar" style="background:${TYPES[b.type].color}"></span>
     <a class="body" href="#/block/${s.id}/${b.id}"><div class="title">${esc(b.name)}</div><div class="sub">${b.bars.length}小節${b.meter?' ・ '+b.meter:''}${b.bpm?' ・ ♩'+esc(b.bpm):''}${(b.ramps||[]).length?' ・ '+rampLabel(b):''}${b.key?' ・ キー '+esc(b.key):''}${b.note?' ・ '+esc(b.note):''}</div>${b.tags.map(t=>tagHTML(t)).join('')}</a>
-    <span class="counts">${ph?'📷'+ph+' ':''}${au?'🎙'+au+' ':''}${tx?'📝'+tx:''}</span>
+    <span class="counts">${ph?IC('camera')+ph+' ':''}${au?IC('mic')+au+' ':''}${tx?IC('text')+tx:''}</span>
     ${songMedia(s)?timeBtns(b):''}
-    <div class="rowbtns"><button data-act="dupBlock" data-i="${i}" title="複製">複製</button><button data-act="delBlock" data-i="${i}">削除</button></div></div>`}).join('')||'<div class="empty">ブロックを追加してください</div>'}</div>
-  <p class="sub" style="margin:10px 2px 4px">押すとアウトロの手前に入ります。長押しでつかむと、好きな位置に置けます。</p><div class="adds"><span class="sub" style="align-self:center">＋ 追加:</span>${Object.entries(TYPES).map(([k,t])=>`<button data-act="addBlock" data-type="${k}" style="--bc:${t.color}" class="addbtn">${t.label}</button>`).join('')}</div>
+    <button class="ghost blkmore" data-act="blkMore" data-i="${i}" aria-label="ブロックのメニュー">${IC('more')}</button></div>`}).join('')||'<div class="empty">ブロックを追加してください</div>'}</div>
+  <div class="adds"><span class="sub" style="align-self:center">＋ 追加:</span>${Object.entries(TYPES).map(([k,t])=>`<button data-act="addBlock" data-type="${k}" style="--bc:${t.color}" class="addbtn">${t.label}</button>`).join('')}</div>
+  <div class="hstack song-acts" style="margin-top:22px" id="songActs"><button data-act="share">共有</button><a href="#/print/${s.id}/map"><button>印刷・PDF</button></a><button data-act="midiPick" title="Cubaseなどから書き出したMIDIファイルで、テンポ・拍子・マーカー(ブロック分け)を読み込む">MIDIを読み込む</button><span class="spacer"></span><span class="sub">バンド: ${esc(bandNameOf(s.bandId))}</span><button class="ghost" data-act="moveSong" data-id="${s.id}">別のバンドへ</button></div>
   </main>`}
 
 /* ---------- metronome (ブロックごとのテンポ・拍子に合わせて鳴らす) ---------- */
@@ -1225,6 +1231,8 @@ function metroOpts(){const r=S.prefs.mRate||1;
   return `<label class="sub">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label>
   <label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label>`}
 const UI=k=>!!(S.prefs.ui||{})[k];
+const audioOpen=s=>!songMedia(s)||UI('saudio');
+const mediaLabel=s=>{const k=songMedia(s);return k==='audio'?s.audio.name:k==='yt'?'YouTube':k==='sp'?'Spotify':k==='gd'?'Googleドライブ':''};
 function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI('smetro');
   if(!open)return `<div class="card metro closed"><button class="foldbtn" data-act="uiToggle" data-k="smetro">メトロノーム ▸</button><span class="mstat" id="metroStat">${s.mSync&&songMedia(s)?'音源に合わせて鳴らす設定になっています':''}</span></div>`;
   // スマホでも崩れないよう、1行ずつ役割を分けて並べる(開始位置 / 再生・速さ / カウント / 音源に合わせる設定)
@@ -1233,8 +1241,8 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
     <select id="mFrom" class="m-from">${s.blocks.map((b,i)=>`<option value="${i}">${i?esc(b.name)+'から':'曲の頭から'}</option>`).join('')}</select></div>
     <div class="m-row"><button class="primary" data-act="mPlay">▶ 再生</button><button data-act="mStop">■ 止める</button><span class="spacer"></span>
       <label class="sub m-rate">速さ <select data-change="mRate">${[50,60,70,75,80,90,100,110,120].map(v=>`<option value="${v/100}" ${Math.abs(r-v/100)<.001?'selected':''}>${v}%</option>`).join('')}</select></label></div>
-    <div class="m-row m-vol"><span class="sub">音量</span><label class="sub" title="メトロノームの音量">🥁<input type="range" min="0" max="2" step="0.05" value="${S.prefs.mVol??1}" data-input="mVol"></label>
-      ${songMedia(s)?`<label class="sub" title="音源の音量">🎵<input type="range" min="0" max="1" step="0.05" value="${S.prefs.aVol??1}" data-input="aVol"></label>`:''}</div>
+    <div class="m-row m-vol"><span class="sub">音量</span><label class="sub" title="メトロノームの音量">${IC('metro')}<input type="range" min="0" max="2" step="0.05" value="${S.prefs.mVol??1}" data-input="mVol"></label>
+      ${songMedia(s)?`<label class="sub" title="音源の音量">${IC('music')}<input type="range" min="0" max="1" step="0.05" value="${S.prefs.aVol??1}" data-input="aVol"></label>`:''}</div>
     <div class="m-row"><label class="sub">刻み <select data-change="mSub">${MSUB.map(([v,l])=>`<option value="${v}" ${(s.mSub||'')===v?'selected':''}>${l}</option>`).join('')}</select></label>${s.blocks.some(b=>/\/8$/.test(b.meter||s.meter||''))&&['8','sw'].includes(s.mSub||'')?'<span class="sub" style="flex-basis:100%">8分の拍子(7/8など)は、拍が既に8分音符なので「8分」は拍ごとと同じ鳴り方になります。細かく刻むときは16分を選んでください</span>':''}
       <label class="sub"><input type="checkbox" data-change="mCount" ${S.prefs.mCount!==false?'checked':''}> カウント1小節</label></div>
     ${songMedia(s)?`<div class="m-sync"><label class="sub"><input type="checkbox" data-change="mSync" ${s.mSync?'checked':''}> 音源に合わせて鳴らす</label>
@@ -1244,9 +1252,9 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
       <div class="m-off"><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
       <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset">
       <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button></div>
-      <button class="m-now" data-act="mOffNow" title="再生中の位置をこのブロックの頭にする">⏱ 今の再生位置を「${esc(syncAnchor(s).name)}」の頭にする</button>`:''}</div>`:''}
-    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?`「${esc(syncAnchor(s).name)}」の頭の位置だけ合わせれば、そこから曲のテンポと拍子どおりに刻みます。クリックが早ければ＋、遅ければ－で微調整できます。${syncAnchor(s)!==s.blocks[0]?'それより前のブロック(テンポがない前奏など)ではメトロノームは鳴りません。頭の位置は各ブロックの ⏱ で登録できます。':''}`
-      :noBpm?'テンポが未入力なので ♩120 で鳴らします。曲かブロックのテンポを入れてください':'ブロックごとのテンポ・拍子に合わせて鳴ります'}</div></div>`}
+      <button class="m-now" data-act="mOffNow" title="再生中の位置をこのブロックの頭にする">${IC('flag')} 今の再生位置を「${esc(syncAnchor(s).name)}」の頭にする</button>`:''}</div>`:''}
+    <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?`「${esc(syncAnchor(s).name)}」の頭の位置だけ合わせれば、そこから曲のテンポと拍子どおりに刻みます。クリックが早ければ＋、遅ければ－で微調整できます。${syncAnchor(s)!==s.blocks[0]?'それより前のブロック(テンポがない前奏など)ではメトロノームは鳴りません。頭の位置は各ブロックの旗のボタンで登録できます。':''}`
+      :noBpm?'テンポが未入力なので ♩120 で鳴らします':''}</div></div>`}
 // 音源同期: 「始めるブロックの頭の位置」から、曲の構成(テンポ・拍子・小節数)だけで拍の時刻を並べる。ブロックの頭では合わせ直さない。
 // 始めるブロックより前(テンポのない前奏など)は鳴らさない
 const MS={ev:null,evKey:'',last:null,lastMt:null};
@@ -1353,10 +1361,10 @@ const PL={songId:null,blobId:null,loop:null};
 const fmtT=t=>t==null?'':t<=-0.05?'-'+fmtT(-t):(t=Math.max(0,t),`${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`);
 const fmtS=t=>!isFinite(t)||t<0?'0:00':`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 function timeBtns(b){const s=curSong()||playerSong();const t=blockTime(s,b),sync=syncOn(s);
-  return `<span class="tbtns"><span class="tstamp" title="${sync?'メトロノームの拍の並びから計算した位置':'⏱で登録した位置'}">${t!=null?fmtT(t):'--:--'}</span>
+  return `<span class="tbtns"><span class="tstamp" title="${sync?'メトロノームの拍の並びから計算した位置':'旗のボタンで登録した位置'}">${t!=null?fmtT(t):'--:--'}</span>
   <button data-act="bPlay" data-id="${b.id}" title="このブロックの頭から再生" ${t==null?'disabled':''}>▶</button>
-  <button class="${PL.loop===b.id?'on':''}" data-act="bLoop" data-id="${b.id}" title="このブロックを繰り返す" ${t==null?'disabled':''}>🔁</button>
-  ${sync&&!preAnchor(s,b)?'':`<button data-act="bMark" data-id="${b.id}" title="今の再生位置をこのブロックの頭にする">⏱</button>`}</span>`}
+  <button class="${PL.loop===b.id?'on':''}" data-act="bLoop" data-id="${b.id}" title="このブロックを繰り返す" ${t==null?'disabled':''}>${IC('repeat')}</button>
+  ${sync&&!preAnchor(s,b)?'':`<button data-act="bMark" data-id="${b.id}" title="今の再生位置をこのブロックの頭にする">${IC('flag')}</button>`}</span>`}
 function initPlayer(){
   $('#player').innerHTML=`<div class="pl-in"><span id="plName" class="pl-name"></span><div id="ytWrap" style="display:none"><div id="yt"></div></div><div id="spWrap" style="display:none"><div id="sp"></div></div><audio id="pa" controls preload="metadata"></audio>
   <div class="pl-mini"><button class="pm-play" id="pmPlay" data-act="pmPlay" aria-label="再生/一時停止">▶</button>
@@ -1500,9 +1508,9 @@ function syncPlayer(){if(!M.volInit&&$('#pa')){M.volInit=1;if((S.prefs.aVol??1)<
     if(kind==='audio'){const bid=s.audio.blobId;blobURL(bid).then(async u=>{AUP.have[bid]=!!u;if(!u){updAudioStat();if(await audioFetch(s))u=await blobURL(bid)}
       if(PL.blobId!=='a:'+bid)return;if(u)a.src=u;else a.removeAttribute('src');updAudioStat()})}else if(kind==='gd'){const gid=gdId(s.url);M.gdState='loading';M.gdProg=null;updUrlStat();
       getBlob('gd:'+gid).then(b=>{if(PL.blobId!=='g:'+gid)return;if(b){a.src=URL.createObjectURL(b);M.gdLocal=gid;M.gdState='ready';updUrlStat()}else{M.gdLocal=null;a.src=gdSrc(gid);gdCache(gid)}}).catch(()=>{a.src=gdSrc(gid)})}else if(kind==='sp')loadSP(spId(s.url));else loadYT(ytId(s.url))}
-  $('#plName').textContent=kind==='audio'?'🎵 '+s.audio.name:kind==='gd'?'▶ Googleドライブ(参考音源URL)':kind==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
+  $('#plName').textContent=kind==='audio'?s.audio.name:kind==='gd'?'▶ Googleドライブ(参考音源URL)':kind==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
   $('#plRemove').style.display=kind==='audio'?'':'none';$('#plPick').textContent=kind==='audio'?'差し替え':'音源ファイルを入れる';
-  const lb=PL.loop&&s.blocks.find(b=>b.id===PL.loop);$('#plLoop').innerHTML=lb?`🔁 ${esc(lb.name)} をループ中 <button class="ghost" data-act="bLoop" data-id="${lb.id}">解除</button>`:'';
+  const lb=PL.loop&&s.blocks.find(b=>b.id===PL.loop);$('#plLoop').innerHTML=lb?`${IC('repeat')} ${esc(lb.name)} をループ中 <button class="ghost" data-act="bLoop" data-id="${lb.id}">解除</button>`:'';
   onTime();ytPos();setTimeout(ytPos,400)}
 /* ドライブから音源を選ぶ: Googleのファイル選択画面で選んだファイルを、そのまま曲の音源にする。
    ドライブに元からあるファイルなので上げ直さず、外したり差し替えたりしてもドライブのファイルは消さない(picked) */
@@ -1597,8 +1605,8 @@ function viewBlock(){
     <span class="spacer"></span><span class="mstat" id="metroStat"></span>
   </div>
   <div class="panel metro-b" style="${UI('metro')?'':'display:none'}">
-    ${syncOn(s)?`<button data-act="mPlayBlock">▶ ここから音源と再生</button><button data-act="mLoopBlock">🔁 このブロックを繰り返す</button><button data-act="mStop">■</button><span class="sub">音源に合わせて鳴らす設定です(曲の画面で変更)</span>`
-      :`<button data-act="mPlayBlock">▶ ここから</button><button data-act="mLoopBlock">🔁 このブロックを繰り返す</button><button data-act="mStop">■</button>${metroOpts()}`}
+    ${syncOn(s)?`<button data-act="mPlayBlock">▶ ここから音源と再生</button><button data-act="mLoopBlock">${IC('repeat')} このブロックを繰り返す</button><button data-act="mStop">■</button><span class="sub">音源に合わせて鳴らす設定です(曲の画面で変更)</span>`
+      :`<button data-act="mPlayBlock">▶ ここから</button><button data-act="mLoopBlock">${IC('repeat')} このブロックを繰り返す</button><button data-act="mStop">■</button>${metroOpts()}`}
   </div>
   <div class="tabs"><a href="#/block/${s.id}/${bl.id}" class="${memo?'':'on'}">コード・歌詞</a><a href="#/block/${s.id}/${bl.id}/memo" class="${memo?'on':''}">メモ ${bl.memos.length||''}</a></div>
   ${memo?memoTab(bl):chordTab(bl)}
@@ -1810,7 +1818,7 @@ function loopBarHTML(bl){if(RAMPSEL&&RAMPSEL.bid===bl.id)return `<div class="pla
     <div class="hstack" style="margin-top:6px"><span class="spacer"></span><button data-act="rampCancel">やめる</button></div></div>`;
   if(LOOPSEL&&LOOPSEL.bid===bl.id)return `<div class="place-bar" id="loopBar"><div class="place-now">繰り返しの終わりの小節をタップ</div><div class="sub">${LOOPSEL.from+1}小節目から。同じ小節をタップすると、その1小節だけを繰り返します</div>
     <div class="hstack" style="margin-top:6px"><span class="spacer"></span><button data-act="loopCancel">やめる</button></div></div>`;
-  if(LOOPR&&LOOPR.bid===bl.id)return `<div class="loop-bar"><span>🔁 ${LOOPR.from+1}〜${LOOPR.to+1}小節を繰り返し中</span><span class="spacer"></span><button data-act="loopClear">解除</button></div>`;return ''}
+  if(LOOPR&&LOOPR.bid===bl.id)return `<div class="loop-bar"><span>${IC('repeat')} ${LOOPR.from+1}〜${LOOPR.to+1}小節を繰り返し中</span><span class="spacer"></span><button data-act="loopClear">解除</button></div>`;return ''}
 document.addEventListener('click',e=>{if(!LOOPSEL||R.name!=='block')return;const bar=e.target.closest&&e.target.closest('#grid .bar');if(!bar||e.target.closest('input,textarea'))return;
   e.preventDefault();e.stopPropagation();const bi=+bar.id.slice(4),a=LOOPSEL.from;LOOPR={bid:LOOPSEL.bid,from:Math.min(a,bi),to:Math.max(a,bi)};LOOPSEL=null;loopStart()},true);
 const blockById=(s,id)=>s.blocks.find(b=>b.id===id);
@@ -2010,7 +2018,7 @@ function memoTab(bl){
     <button data-act="addText">テキスト</button><span class="sub">Ctrl+V で画像貼り付け・ファイルのドラッグ&ドロップもOK</span></div>
   <div class="drop" id="drop">
     ${photos.length?boardHTML(bl):''}
-    ${audios.length?`<div class="sec">ボイスメモ</div>${audios.map(m=>`<div class="memo-item">🎙<input value="${esc(m.name)}" data-input="memoName" data-id="${m.id}"><audio controls preload="metadata" data-blob="${m.blobId}"></audio><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
+    ${audios.length?`<div class="sec">ボイスメモ</div>${audios.map(m=>`<div class="memo-item">${IC('mic')}<input value="${esc(m.name)}" data-input="memoName" data-id="${m.id}"><audio controls preload="metadata" data-blob="${m.blobId}"></audio><button class="ghost" data-act="delMemo" data-id="${m.id}">✕</button></div>`).join('')}`:''}
     ${texts.length?`<div class="sec">テキスト</div>${texts.map(m=>`<div class="memo-item memo-tx"><textarea data-input="memoText" data-id="${m.id}" placeholder="${R.name==='block'?'例: 最後の小節だけ繰り返しじゃない！':'例: 練習音源のリンク、集合時間など'}">${esc(m.text)}</textarea><div class="memo-btns"><button class="ghost" data-act="memoCopy" data-id="${m.id}">コピー</button><button class="ghost" data-act="delMemo" data-id="${m.id}" aria-label="削除">✕</button></div><div class="memo-links" id="ml-${m.id}">${memoLinks(m.text)}</div></div>`).join('')}`:''}
     ${bl.memos.length?'':`<div class="empty">${R.name==='block'?'手書きの採譜写真やボイスメモ、注意書きテキストなどをここにまとめて置けます':'リンク、手書きメモの写真、ボイスメモ、テキストなどを置けます'}</div>`}
   </div>`}
@@ -2218,7 +2226,7 @@ async function openShare(kind){
   <div class="sub sh-lab">共有コード <span id="shCodeLen">${SHARE_API?'(作成中…)':'('+code.length+'文字)'}</span></div>
   <div class="hstack sh-row"><input id="shCode" readonly value="${SHARE_API?'':esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   <div class="sub sh-lab">共有リンク <span id="shLen">(${link.length}文字)</span></div>
-  <div class="hstack sh-row"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>✂</button><button data-act="copy" data-t="shLink">コピー</button></div>
+  <div class="hstack sh-row"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>短く</button><button data-act="copy" data-t="shLink">コピー</button></div>
   <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くだけで見られます。ホーム画面に追加したアプリで使っている人は、アプリの「☰ メニュー → 共有コードを読み込む」に共有コードを入れると取り込めます。</p>
   </div>`;
   SHARE_LONG=code;if(SHARE_API)makeShort(code)}
@@ -2245,7 +2253,7 @@ async function fillImport(){
     const same=(d.oids||[]).filter(o=>o&&S.songs.some(x=>x.oid===o||x.id===o)).length;
     const tbName=tb?tb.name:isBand?d.band.name+'(新しく作ります)':band().name;
     const body=songs.map(s=>(impTab==='map'?mapHTML(s,true,true):chordSheetHTML(s,true,false,false)).replace(/data-act="goBlock"[^>]*?title=/g,'title=')).join('');
-    const toc=isBand?`<div class="card noprint"><b>バンド「${esc(d.band.name)}」</b> <span class="sub">${songs.length}曲</span>${(d.setlists||[]).map(x=>`<div style="margin-top:6px">${esc(x.regular?'オリジナル':x.name)} <span class="sub">${x.idx.length}曲</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).i} ${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
+    const toc=isBand?`<div class="card noprint"><b>バンド「${esc(d.band.name)}」</b> <span class="sub">${songs.length}曲</span>${(d.setlists||[]).map(x=>`<div style="margin-top:6px">${esc(x.regular?'オリジナル':x.name)} <span class="sub">${x.idx.length}曲</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:isSl?`<div class="card noprint"><b>${esc(d.setlist)}</b> <span class="sub">${songs.length}曲</span>${PENDING.events.map(e=>`<div style="margin-top:6px">${(EV_T[e.type]||EV_T.studio).l}: <b>${studioSum(e)}</b> <span class="sub">${daysLeft(e.date)}</span></div>`).join('')}<ol class="note" style="margin:6px 0 0;padding-left:22px">${songs.map(s=>`<li>${esc(s.title)} <span class="sub">${songMeta(s)}</span></li>`).join('')}</ol></div>`:'';
     el.innerHTML=`<div class="card noprint"><b>共有された${what}を見ています</b><p class="note" style="margin:4px 0 10px">このページはリンクの中身を表示しているだけで、まだあなたのアプリには保存されていません。${S.prefs.tutDone?'':'このアプリが初めてなら、追加したあとに使い方の案内が出ます。'}「自分の${what}に追加」すると、${SY.meta.on?'あなたのアプリとGoogleドライブに':'あなたの端末だけに'}コピーが保存されます。編集しても共有した人には反映されません。</p>
     <div class="hstack"><span class="ptabs" style="margin:0"><a href="javascript:void 0" data-act="impTab" data-v="map" class="${impTab==='map'?'on':''}">構成表</a><a href="javascript:void 0" data-act="impTab" data-v="chord" class="${impTab==='chord'?'on':''}">コード譜</a></span>
       <button data-act="doPrint">印刷 / PDF</button><span class="spacer"></span>
@@ -2338,7 +2346,7 @@ const TOUR=[
   {on:'song',r:tSong,sel:'#songInfo',kw:'テンポ 拍子 キー BPM',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songAudio',kw:'YouTube Spotify mp3 wav ファイル 再生 プレーヤー 速さ スロー',h:'音源',t:'音源ファイル(wav・mp3など)や、YouTube・YouTube Music・SpotifyのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。再生中は今の場所を自動で追いかけますが、画面を触ると止まります。「↓ 再生位置へ」で戻れます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',kw:'クリック BPM テンポ 拍 刻み 音量 カウント ハネ シャッフル',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。音源に合わせて鳴らすこともできます。「刻み」で8分や3連・ハネの音を足したり、「音量」で音源とのバランスを変えたりできます。',need:tourSong},
-  {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。左端をつかんで並べ替えることができます。「複製」を押すと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
+  {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。左端をつかんで並べ替えることができます。右の「…」から「複製」を選ぶと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けます。曲を作るときに、最初のブロックの形(よくある形・からっぽ)も選べます。',need:tourSong},
   {on:'song',r:tSong,sel:'.lyr-open',adv:1,kw:'歌詞カード 貼り付け 歌い出し',h:'歌詞をまとめて入れる',t:'「歌詞をまとめて入れる」に曲の歌詞の全文を貼り付けると、行の一覧が出ます。入れたい行にチェックをつけて、下のブロックをタップすると、その行がブロックに入ります。同じ行を2回目のサビなど別のブロックにも入れられます。歌い出しの小節は、ブロックの画面の「歌詞を小節に置く」で、行が始まる小節をタップして決めます。「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong},
   {on:'song',r:tSong,sel:'[data-act=midiPick]',adv:1,kw:'Cubase DAW マーカー オリジナル 自作',h:'MIDIを読み込む',t:'自分の曲なら、DAW(Cubaseなど)から書き出したMIDIファイルで、テンポ・拍子・キーと、マーカーでのブロック分けをまとめて読み込めます。マーカーの名前がそのままブロックの名前になります。',need:tourSong},
@@ -2480,7 +2488,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2756,7 +2764,7 @@ const ACT={
   toggleTag(t){const bl=curBlock(),x=t.dataset.t;bl.tags=bl.tags.includes(x)?bl.tags.filter(y=>y!==x):[...bl.tags,x];render()},
   cell:t=>selectCell(+t.dataset.bar,+t.dataset.slot),
   barMenu(t){const bi=+t.dataset.bar,bl=curBlock(),inR=(bl.ramps||[]).findIndex(r=>bi>=r.from&&bi<=r.to);
-    popMenu(t,`<button data-act="popDo" data-v="barPlay" data-bar="${bi}">▶ この小節から再生</button><button data-act="popDo" data-v="barLoopFrom" data-bar="${bi}">🔁 ここから繰り返す</button><hr>`
+    popMenu(t,`<button data-act="popDo" data-v="barPlay" data-bar="${bi}">▶ この小節から再生</button><button data-act="popDo" data-v="barLoopFrom" data-bar="${bi}">${IC('repeat')} ここから繰り返す</button><hr>`
       +(inR>=0?`<button data-act="popDo" data-v="rampEdit" data-i="${inR}">♩ テンポの変化を直す</button><button class="danger" data-act="popDo" data-v="rampDel" data-i="${inR}">テンポの変化を消す</button>`
         :`<button data-act="popDo" data-v="rampFrom" data-bar="${bi}">♩ ここからテンポをだんだん変える</button>`)
       +`<button data-act="popDo" data-v="barN" data-bar="${bi}">この小節だけ拍子を変える</button>`)},
@@ -2955,11 +2963,14 @@ const ACT={
   lyrTap(t){const s=curSong();if(S.prefs.lyrHide){t.classList.toggle('open');return}
     if(syncOn(s)){const e=syncEv(s).find(x=>x.bid===t.dataset.bid&&x.bar===+t.dataset.bar);if(e){ctxReady();MS.last=null;M.seek(Math.max(0,e.t-0.05));M.play()}}},
   pmPlay(){ctxReady();MS.last=null;M.paused()?M.play():M.pause()},
-  pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?'🎵 '+s.audio.name:k==='gd'?'▶ Googleドライブ(参考音源URL)':k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
+  pmMore(t){const s=curSong(),k=M.kind,nm=k==='audio'&&s&&s.audio?s.audio.name:k==='gd'?'▶ Googleドライブ(参考音源URL)':k==='sp'?'▶ Spotify(参考音源URL)':'▶ YouTube(参考音源URL)';
     popMenu(t,`<div class="sub" style="padding:8px 12px;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</div><hr>
       <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button><button data-act="pmDrive">Googleドライブから選ぶ</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
   pmDrive(){ACT.lbClose();drivePick()},
+  blkMore(t){popMenu(t,`<button data-act="blkDup" data-i="${t.dataset.i}">複製</button><button data-act="blkDel" data-i="${t.dataset.i}" style="color:var(--danger,#c0392b)">削除</button>`,true)},
+  blkDup(t){ACT.lbClose();ACT.dupBlock(t)},
+  blkDel(t){ACT.lbClose();ACT.delBlock(t)},
   gdRetry(){const s=curSong(),id=s&&gdId(s.url);if(!id)return;M.gdState='loading';M.gdWhy='';updUrlStat();$('#pa').src=gdSrc(id)},
   dsaShare(){const d=DSA;ACT.lbClose();if(d)driveShareLink(d.s,d.id)},
   dsaFile(){const d=DSA;ACT.lbClose();if(d)drivePickDone(d.s,d.id,d.name)},
