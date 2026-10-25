@@ -339,6 +339,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .newtag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;margin-left:6px;vertical-align:2px}
 .feednew{border-color:var(--accent);margin:8px 0}.joinnote{display:flex;gap:6px;align-items:flex-start;margin:4px 0 8px}
 .sup-pay{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:14px}.sup-pay ul{margin:6px 0 0;padding-left:20px;line-height:1.6;font-weight:400}
+.home-ed{padding:6px 0;border-bottom:1px solid var(--line)}.home-ed label{gap:8px;font-size:15px}.home-ed button{padding:4px 10px}
 .tour-feats{display:grid;gap:6px;margin-top:10px;max-height:46vh;overflow-y:auto}.tour-feats button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-radius:8px}.tour-feats b{font-size:14px}.tour-feats span{font-size:12px;color:var(--sub);font-weight:400}
 .tour-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tour-more button{padding:5px 10px;font-size:13px;border-radius:10px}
 .tut-tocfoot{flex-wrap:nowrap}.tut-tocfoot button{white-space:nowrap;padding-left:10px;padding-right:10px}.tut-toc{max-height:52vh;overflow-y:auto;margin:4px 0 10px}.tut-toc h3.tut-sec{font-size:15px;margin:18px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.tut-toc h3.tut-sec:first-child{margin-top:0;padding-top:0;border-top:0}.tut-secp{margin:0 0 4px}
@@ -694,7 +695,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 22:03';
+const APP_VER='10/25 22:19';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -968,7 +969,7 @@ function memoBlobIds(blocks){return blocks.flatMap(b=>b.memos.filter(m=>m.blobId
 function songBlobIds(songs){return [...memoBlobIds(songs.flatMap(s=>s.blocks)),...songs.filter(s=>s.audio).map(s=>s.audio.blobId)]}
 
 /* ---------- route ---------- */
-function route(){const p=location.hash.replace(/^#\/?/,'').split('/');return {name:p[0]||'setlist',a:p[1],b:p[2],c:p[3]}}
+function route(){const p=location.hash.replace(/^#\/?/,'').split('/');return {name:p[0]||'home',a:p[1],b:p[2],c:p[3]}}
 let R={};
 let P=null;   // chord picker state
 let rec=null; // recorder
@@ -977,7 +978,9 @@ function render(){try{MT.pk=null}catch(_){}
   R=route();let html='';ensureGigs();
   if(MT.playing&&!((R.name==='song'||R.name==='block'||R.name==='lyrics')&&R.a===MT.songId))mStop();
   document.documentElement.dataset.theme=S.prefs.theme||'auto';
-  if(R.name==='song')html=viewSong();
+  if(R.name==='home')html=viewHomeTop();
+  else if(R.name==='events')html=viewHome();
+  else if(R.name==='song')html=viewSong();
   else if(R.name==='print')html=viewPrint();
   else if(R.name==='import'||R.name==='s')html=viewImport();
   else if(R.name==='block')html=viewBlock();
@@ -1005,7 +1008,7 @@ const ICON_UNDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentCo
 const ICON_REDO='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>';
 function topbar(tab){
   return `<header class="top"><div class="brand"><img class="brand-i" src="icon-192.png" alt=""><span class="brand-t"> コピバン練習ノート</span></div>
-  <nav><a href="#/" class="${tab==='setlist'?'on':''}">イベント</a><a href="#/bands" class="${tab==='bands'?'on':''}">バンド</a></nav>
+  <nav><a href="#/" class="${tab==='home'?'on':''}">ホーム</a><a href="#/events" class="${tab==='setlist'?'on':''}">イベント</a><a href="#/bands" class="${tab==='bands'?'on':''}">バンド</a></nav>
   <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
   <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・同期など)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
 /* ---------- バンドの切り替え(セトリと曲の画面のいちばん上)。曲もセトリもバンドごとに分かれる ---------- */
@@ -1115,16 +1118,41 @@ function gigCard(g){const sets=gigSetsSorted(g),d=gigDate(g);
     return `<a class="gband ${!g.regular&&isOrigBand(x.bandId)?'origb':''}" href="#/setlist/${x.id}">${esc(bandNameOf(x.bandId))}${starTxt(x.stars)}<span class="sub">${slDayNo(x)?slDayNo(x)+'日目 ・ ':''}${n}曲${nx?' ・ 次のスタジオ '+nx.date.slice(5).replace('-','/'):''}</span></a>`}).join('')||`<div class="gempty">まだバンドがありません</div>`}</div></div>`}
 // Googleにログインしていない人に、自動バックアップを一度だけ勧める(「今はしない」で消える。強制はしない)
 const syncNudge=()=>GCLIENT&&!SY.meta.on&&!DEMO&&S.prefs.tutDone&&!S.prefs.syncNudgeOff?`<div class="card sync-nudge"><b>${IC('cloud')} データを自動でバックアップ</b><p class="note" style="margin:4px 0 8px">Googleでログインすると、データが自分のGoogleドライブに自動で保存されます。</p><div class="hstack"><button class="primary" data-act="syncLogin">Googleでログイン</button><button class="ghost" data-act="syncNudgeOff">今はしない</button></div></div>`:'';
-function viewHome(){const {reg,up,past}=gigSorted();const os=origSets(),rg=reg[0];
+function viewHome(){const {up,past}=gigSorted();
   return topbar('setlist')+`<main><div class="slhead"><h1>イベント</h1><span class="spacer"></span><button class="primary" data-act="newGig">＋ イベント</button></div>
-  ${os.length?'':`<p style="margin:0 0 6px"><a href="javascript:void 0" data-act="gigAddBand" data-id="${rg?rg.id:''}">＋ オリジナルバンド</a></p>`}
-  ${syncNudge()}
-  ${os.length?`<div class="hstack home-sec"><b>オリジナル</b><span class="spacer"></span><button class="ghost" data-act="gigAddBand" data-id="${rg.id}">＋ オリジナルバンド</button></div>${os.map(origCard).join('')}<div class="home-sec"><b>これからのイベント</b></div>`:''}
-  ${up.map(gigCard).join('')}${!up.length&&os.length?'<div class="empty">まだ予定しているイベントはありません</div>':''}
+  ${up.map(gigCard).join('')||'<div class="empty">まだ予定しているイベントはありません</div>'}
   ${past.length?`<button class="foldbtn" data-act="uiToggle" data-k="pastGig" style="margin:4px 0 8px">終わったイベント (${past.length}) ${UI('pastGig')?'▾':'▸'}</button>${UI('pastGig')?past.map(gigCard).join(''):''}`:''}</main>`}
+/* ---------- ホーム: 次の予定・オリジナルバンド・最近開いた曲・近いイベントをまとめて見る ----------
+   出す・出さないと並び順は S.prefs.home に [[種類, 出すなら1], ...] で持つ */
+const HOME_SECS=[['next','次の予定'],['orig','オリジナルバンド'],['recent','最近開いた曲'],['gigs','近いイベント']];
+function homeSecs(){const p=(S.prefs.home||[]).filter(x=>HOME_SECS.some(h=>h[0]===x[0]));HOME_SECS.forEach(h=>{if(!p.some(x=>x[0]===h[0]))p.push([h[0],1])});return p}
+const homeLbl=k=>(HOME_SECS.find(h=>h[0]===k)||['',''])[1];
+// これからの予定(スタジオと本番)を近い順に。同じ本番が複数のバンドに出るときは1つにまとめる
+function nextEvents(n){const t=todayStr(),seen=new Set(),out=[];
+  S.setlists.forEach(sl=>slAllEvents(sl).forEach(e=>{if(!e.date||e.date<t)return;const key=e.type==='live'?'L'+sl.gigId+e.date+(e.start||''):'S'+(e.id||sl.id+e.date+(e.start||''));
+    if(seen.has(key)){const o=out.find(x=>x.key===key);if(o&&!o.bands.includes(bandNameOf(sl.bandId)))o.bands.push(bandNameOf(sl.bandId));return}
+    seen.add(key);out.push({key,e,sl,bands:[bandNameOf(sl.bandId)]})}));
+  return out.sort((a,b)=>(a.e.date+(a.e.start||''))<(b.e.date+(b.e.start||''))?-1:1).slice(0,n)}
+function pushRecent(id){const r=(S.prefs.recent||[]).filter(x=>x!==id);r.unshift(id);S.prefs.recent=r.slice(0,10)}
+function homeSec(k){const rg=gigSorted().reg[0];
+  if(k==='next'){const ev=nextEvents(3);return `<div class="home-sec"><b>次の予定</b></div>${ev.length?`<div class="list cards">${ev.map(x=>{const g=gigOf(x.sl),lv=x.e.type==='live';
+      return `<div class="row"><a class="body" href="#/${lv&&!g.regular?'gig/'+g.id:'setlist/'+x.sl.id}"><div class="title">${(EV_T[x.e.type]||EV_T.studio).l} ・ ${esc(lv&&!g.regular?g.name:x.bands.join('、'))}</div><div class="sub">${studioSum(x.e)}${x.e.place?' ・ '+esc(x.e.place):''}</div></a><span class="sub">${daysLeft(x.e.date)}</span></div>`}).join('')}</div>`:'<div class="empty">これからの予定はまだありません</div>'}`}
+  if(k==='orig'){const os=origSets();return `<div class="hstack home-sec"><b>オリジナルバンド</b><span class="spacer"></span>${rg?`<button class="ghost" data-act="gigAddBand" data-id="${rg.id}">＋ オリジナルバンド</button>`:''}</div>${os.map(origCard).join('')||'<div class="empty">自分たちの曲をやるバンドは「＋ オリジナルバンド」から入れられます</div>'}`}
+  if(k==='recent'){const ss=(S.prefs.recent||[]).map(songById).filter(Boolean).slice(0,5);
+    return `<div class="home-sec"><b>最近開いた曲</b></div>${ss.length?`<div class="list cards">${ss.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${esc(bandNameOf(s.bandId)||'バンドなし')}${songMeta(s)?' ・ '+songMeta(s):''}</div>${strip(s)}</a></div>`).join('')}</div>`:'<div class="empty">曲を開くと、ここに並びます</div>'}`}
+  if(k==='gigs'){const up=gigSorted().up.slice(0,2);return `<div class="hstack home-sec"><b>近いイベント</b><span class="spacer"></span><a class="back" href="#/events">すべて ›</a></div>${up.map(gigCard).join('')||'<div class="empty">まだ予定しているイベントはありません</div>'}`}
+  return ''}
+function viewHomeTop(){const secs=homeSecs().filter(x=>x[1]);
+  return topbar('home')+`<main><div class="slhead"><h1>ホーム</h1><span class="spacer"></span><button class="ghost" data-act="homeEdit">並べ替え</button></div>
+  ${syncNudge()}${secs.map(x=>homeSec(x[0])).join('')||'<div class="empty">「並べ替え」から、ホームに出すものを選んでください</div>'}</main>`}
+function homeEditHTML(){const p=homeSecs();
+  return `<div class="modal-bg" data-act="lbClose"></div><div class="modal"><div class="hstack"><b>ホームに出すもの</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+  <p class="note">チェックを外すと出さなくなります。↑↓で並び順を変えられます。</p>
+  ${p.map((x,i)=>`<div class="hstack home-ed"><label class="hstack" style="flex:1"><input type="checkbox" data-change="homeOn" data-k="${x[0]}" ${x[1]?'checked':''}> ${homeLbl(x[0])}</label><button class="ghost" data-act="homeMove" data-i="${i}" data-v="-1" ${i?'':'disabled'} aria-label="上へ">↑</button><button class="ghost" data-act="homeMove" data-i="${i}" data-v="1" ${i<p.length-1?'':'disabled'} aria-label="下へ">↓</button></div>`).join('')}
+  <div class="hstack" style="margin-top:12px"><button class="ghost" data-act="homeReset">初めの並びに戻す</button><span class="spacer"></span><button class="primary" data-act="lbClose">閉じる</button></div></div>`}
 function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   const sets=gigSetsSorted(g),cust=(g.sort||'studio')==='custom';
-  return topbar('setlist')+`<main><a class="back" href="#/">‹ イベント一覧</a>
+  return topbar('setlist')+`<main><a class="back" href="#/events">‹ イベント一覧</a>
   <div class="slhead">${g.regular?`<h1>${esc(g.name)}</h1>`:`<input class="h1in nameedit" value="${esc(g.name)}" data-input="gigNameId" data-id="${g.id}" aria-label="イベントの名前" enterkeyhint="done">`}${g.regular?'':`<button class="ghost slmore" data-act="gigMore" data-id="${g.id}" aria-label="イベントのメニュー">⋯</button>`}</div>
   ${g.regular?'<p class="sub gigsub">ライブが決まっていないバンドの、曲とスタジオ練習をまとめる場所です。</p>':g.color?`<div style="--live:${g.color}">${evSection(g,'live')}</div>`:evSection(g,'live')}
   <div class="hstack gig-sorthd"><div class="sec" style="margin:0">${g.regular?'バンド':'出るバンド'} (${sets.length})</div><span class="spacer"></span>${sets.length>1?`<select data-change="gigSort" data-id="${g.id}" aria-label="バンドの並び">${GIG_SORTS.map(([k,l])=>`<option value="${k}" ${(g.sort||'studio')===k?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
@@ -1180,7 +1208,7 @@ function songFindList(){const q=sfNorm(SFQ);if(!q)return '';const hits=[];
   if(!hits.length)return '<div class="empty">見つかりませんでした</div>';
   return `<div class="list cards">${hits.slice(0,40).map(({s,why})=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${S.bands.some(b=>b.id===s.bandId)?esc(bandNameOf(s.bandId)):'バンドなし'} ・ ${songMeta(s)}</div>${why?`<div class="sub">${esc(why)}</div>`:''}${strip(s)}</a></div>`).join('')}</div>`}
 document.addEventListener('input',e=>{if(e.target.id!=='songQ')return;SFQ=e.target.value;const l=$('#songRes'),o=$('#bandsBody');if(l)l.innerHTML=songFindList();if(o)o.hidden=!!SFQ.trim()});
-function viewBands(){S.cur.setlist=null;const og=S.bands.filter(b=>isOrigBand(b.id)),cp=S.bands.filter(b=>!isOrigBand(b.id));
+function viewBands(){S.cur.setlist=null;const og=S.bands.filter(b=>isOrigBand(b.id)),t=todayStr(),nx=b=>{const o=bandGigs(b.id).find(o=>slDate(o)&&slDate(o)>=t);return o?slDate(o):'9999'},cp=S.bands.filter(b=>!isOrigBand(b.id)).map((b,i)=>[b,nx(b),i]).sort((a,b)=>a[1]<b[1]?-1:a[1]>b[1]?1:a[2]-b[2]).map(x=>x[0]);
   return topbar('bands')+`<main><div class="slhead"><h1>バンド</h1><span class="spacer"></span><button class="primary" data-act="newBandHere">＋ バンド</button></div>
   <input id="songQ" class="tut-q" type="search" value="${esc(SFQ)}" placeholder="曲を探す(曲名・メモ・歌詞)" aria-label="曲を探す" autocomplete="off" style="margin:4px 0 10px">
   <div id="songRes">${songFindList()}</div><div id="bandsBody" ${SFQ.trim()?'hidden':''}>
@@ -1210,6 +1238,7 @@ function viewSongs(){
 }
 function viewSong(){
   const s=songById(R.a);if(!s)return topbar('')+`<main><div class="empty">曲が見つかりません</div></main>`;
+  if(!DEMO&&(S.prefs.recent||[])[0]!==s.id){pushRecent(s.id);clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',st=>st.put(S,'state')),250);syncSoon()}
   const sl=S.setlists.find(x=>x.id===S.cur.setlist);
   const counts={};s.blocks.forEach(b=>counts[b.type]=(counts[b.type]||0));
   return topbar('')+`<main>
@@ -2430,8 +2459,8 @@ const TOUR=[
   {core:1,r:()=> '#/',sel:null,h:'ようこそ！',map:1,tt:'バンドでコピーする曲の<b>構成</b>(イントロやサビの順番と小節数)をまとめるノートです。中身はこの順につながっています。',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。',ask:'自分たちの曲をやるオリジナルバンドはある？'},
   {core:1,notApp:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',tt:'スマホで使うなら、書き込む前にホーム画面に追加してください(iPhoneは、ブラウザで書いた内容がホーム画面のアプリに引き継がれません)。ブラウザの共有ボタンや ︙ から「ホーム画面に追加」を選べます。',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
     g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
-  {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
-  {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、出るバンドを足します。何組か掛け持ちするときは、同じイベントにバンドを並べます。2日間のイベントなら、本番を1日ずつ足して、バンドの画面で「出る日」を選べます。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、バンドには星(1〜3)をつけて並び順を選べます。'},
+  {r:()=> '#/events',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
+  {on:'setlist',r:()=> '#/events',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、出るバンドを足します。何組か掛け持ちするときは、同じイベントにバンドを並べます。2日間のイベントなら、本番を1日ずつ足して、バンドの画面で「出る日」を選べます。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、バンドには星(1〜3)をつけて並び順を選べます。'},
   {r:tSl,sel:'main',whole:true,h:'バンドの画面',t:'イベントに出る1つのバンドの、曲順(セトリ)とスタジオの予定をまとめる画面です。いちばん上の「‹」でイベントに戻れます。',need:hasSl},
   {on:'bands',r:()=> '#/bands',sel:'#songQ',kw:'バンド 移す 曲一覧 検索 探す',h:'バンドと曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。曲はバンドの中に並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲はバンドの画面の「移す」で別のバンドへ移せます。いちばん上の「曲を探す」では、すべてのバンドの曲から、曲名・メモ・歌詞で探せます。'},
   {on:'setlist',r:tSl,sel:'.sec.hstack',adv:1,kw:'練習 日程 カレンダー',h:'スタジオの予定',t:'バンドのスタジオ練習の日程を入れておけます。本番の日時はイベントの画面で1回だけ入れます。カレンダーへの追加やメンバーへの共有もできます。',need:hasSl},
@@ -2514,11 +2543,11 @@ const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&documen
 function tourStart(){ACT.lbClose();THINT=false;if(!DEMO&&needDemo())demoOn();
   const w=TOUR.find(s=>s.core&&s.ask);TSTEPS=[{...w,t:w.tt||w.t},...firstTourRest(null)];TI=0;TH=false;tourGo()}
 // orig: true=オリジナルバンドがある / false=ない / null=まだ答えていない(ないと同じ流れ)
-function firstTourRest(orig){const home=()=> '#/',st=[];
+function firstTourRest(orig){const home=()=> '#/events',st=[];
   let head=[];
   if(orig)head=tourOrigSteps();
   if(!orig||!head.some(s=>s.tap)){const sl=curSetlist(),g=sl&&gigOf(sl),vis=g&&!g.regular&&!(gigDate(g)&&gigDate(g)<todayStr());
-    head=head.concat([{r:home,lv:0,sel:'main .card.gig',h:'ホームの画面',t:'ここがホームです。ライブや企画ごとに「イベント」のカードが並んでいて、その中に出るバンドが入っています。新しいイベントは右上の「＋ イベント」から作れます。'}]);
+    head=head.concat([{r:home,lv:0,sel:'main .card.gig',h:'イベントの画面',t:'上の「イベント」を押すと、この画面になります。ライブや企画ごとに「イベント」のカードが並んでいて、その中に出るバンドが入っています。新しいイベントは右上の「＋ イベント」から作れます。'}]);
     if(vis)head.push({r:home,lv:0,sel:'main a.gband[href="#/setlist/'+sl.id+'"]',h:'バンドを開く',t:'イベントの中のバンドを押すと、そのバンドの画面が開きます。光っているバンドを押してみましょう。',tap:'main a.gband[href="#/setlist/'+sl.id+'"]'})}
   st.push(...head,
     {r:tSl,lv:1,whole:true,sel:'main',h:'バンドの画面',t:'バンドの画面です。上にスタジオ練習の予定、その下に演奏する曲の順番(曲順)が並びます。'},
@@ -2533,11 +2562,11 @@ function firstTourRest(orig){const home=()=> '#/',st=[];
 // オリジナルバンドがある人: イベントの前に、ホームの「オリジナル」の段からバンドを開く手順を足す
 // 最後の手順に並べる「できること」。[使い方の見出し, 見せる名前, 一言]
 const TOUR_FEATS=[['音源','音源を流しながら練習','YouTube・ドライブ・音源ファイルを、ブロックごとに頭出し・くり返し'],['メトロノーム','音源に合わせてメトロノーム','曲のテンポと拍子どおりに。8分や16分の刻みも'],['歌詞をまとめて入れる','歌詞をブロックに割り振る','全文を貼って振り分け。再生に合わせて光る歌詞カードも'],['コード入力キーボード','コードを書き込む','専用のキーボードで。ドレミ表記や鍵盤からのコード判定も'],['メモ(写真・録音)','写真と録音のメモ','手書きの採譜やその場の録音をブロックに置ける'],['曲順と予定を共有','メンバーに共有','曲順やスタジオの予定をリンクで送れる'],['共有・印刷','印刷・PDF','構成表やコード譜をA4にまとめて'],['Googleで自動バックアップ・同期','スマホとPCで同期','Googleでログインすると自動でバックアップ'],['MIDIを読み込む','MIDIから読み込む','DAWのマーカーから構成をまとめて作れる']];
-const TMAP=[['ホーム','イベントの一覧'],['バンド','曲順とスタジオの予定'],['曲','1曲の構成'],['ブロック','イントロやサビ。中にコード']];
+const TMAP=[['イベント','ライブや企画の一覧'],['バンド','曲順とスタジオの予定'],['曲','1曲の構成'],['ブロック','イントロやサビ。中にコード']];
 function tourMapFull(){return `<div class="tmapf">${TMAP.map((m,i)=>`<div class="tm-row" style="padding-left:${i*18}px">${i?'<i>└</i>':''}<b>${m[0]}</b><span class="sub">${m[1]}</span></div>`).join('')}</div>`}
 function tourMapMini(lv){return `<div class="tmap">${TMAP.map((m,i)=>`<span class="${i===lv?'on':''}">${m[0]}</span>`).join('<i>›</i>')}</div>`}
 function tourOrigSteps(){const os=origSets().find(x=>x.songIds.some(id=>{const s=songById(id);return s&&s.blocks.length}));
-  if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルの段',lv:0,t:'ここがホームです。自分たちのバンドは、いちばん上の「オリジナル」に並びます。ライブが決まっていなくても、ここから曲とスタジオの予定を開けます。'},{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'バンドを開く',lv:0,t:'光っているバンドを押して、バンドの画面を開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
+  if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルの段',lv:0,t:'ここがホームです。自分たちのバンドは「オリジナルバンド」に並びます。ライブが決まっていなくても、ここから曲とスタジオの予定を開けます。'},{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'バンドを開く',lv:0,t:'光っているバンドを押して、バンドの画面を開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
   return [{r:()=> '#/',sel:'main [data-act=gigAddBand]',h:'オリジナルの段',lv:0,t:'自分たちのバンドは「＋ オリジナルバンド」から入れると、ホームのいちばん上に並びます。このあとは見本のイベントで見ていきます。'}]}
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
@@ -2612,7 +2641,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものと順番を変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2825,7 +2854,7 @@ const ACT={
   renameGig(t){const g=gigById(t.dataset.id);nameModal('イベントの名前を変更','<b>ライブや企画の名前</b>をつけておくと探しやすいです。',['「11月定例ライブ」「OBライブ」'],g.name,n=>{g.name=n;gigSets(g).forEach(x=>x.name=n);render()})},
   delGig(t){const g=gigById(t.dataset.id);if(!g||g.regular)return;const n=gigSets(g).length;
     if(!confirm(`イベント「${g.name}」を削除しますか？`+(n?`\n出るバンド${n}組の曲順と予定も消えます(曲そのものは残ります)`:'')))return;
-    (g.memos||[]).forEach(m=>{if(m.blobId)delBlob(m.blobId)});S.setlists=S.setlists.filter(x=>x.gigId!==g.id);S.gigs=S.gigs.filter(x=>x!==g);location.hash='#/';render()},
+    (g.memos||[]).forEach(m=>{if(m.blobId)delBlob(m.blobId)});S.setlists=S.setlists.filter(x=>x.gigId!==g.id);S.gigs=S.gigs.filter(x=>x!==g);location.hash='#/events';render()},
   gigAddBand(t){const g=gigById(t.dataset.id);const has=gigSets(g).map(x=>x.bandId);
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
     <div class="hstack"><b>${g.regular?`「${esc(g.name)}」のバンド`:`「${esc(g.name)}」に出るバンド`}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
@@ -3146,6 +3175,9 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;if(/#\/join\//.test(v)||/^[0-9a-z]{4}[-\s]?[0-9a-z]{4}$/i.test(v))return ACT.joinBand();const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
+  homeEdit(){$('#overlay').innerHTML=homeEditHTML()},
+  homeMove(t){const p=homeSecs(),i=+t.dataset.i,j=i+(+t.dataset.v);if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prefs.home=p;save();render();$('#overlay').innerHTML=homeEditHTML()},
+  homeReset(){delete S.prefs.home;save();render();$('#overlay').innerHTML=homeEditHTML()},
   supportOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
     <div class="hstack"><b>開発を応援する</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
     <p class="note">「OFUSE(オフセ)」という外のサイトに移ります。作者にファンレター(メッセージ)と一緒に、応援のお金を送れるサービスです。応援してもしなくても、このアプリはこれまでどおり使えます。</p>
@@ -3243,6 +3275,7 @@ const CHG={
   devLatSet(t){const v=Math.max(-0.5,Math.min(1,Math.round((+t.value||0)*100)/100));try{localStorage.setItem('kbLat',String(v))}catch(_){}MS.last=null;t.value=v.toFixed(2)},
   shareBandSongs(t){S.prefs.shareBandSongs=t.checked;save();openShare('band')},
   audioUpPref(t){S.prefs.audioUp=t.checked;save();if(t.checked)audioUp()},
+  homeOn(t){const p=homeSecs(),x=p.find(y=>y[0]===t.dataset.k);if(x)x[1]=t.checked?1:0;S.prefs.home=p;save();render();$('#overlay').innerHTML=homeEditHTML()},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
   studioTime(t){const {e:st}=evFind(t.dataset.id);if(!st)return;const k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
     st[k]=h?h+':'+m:'';const s=$('#evSum-'+st.id);if(s)s.innerHTML=studioSum(st);save()},
