@@ -664,7 +664,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 9:22';
+const APP_VER='10/25 9:29';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -800,7 +800,7 @@ function syncAsk(ap,lo){return new Promise(ok=>{const dev=ap.device||'ほかの�
   $('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal"><b>Googleドライブにもデータがあります</b>
     <p class="note" style="margin:6px 0 8px">「${esc(dev)}」で ${fmtWhen(+ap.savedAt)} に保存したデータがあります。${lo.items.length?'この端末にだけあるものを、ドライブのデータに足して合わせられます。':''}</p>
     ${lo.items.length?`<div class="sync-pick">${lo.items.map(x=>`<label class="sync-row"><input type="checkbox" value="${x.key}" ${x.sample?'':'checked'}> ${esc(x.label)}${x.sample?' <span class="sub">(最初から入っている見本)</span>':''}</label>`).join('')}</div>`:''}
-    ${lo.changed?`<p class="note" style="margin:8px 0 0">両方にある曲のうち${lo.changed}曲は、中身が違います。合わせるときは、ドライブのほうになります。</p>`:''}
+    ${lo.changed?`<p class="note" style="margin:8px 0 0">両方にある曲のうち${lo.changed}曲は、中身が違います。合わせると、ドライブの内容になります。</p>`:''}
     <div class="hstack" style="margin-top:12px;flex-wrap:wrap"><button class="ghost" id="syLocal">この端末のデータで上書き</button><span class="spacer"></span><button class="primary" id="syMerge">${lo.items.length?'選んだものを足して合わせる':'ドライブのデータを使う'}</button></div></div>`;
   const done=r=>{$('#overlay').innerHTML='';ok(r)};
   $('#syMerge').onclick=()=>done({mode:'merge',ids:new Set([...document.querySelectorAll('.sync-pick input:checked')].map(c=>c.value))});
@@ -1256,7 +1256,7 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
       <div class="m-off"><button data-act="devLat" data-v="-0.05">-0.05</button><button data-act="devLat" data-v="-0.01">-0.01</button>
       <input type="number" step="0.01" inputmode="decimal" id="devLatIn" value="${devLat().toFixed(2)}" data-change="devLatSet">
       <button data-act="devLat" data-v="0.01">+0.01</button><button data-act="devLat" data-v="0.05">+0.05</button></div>
-      <div class="sub" style="font-size:12px;margin-top:2px">クリックが遅れて聞こえるなら＋。この端末だけの設定で、どの曲にも効きます。Bluetoothなら0.15〜0.25くらい</div>
+      <div class="sub" style="font-size:12px;margin-top:2px">クリックが遅れて聞こえるなら＋。この端末だけの設定で、どの曲でもこの値を使います。Bluetoothなら0.15〜0.25くらい</div>
       <button class="m-now" data-act="mOffNow" title="再生中の位置をこのブロックの頭にする">${IC('flag')} 今の再生位置を「${esc(syncAnchor(s).name)}」の頭にする</button>`:''}</div>`:''}
     <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?`「${esc(syncAnchor(s).name)}」の頭の位置だけ合わせれば、そこから曲のテンポと拍子どおりに刻みます。クリックが早ければ＋、遅ければ－で微調整できます。${syncAnchor(s)!==s.blocks[0]?'それより前のブロック(テンポがない前奏など)ではメトロノームは鳴りません。頭の位置は各ブロックの旗のボタンで登録できます。':''}`
       :noBpm?'テンポが未入力なので ♩120 で鳴らします':''}</div></div>`}
@@ -1764,7 +1764,7 @@ function lyrFollow(e){if(R.name!=='lyrics')return;const sec=document.querySelect
     scrBy({top:r.top+r.height/2-(innerHeight-pb)/2,behavior:'smooth'})}}
 /* ---------- 歌詞をまとめて入れる ----------
    曲全体: 歌詞の全文を貼る → 行の一覧から行を選んで、下のブロックをタップして割り当てる → 「入れる」。
-   割り当てた行は、まだ小節には置かずにブロックに覚えておく(歌詞カードや構成表にはそのまま載る)。歌い出しの小節は、ブロックの画面の
+   割り当てた行は、まだ小節には置かずにブロックに覚えておく(歌詞カードや構成表にはそのまま載る)。歌い出しの小節はブロックの画面の
    「歌詞を小節に置く」でタップして決める。貼った全文と割り当ては曲に覚えておき、次に開いたときに続きからできる */
 let LYR={per:2,assign:[],text:''};
 const SING=b=>!['In','I','Out'].includes(b.type);
@@ -1810,7 +1810,7 @@ function rampModal(bl,from,to,old){const s=curSong(),a0=old?old.a:Math.round(bea
   RPF=(a,b)=>{bl.ramps=(bl.ramps||[]).filter(r=>r!==old&&(r.to<from||r.from>to));bl.ramps.push({from,to,a,b});MS.evKey='';save();render();toast(`${from+1}〜${to+1}小節で ♩${a}→${b} にしました`)};
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
   <div class="hstack"><b>${from+1}〜${to+1}小節でテンポをだんだん変える</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-  <p class="note" style="margin:6px 0 8px">メトロノームは、この範囲のあいだ1拍ずつ少しずつテンポを変えます。範囲のあとは、ブロックの終わりまで終わりのテンポのままです。</p>
+  <p class="note" style="margin:6px 0 8px">メトロノームは、この範囲のあいだ1拍ごとに少しずつテンポを変えます。範囲のあとは、ブロックの終わりまで最後のテンポのままです。</p>
   <div class="hstack" style="gap:10px;align-items:flex-end"><label class="sub" style="display:flex;flex-direction:column;gap:2px">始まり ♩<input id="rpA" type="number" inputmode="numeric" min="20" max="400" value="${a0}" style="width:90px"></label>
   <span style="padding-bottom:8px">→</span><label class="sub" style="display:flex;flex-direction:column;gap:2px">終わり ♩<input id="rpB" type="number" inputmode="numeric" min="20" max="400" value="${b0}" style="width:90px" placeholder="例 120"></label></div>
   <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="rampOk">決める</button></div></div>`;
@@ -2270,7 +2270,7 @@ async function fillImport(){
       ${!isSl&&!isBand&&!same&&!tb&&curSetlist()?`<label class="sub"><input type="checkbox" id="impSl" checked> 「${esc(bandNameOf(curSetlist().bandId))}」の${gigOf(curSetlist()).regular?'':esc(gigOf(curSetlist()).name)+'の'}曲順にも入れる</label>`:''}
       <button class="primary" data-act="doImportSong">自分の${what}に${same?'追加・更新':'追加'}</button></div>
     ${same?`<div class="impcode"><b>前に受け取った曲の新しい版が${same}曲あります</b>
-      <label class="hstack" style="margin-top:6px;font-size:14px"><input type="radio" name="impMode" value="update" checked> 新しい版に更新する<span class="sub">(写真・録音・自分のテキストメモは残します)</span></label>
+      <label class="hstack" style="margin-top:6px;font-size:14px"><input type="radio" name="impMode" value="update" checked> 新しい内容に更新する<span class="sub">(写真・録音・自分のテキストメモは残します)</span></label>
       <label class="hstack" style="margin-top:4px;font-size:14px"><input type="radio" name="impMode" value="add"> 別の曲として追加する</label></div>`:''}
     ${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'':impAppHTML()}</div>${toc}${body}`;measureMaps()}
   catch(e){el.innerHTML=`<div class="card"><span class="sub">共有リンクを読み込めませんでした(${esc(e.message)})。リンクが途中で切れていないか確認してください。</span></div>`}}
@@ -2305,10 +2305,10 @@ const TUT=[
   ['ようこそ！','コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>まずは使い方の流れを確認してみましょう。'],
   ['曲を追加する','上の「バンド」からバンドを開いて「＋ 新しい曲」。曲の画面で「イントロ」「Aメロ」などのブロックを並べて、曲の構成を作ります。並び順はドラッグで入れ替えられます。'],
   ['コードを入れる','追加したブロックを開くと、さらに<b>グリッド付きのボックス</b>が現れます。<b>1グリッド = 8分音符1つ分</b>、<b>グリッドで区切られたボックス = 1小節</b>です。ボックスの空白部分をタップ・クリックすると、専用のキーボードが現れます。<b>小節の頭やコードが変わる部分</b>にメモをしていきましょう。<br>コード名がわからない場合は「コード判定」で鍵盤から探せます。',
-    ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。当ツールではこの記法に慣れていない人のためにキーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すことで、コード名入力や和音でのコード名判定の際にドレミ表記のまま入力することができるので、慣れるまで活用するとよいでしょう。また、楽曲分析を目的としていたり、移調を考えていたりする方向けに「ディグリー」ボタンもあるので是非ご活用ください。']],
-  ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)や、YouTube・YouTube Music・SpotifyのURLを入れると、各ブロックの頭から再生・ループ再生もできます。適切に拍子とテンポを設定することで、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
-  ['メンバーに共有','曲やバンドの画面の「共有」を押すと、共有用のリンクと共有コードができます。受け取ったリンクや「☰ メニュー」から入力したコードで、曲の構成や曲順・予定を自分の端末に取り込んで、自由に書き込むことができます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
-    ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。この場合、再び同じ曲順を編集したり、内容を確認したりしたい場合はそのアプリ内のブラウザから見る必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー」から共有コードを読み込むことで曲や曲順などを受け取ることができます。']],
+    ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。このアプリでは、この書き方に慣れていない人のために、キーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すと、コード名の入力や、和音からのコード名判定をドレミのまま使えるので、慣れるまで使うとよいでしょう。曲を分析したい人や移調を考えている人のために「ディグリー」ボタンもあるので、ぜひ使ってみてください。']],
+  ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)や、YouTube・YouTube Music・SpotifyのURLを入れると、各ブロックの頭から再生・ループ再生もできます。拍子とテンポを正しく入れておくと、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
+  ['メンバーに共有','曲やバンドの画面の「共有」を押すと、共有用のリンクと共有コードができます。受け取ったリンクや「☰ メニュー」から入力したコードで、曲の構成や曲順・予定を自分の端末に取り込んで、自由に書き込めます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
+    ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。その場合、同じ曲順をあとで編集したり確認したりするときも、そのアプリの中のブラウザから開く必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー」から共有コードを読み込むと、曲や曲順などを受け取れます。']],
   ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
     ['データの扱い','・曲や曲順・予定は、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと安心です。']]];
 let TUTI=0,TUTH=false;
@@ -2347,17 +2347,17 @@ const TOUR=[
   {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
   {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、出るバンドを足します。何組か掛け持ちするときは、同じイベントにバンドを並べます。2日間のイベントなら、本番を1日ずつ足して、バンドの画面で「出る日」を選べます。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、バンドには星(1〜3)をつけて並び順を選べます。'},
   {r:tSl,sel:'main',whole:true,h:'バンドの画面',t:'イベントに出る1つのバンドの、曲順(セトリ)とスタジオの予定をまとめる画面です。いちばん上の「‹」でイベントに戻れます。',need:hasSl},
-  {on:'bands',r:()=> '#/bands',sel:'#songQ',kw:'バンド 移す 曲一覧 検索 探す',h:'バンドと曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。曲はバンドの中に並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲は、バンドの画面の「移す」で別のバンドへ移せます。いちばん上の「曲を探す」では、すべてのバンドの曲から、曲名・メモ・歌詞で探せます。'},
+  {on:'bands',r:()=> '#/bands',sel:'#songQ',kw:'バンド 移す 曲一覧 検索 探す',h:'バンドと曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。曲はバンドの中に並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲はバンドの画面の「移す」で別のバンドへ移せます。いちばん上の「曲を探す」では、すべてのバンドの曲から、曲名・メモ・歌詞で探せます。'},
   {on:'setlist',r:tSl,sel:'.sec.hstack',adv:1,kw:'練習 日程 カレンダー',h:'スタジオの予定',t:'バンドのスタジオ練習の日程を入れておけます。本番の日時はイベントの画面で1回だけ入れます。カレンダーへの追加やメンバーへの共有もできます。',need:hasSl},
   {core:1,r:tSl,sel:'main .list .row',h:'曲を開く',t:'このバンドの曲順です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'曲順に入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body',need:slHasSong},
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
-  {on:'song',r:tSong,sel:'#songInfo',kw:'テンポ 拍子 キー BPM',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分は、ブロックごとに変えられます。',need:tourSong},
+  {on:'song',r:tSong,sel:'#songInfo',kw:'テンポ 拍子 キー BPM',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分はブロックごとに変えられます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songAudio',kw:'YouTube Spotify mp3 wav ファイル 再生 プレーヤー 速さ スロー',h:'音源',t:'音源ファイル(wav・mp3など)や、YouTube・YouTube Music・SpotifyのURLを入れると、画面のいちばん下に再生プレーヤーが出てきます。各ブロックの頭から再生したり、ループ再生したりもできます。再生中は今の場所を自動で追いかけますが、画面を触ると止まります。「↓ 再生位置へ」で戻れます。',need:tourSong},
   {on:'song',r:tSong,sel:'.metro',kw:'クリック BPM テンポ 拍 刻み 音量 カウント ハネ シャッフル',h:'メトロノーム',t:'曲のテンポと拍子に合わせて鳴ります。音源に合わせて鳴らすこともできます。「刻み」で8分や3連・ハネの音を足したり、「音量」で音源とのバランスを変えたりできます。',need:tourSong},
   {on:'song',r:tSong,sel:'main .list .row',kw:'並べ替え 複製 Aメロ サビ',h:'曲の構成(ブロック)',t:'イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。左端をつかんで並べ替えることができます。右の「…」から「複製」を選ぶと、同じ中身のブロックをすぐ下に作れます(2番のAメロなど)。',need:tourSong},
   {on:'song',r:tSong,sel:'main .adds',h:'ブロックを追加する',t:'構成のいちばん下のボタンから、「イントロ」「Aメロ」などのブロックを追加できます。押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けます。曲を作るときに、最初のブロックの形(よくある形・からっぽ)も選べます。',need:tourSong},
-  {on:'song',r:tSong,sel:'.lyr-open',adv:1,kw:'歌詞カード 貼り付け 歌い出し',h:'歌詞をまとめて入れる',t:'「歌詞をまとめて入れる」に曲の歌詞の全文を貼り付けると、行の一覧が出ます。入れたい行にチェックをつけて、下のブロックをタップすると、その行がブロックに入ります。同じ行を2回目のサビなど別のブロックにも入れられます。歌い出しの小節は、ブロックの画面の「歌詞を小節に置く」で、行が始まる小節をタップして決めます。「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong},
+  {on:'song',r:tSong,sel:'.lyr-open',adv:1,kw:'歌詞カード 貼り付け 歌い出し',h:'歌詞をまとめて入れる',t:'「歌詞をまとめて入れる」に曲の歌詞の全文を貼り付けると、行の一覧が出ます。入れたい行にチェックをつけて、下のブロックをタップすると、その行がブロックに入ります。同じ行を2回目のサビなど別のブロックにも入れられます。歌い出しの小節はブロックの画面の「歌詞を小節に置く」で、行が始まる小節をタップして決めます。「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong},
   {on:'song',r:tSong,sel:'[data-act=midiPick]',adv:1,kw:'Cubase DAW マーカー オリジナル 自作',h:'MIDIを読み込む',t:'自分の曲なら、DAW(Cubaseなど)から書き出したMIDIファイルで、テンポ・拍子・キーと、マーカーでのブロック分けをまとめて読み込めます。マーカーの名前がそのままブロックの名前になります。',need:tourSong},
   {on:'song',r:tSong,sel:'#songActs',kw:'PDF 印刷 コード譜 構成表 送る LINE',h:'共有・印刷',t:'曲の構成を書き終えたら、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
   // ブロックの画面
@@ -2371,11 +2371,11 @@ const TOUR=[
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cjOpen]',adv:1,kw:'鍵盤 コード名 わからない ピアノ',h:'コード判定',t:'コード名が分からないときは、鍵盤で音を押すとコード名の候補を出してくれます。',need:tourBlock,before:tCell},
   {on:'block',kb:1,r:tBlk,sel:'[data-act=cpOpen]',adv:1,kw:'コピー 貼り付け 2番 複製',h:'コピペ',t:'「コピペ」で、マス1つ・何小節か・ブロック全部のコードをコピーして、ほかの場所に貼り付けられます。別のブロックや別の曲にも貼れるので、2番やくり返しの部分を書くときに便利です。',need:tourBlock,before:tCell},
   {on:'block',r:tBlk,sel:'.histbtns',kw:'アンドゥ 取り消し 間違えた',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
-  {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには、手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
-  {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
-  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期も、このメニューにあります。',help:TUT[4][2]},
+  {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
+  {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
+  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期もこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります。'},
-  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は、「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
+  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
 const TOUR_MORE=['音源','歌詞をまとめて入れる','小節の番号','コード入力キーボード','メモ(写真・録音)','MIDIを読み込む','共有・印刷','曲順と予定を共有','Googleで自動バックアップ・同期'];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
@@ -2499,7 +2499,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2517,7 +2517,7 @@ function viewSettings(){const k=R.a;
   const m=MENU.find(x=>x[0]===k)||['','',''];const C=settingCards();
   return topbar('settings')+`<main><a class="backlink" href="javascript:void 0" data-act="goBack">‹ 戻る</a><h1>${m[1]} ${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
 function settingCards(){return {news:newsCard(),
-  band:`<div class="card"><b>バンド</b><p class="note">メンバーが違えば別のバンドにします。オリジナルバンドはそのバンド名、サークルのコピバンは「軽音サークル OBライブ」のように組むバンドごとに分けると、曲一覧が混ざりません。切り替えはバンドと曲の画面のいちばん上でできます。</p>
+  band:`<div class="card"><b>バンド</b><p class="note">メンバーが違えば別のバンドにします。オリジナルバンドはそのバンド名、サークルのコピバンは「軽音サークル OBライブ」のように組むバンドごとに分けると、曲一覧が混ざりません。バンドは上の「バンド」タブから開けます。</p>
     ${S.bands.map(b=>`<div class="hstack" style="margin-top:8px"><input value="${esc(b.name)}" data-input="bandNameId" data-id="${b.id}" style="flex:1;min-width:0" aria-label="バンドの名前">${S.bands.length>1?`<button class="ghost" data-act="delBandId" data-id="${b.id}">削除</button>`:''}</div>`).join('')}
     <div class="hstack" style="margin-top:8px"><button data-act="newBand">＋ バンドを追加</button></div></div>`,
   app:`<div class="card"><b>スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ ホーム画面のアプリとして開いています。':''}
@@ -2539,7 +2539,7 @@ function settingCards(){return {news:newsCard(),
     <p id="syncStat" style="margin:8px 0">${syncStatText()}</p>
     <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}
     <label class="sub" style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" data-change="audioUpPref" ${S.prefs.audioUp!==false?'checked':''}> 曲に入れた音源ファイルもドライブに上げる</label>
-    <p class="note" style="margin:2px 0 0">オンだと、ほかの端末でもファイルのまま聴けます。mp3なら1曲5〜10MBくらい、wavだと50MBくらいドライブを使います。オフにするときは、ドライブに置いた音源の共有リンク(リンクを知っている全員)を参考音源URLに貼ると、どの端末でも聴けます。</p>
+    <p class="note" style="margin:2px 0 0">オンだと、ほかの端末でもファイルのまま聴けます。mp3なら1曲5〜10MBくらい、wavだと50MBくらいドライブを使います。オフのときは、ドライブに置いた音源の共有リンク(リンクを知っている全員)を参考音源URLに貼れば、どの端末でも聴けます。</p>
     <details class="filebk"><summary>Googleを使わずに、ファイルで保存する</summary><p class="note" style="margin:6px 0 8px">データを1つのファイルに書き出して、あとで読み込めます。写真と録音も入ります。Googleにログインしないで機種変更するときなどに使います。</p>
       <div class="hstack"><button data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></details></div>`,
   backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">データはこの端末のブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
@@ -2718,7 +2718,7 @@ const ACT={
   gigAddBand(t){const g=gigById(t.dataset.id);const has=gigSets(g).map(x=>x.bandId);
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal">
     <div class="hstack"><b>${g.regular?`「${esc(g.name)}」のバンド`:`「${esc(g.name)}」に出るバンド`}</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-    <p class="note" style="margin:6px 0 4px">前からあるバンドを選ぶと、そのバンドの曲をこのイベントでも使えます。コピバンなど新しく組むバンドは「＋ 新しいバンドを作る」で。</p>${bandPickHTML('バンド',S.bands.find(b=>!has.includes(b.id))?S.bands.find(b=>!has.includes(b.id)).id:'__new')}
+    <p class="note" style="margin:6px 0 4px">前からあるバンドを選ぶと、そのバンドの曲をこのイベントでも使えます。コピバンなど新しく組むバンドは「＋ 新しいバンドを作る」で作れます。</p>${bandPickHTML('バンド',S.bands.find(b=>!has.includes(b.id))?S.bands.find(b=>!has.includes(b.id)).id:'__new')}
     <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="gigAddOk" data-id="${g.id}">追加</button></div></div>`},
   gigAddOk(t){const g=gigById(t.dataset.id),bs=$('#nmBand'),bn=(($('#nmBandNew')||{}).value||'').trim();if(!bs)return;if(bs.value==='__new'&&!bn)return toast('新しいバンドの名前を入れてください');
     const bid=bs.value==='__new'?mkBand(bn):bs.value;ACT.lbClose();const sl=addBandToGig(g,bid);location.hash='#/setlist/'+sl.id;render()},
@@ -2863,7 +2863,7 @@ const ACT={
     s.lyrText=LYR.text;s.lyrMap=A.map;save();render();
     // 説明はすぐ消えるお知らせではなく、この画面に残して、そのまま小節に置きに行けるようにする
     $('#laBody').innerHTML=`<p style="margin:4px 0 6px"><b>✓ ${targets.length}ブロックに歌詞を入れました</b></p>
-      <p class="sub" style="margin:0 0 10px">次は、それぞれのブロックで<b>歌い出しの小節</b>を決めます。ブロックを押すと、その画面で1行ずつ「この行が始まる小節」をタップしていけます。あとでやってもOKです。</p>
+      <p class="sub" style="margin:0 0 10px">次はそれぞれのブロックで<b>歌い出しの小節</b>を決めます。ブロックを押すと、その画面で1行ずつ「この行が始まる小節」をタップしていけます。あとでやってもOKです。</p>
       <div class="la-blocks">${targets.map(b=>`<button class="la-b" data-act="laGoPlace" data-b="${b.id}"><span class="la-c" style="background:${TYPES[b.type].color}"></span><b>${esc(b.name)}</b><small>${b.lyrLines.length}行 → 小節に置く</small></button>`).join('')}</div>
       <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="primary" data-act="lbClose">閉じる</button></div>`},
   laGoPlace(t){const s=curSong(),bid=t.dataset.b;ACT.lbClose();location.hash=`#/block/${s.id}/${bid}`;setTimeout(()=>{if(R.name==='block'&&R.b===bid)ACT.lyrPlaceStart()},250)},
@@ -3064,7 +3064,7 @@ const ACT={
   delBand(){const b=band();if(S.bands.length<=1)return toast('バンドが1つしかないので消せません');const n=S.songs.filter(s=>s.bandId===b.id).length;
     if(!n){if(!confirm(`バンド「${b.name}」と、その曲順・予定を削除しますか？`))return;return ACT.delBandGo({dataset:{keep:'1'}})}
     $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal nmodal"><div class="hstack"><b>バンド「${esc(b.name)}」を削除</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-      <p class="note" style="margin:6px 0 12px">このバンドの曲順とスタジオの予定は消えます。${n}曲の曲はどうしますか？</p>
+      <p class="note" style="margin:6px 0 12px">このバンドの曲順とスタジオの予定は消えます。このバンドの曲(${n}曲)はどうしますか？</p>
       <div class="sync-pick"><button class="sync-row" data-act="delBandGo" data-keep="1"><b>曲は残す</b><small class="sub" style="display:block">バンドのタブの「バンドなしの曲」に残ります。あとで別のバンドへ移せます</small></button>
       <button class="sync-row danger" data-act="delBandGo" data-keep=""><b>曲もまとめて消す</b><small class="sub" style="display:block">曲の写真と録音も消えます</small></button></div></div>`},
   delBandGo(t){const b=band(),keep=!!t.dataset.keep;ACT.lbClose();
