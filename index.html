@@ -698,7 +698,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 23:42';
+const APP_VER='10/26 0:01';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2710,7 +2710,7 @@ function settingCards(){return {news:newsCard(),
       <div class="hstack"><button data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></details></div>`,
   backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">データはこの端末のブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></div>`,
-  tips:`<div class="card"><b>メモ</b><p class="note">・起動すると前回開いていたバンドの画面が開きます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。</p></div>`}}
+  tips:`<div class="card"><b>メモ</b><p class="note">・起動するとホームが開きます。ホームに出すものと順番は、右上の「並べ替え」で変えられます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。<br>・バンドのみんなで1人1曲ずつ構成をコピーすると早く終わります。自分が作った曲は曲の「⋯ → 共有」で送り、受け取る人は「☰ メニュー → 招待・共有を受け取る」で入れます。招待で自動で届くのは、バンドを作った人が足した曲だけです。<br>・スタジオの日時と場所を入れてから、バンドの「⋯ → 曲順と予定を共有」で送ると、受け取ったメンバーも同じ予定を取り込めます。<br>・苦手なブロックを選んでループ再生すると、そこだけくり返し聴けます。<br>・メトロノームを音源のテンポに合わせて鳴らすと、自分が走っているかもたっているか分かります。<br>・キメや合いの手にマーカーを付けておくと、スタジオで「どこだっけ」となりにくくなります。<br>・細かいフレーズは全部書かなくて大丈夫。手書きの写真や録音をブロックに貼っておけば十分です。<br>・本番前は歌詞カードを開いて音源を流すと、今の行を追いながら曲の流れを通しで確認できます。<br>・構成表は印刷やPDF保存ができます。A4 1枚に収まるので、譜面台に置いておけます。<br>・作曲ソフト(DAW)で曲の区切りにマーカーを打ってMIDIに書き出すと、テンポや拍子とブロック分けをまとめて読み込めます。<br>・バンドの「⋯ → 色を変える」で色を付けると、バンドのカードやイベントの中で、どのバンドか見分けやすくなります。</p></div>`}}
 function b64(blob){return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob)})}
 async function doExport(){const blobs={};for(const id of songBlobIds(S.songs)){const b=await getBlob(id);if(b)blobs[id]=await b64(b)}
   const data=JSON.stringify({app:'kopiban',exported:new Date().toISOString(),state:S,blobs});
