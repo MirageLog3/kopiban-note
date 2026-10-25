@@ -664,7 +664,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 9:29';
+const APP_VER='10/25 9:31';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2515,7 +2515,7 @@ function viewSettings(){const k=R.a;
   if(!k)return topbar('settings')+`<main><h1>メニュー</h1><div class="card">${menuDisp()}</div><div class="card" style="padding:4px 14px">${menuList()}</div></main>`;
   if(k==='news'&&newsUnseen()){S.prefs.newsSeen=NEWS[0].d;save()}
   const m=MENU.find(x=>x[0]===k)||['','',''];const C=settingCards();
-  return topbar('settings')+`<main><a class="backlink" href="javascript:void 0" data-act="goBack">‹ 戻る</a><h1>${m[1]} ${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
+  return topbar('settings')+`<main><a class="backlink" href="javascript:void 0" data-act="goBack">‹ 戻る</a><h1>${m[2]}</h1>${C[k]||'<div class="empty">見つかりません</div>'}</main>`}
 function settingCards(){return {news:newsCard(),
   band:`<div class="card"><b>バンド</b><p class="note">メンバーが違えば別のバンドにします。オリジナルバンドはそのバンド名、サークルのコピバンは「軽音サークル OBライブ」のように組むバンドごとに分けると、曲一覧が混ざりません。バンドは上の「バンド」タブから開けます。</p>
     ${S.bands.map(b=>`<div class="hstack" style="margin-top:8px"><input value="${esc(b.name)}" data-input="bandNameId" data-id="${b.id}" style="flex:1;min-width:0" aria-label="バンドの名前">${S.bands.length>1?`<button class="ghost" data-act="delBandId" data-id="${b.id}">削除</button>`:''}</div>`).join('')}
