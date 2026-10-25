@@ -335,6 +335,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 @keyframes tourRip{0%{transform:scale(.3);opacity:.8}100%{transform:scale(2);opacity:0}}
 .bunsetsu{overflow-wrap:anywhere;line-break:strict}/*nowrap-pretty-off*/
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
+.tour-feats{display:grid;gap:6px;margin-top:10px;max-height:46vh;overflow-y:auto}.tour-feats button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-radius:8px}.tour-feats b{font-size:14px}.tour-feats span{font-size:12px;color:var(--sub);font-weight:400}
 .tour-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tour-more button{padding:5px 10px;font-size:13px;border-radius:10px}
 .tut-tocfoot{flex-wrap:nowrap}.tut-tocfoot button{white-space:nowrap;padding-left:10px;padding-right:10px}.tut-toc{max-height:52vh;overflow-y:auto;margin:4px 0 10px}.tut-toc h3.tut-sec{font-size:15px;margin:18px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.tut-toc h3.tut-sec:first-child{margin-top:0;padding-top:0;border-top:0}.tut-secp{margin:0 0 4px}
 .tut-q{width:100%;margin:6px 0 2px;font-size:16px}
@@ -668,7 +669,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 20:15';
+const APP_VER='10/25 20:22';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2443,12 +2444,13 @@ function firstTourRest(orig){const home=()=> '#/',st=[];
     {r:tSong,lv:2,sel:'#songInfo',h:'曲の画面',t:'曲の画面です。いちばん上でテンポ・拍子・キーを入れます。メトロノームはこのテンポと拍子で鳴ります。',need:tourSong},
     {r:tSong,lv:2,sel:'#songAudio',h:'音源',t:'ここに音源を入れます。YouTubeやGoogleドライブのリンク、音源ファイルを入れると、画面のいちばん下の再生バーで聴けます。',need:tourSong},
     {r:tSong,lv:2,sel:'main .list .row:has(a.body[href^="#/block/"])',h:'ブロックを開く',t:'その下が曲の構成です。イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。光っているブロックを押してみましょう。',tap:'main .list .row a.body[href^="#/block/"]',need:tourBlock},
-    {r:tBlk,lv:3,sel:'#bquick',h:'ブロックの画面',t:'ブロックの画面です。ここで小節数を変えたり、メモやマーカー(キメ・テンポ注意など)を付けたりできます。',need:tourBlock,before:tNoCell},
-    {r:tBlk,lv:3,sel:'#grid .bar',h:'小節とマス',t:'下のボックスが小節です。1つのボックスが1小節、1マスが8分音符1つ分です。マスを押すとコードを書けて、空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell});
+    {r:tBlk,lv:3,whole:true,sel:'main',h:'ブロックの画面',t:'ブロックの画面です。ここにコードやメモ、キメなどの目印を書き込んでいきます。',need:tourBlock,before:tNoCell});
   const hs=TOUR.find(s=>s.notApp);if(hs&&!IS_APP())st.push({...hs,t:hs.tt||hs.t,r:()=>location.hash||'#/',h:'ホーム画面に追加'});
-  const end=TOUR.find(s=>s.core&&s.more);if(end)st.push({...end,t:end.tt||end.t});
+  st.push({r:()=>location.hash||'#/',sel:'.menubtn',h:'このアプリではこんなことができます！',t:'気になるものを押すと、その使い方が開きます。あとから「☰ メニュー → 使い方を見る」でも見られます。',feats:1});
   return st.filter(s=>!s.need||s.need())}
 // オリジナルバンドがある人: イベントの前に、ホームの「オリジナル」の段からバンドを開く手順を足す
+// 最後の手順に並べる「できること」。[使い方の見出し, 見せる名前, 一言]
+const TOUR_FEATS=[['音源','音源を流しながら練習','YouTube・ドライブ・音源ファイルを、ブロックごとに頭出し・くり返し'],['メトロノーム','音源に合わせてメトロノーム','曲のテンポと拍子どおりに。8分や16分の刻みも'],['歌詞をまとめて入れる','歌詞をブロックに割り振る','全文を貼って振り分け。再生に合わせて光る歌詞カードも'],['コード入力キーボード','コードを書き込む','専用のキーボードで。ドレミ表記や鍵盤からのコード判定も'],['メモ(写真・録音)','写真と録音のメモ','手書きの採譜やその場の録音をブロックに置ける'],['曲順と予定を共有','メンバーに共有','曲順やスタジオの予定をリンクで送れる'],['共有・印刷','印刷・PDF','構成表やコード譜をA4にまとめて'],['Googleで自動バックアップ・同期','スマホとPCで同期','Googleでログインすると自動でバックアップ'],['MIDIを読み込む','MIDIから読み込む','DAWのマーカーから構成をまとめて作れる']];
 const TMAP=[['ホーム','イベントの一覧'],['バンド','曲順とスタジオの予定'],['曲','1曲の構成'],['ブロック','イントロやサビ。中にコード']];
 function tourMapFull(){return `<div class="tmapf">${TMAP.map((m,i)=>`<div class="tm-row" style="padding-left:${i*18}px">${i?'<i>└</i>':''}<b>${m[0]}</b><span class="sub">${m[1]}</span></div>`).join('')}</div>`}
 function tourMapMini(lv){return `<div class="tmap">${TMAP.map((m,i)=>`<span class="${i===lv?'on':''}">${m[0]}</span>`).join('<i>›</i>')}</div>`}
@@ -2479,7 +2481,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>${!THINT&&st.map&&!showH?tourMapFull():''}
     ${DEMO?`<p class="sub" style="margin:6px 0 0;font-size:12px">※ イベントや曲がないので、見本を表示しています(閉じると元に戻ります)</p>`:''}
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
-    ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
+    ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}${st.feats&&!THINT?`<div class="tour-feats">${TOUR_FEATS.map(([g,n,d])=>`<button data-act="tourGuide" data-h="${g}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目 →</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
