@@ -600,6 +600,25 @@ body.dragging-row{user-select:none;-webkit-user-select:none}
   .memo-item input{width:100%}.memo-item{flex-wrap:wrap}
 }
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:8px 16px;border-radius:10px;z-index:60}
+
+/* キーボードで移動したときだけ、今どこにいるかを青い枠で見せる(指やマウスで押したときは出さない) */
+button:focus-visible,a:focus-visible,summary:focus-visible,[tabindex]:focus-visible,input[type=checkbox]:focus-visible,input[type=radio]:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* はみ出しを切っている入れ物の中では、枠が切れないよう内側に描く */
+.gig :focus-visible,.list :focus-visible,.cells :focus-visible,.popmenu :focus-visible{outline-offset:-2px}
+/* スマホで押したときの灰色の四角を消し、代わりにボタン自体を少し暗くして押した手ごたえを出す */
+button,a,summary,label{-webkit-tap-highlight-color:transparent}
+@media (hover:none){button:not(:disabled):active{filter:brightness(.9)}}
+/* 指で押す端末では、小さく見える押せる所の当たり判定を広げる(見た目の位置はほぼ変えない) */
+@media (pointer:coarse){
+  .back,.backlink{display:inline-block;padding:8px 8px 8px 0;margin:-6px 0}
+  .tagbtn{padding:6px 11px}
+}
+/* 端末で「動きを減らす」がオンのときは、飾りの動きを止める。読み込み中のくるくるだけは状態を伝えるので残す */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .spin,.pm-play.loading::after{animation-duration:.8s!important;animation-iteration-count:infinite!important}
+  .tour-spot.tap{outline-width:4px;outline-offset:3px}
+}
 </style>
 </head>
 <body>
@@ -669,10 +688,12 @@ let DEMO=null; // 案内用の見本を表示中(このあいだは保存しな�
 /* ホーム画面のアプリでは、ページ全体ではなく #app の中をスクロールさせる。
    iPadのアプリ表示では、ページ全体がスクロールすると画面上端にOSのぼかしがかかって、上のバーの文字がにじむため */
 const scrEl=()=>document.documentElement.classList.contains('appscroll')?document.getElementById('app'):null;
-function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
+// 端末で「動きを減らす」がオンなら、なめらかなスクロールをやめて一気に動かす
+const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 21:58';
+const APP_VER='10/25 22:00';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -991,7 +1012,7 @@ function bandBar(){const on=S.cur.band===NOBAND?NOBAND:band().id,orf=orphanSongs
 function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
-const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','コードを入れる'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
+const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','招待・共有を受け取る'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
   ['sync','cloud','Googleで自動バックアップ・同期'],['app','phone','スマホでアプリとして使う'],['tips','bulb','使い方のコツ'],['support','heart','開発を応援する']];
 // 開発者への応援(投げ銭)はOFUSEのページを別タブで開くだけ。アプリの機能は何も変わらない
 const SUPPORT_URL='https://ofuse.me/miragelog3/letter';
@@ -2247,7 +2268,7 @@ async function openShare(kind){
   <div class="hstack sh-row"><input id="shCode" readonly value="${SHARE_API?'':esc(code)}" style="flex:1"><button data-act="copy" data-t="shCode">コピー</button></div>
   <div class="sub sh-lab">共有リンク <span id="shLen">(${link.length}文字)</span></div>
   <div class="hstack sh-row"><input id="shLink" readonly value="${esc(link)}" style="flex:1"><button data-act="shorten" id="shBtn" ${SHARE_API?'style="display:none"':''}>短く</button><button data-act="copy" data-t="shLink">コピー</button></div>
-  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くだけで見られます。ホーム画面に追加したアプリで使っている人は、アプリの「☰ メニュー → コードを入れる」に共有コードを入れると取り込めます。</p>
+  <p class="note" id="shNote" style="margin:6px 0 0">友達はリンクを開くだけで見られます。ホーム画面に追加したアプリで使っている人は、アプリの「☰ メニュー → 招待・共有を受け取る」に共有コードを入れると取り込めます。</p>
   </div>`;
   SHARE_LONG=code;if(SHARE_API)makeShort(code)}
 let SHARE_LONG='';
@@ -2300,7 +2321,7 @@ async function feedPull(force){const bs=S.bands.filter(b=>b.join);if(!bs.length|
 function inviteModal(b){const k=b.feed.key,link=shareBase()+'#/join/'+k;
   $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
   <div class="hstack"><b>「${esc(b.name)}」にメンバーを招待</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-  <p class="note">このコードをメンバーに送って、アプリの「☰ メニュー → コードを入れる」に入れてもらってください。一度入れてもらえば、このバンドに曲を足すたびに、メンバーのアプリにも自動で届きます。</p>
+  <p class="note">このコードをメンバーに送って、アプリの「☰ メニュー → 招待・共有を受け取る」に入れてもらってください。一度入れてもらえば、このバンドに曲を足すたびに、メンバーのアプリにも自動で届きます。</p>
   <div class="invcode">${fmtInv(k)}</div>
   ${navigator.share?`<button class="primary sendbtn" data-act="inviteSend" data-k="${k}" data-n="${esc(b.name)}">LINEなどのアプリで送る</button>`:''}
   <div class="sub sh-lab">招待リンク(ブラウザで使っている人向け)</div>
@@ -2309,7 +2330,7 @@ function inviteModal(b){const k=b.feed.key,link=shareBase()+'#/join/'+k;
   <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="ghost danger" data-act="inviteStop">招待をやめる</button></div></div>`}
 function joinCard(){const js=S.bands.filter(b=>b.join);
   return `<div class="card"><p class="note" style="margin-top:0">友達やバンドの人から届いたコード(またはリンク)を入れてください。</p>
-    <div class="hstack"><input id="impCode" value="${esc(JOIN_PRE?fmtInv(JOIN_PRE):'')}" placeholder="共有コード・招待コード・リンクを貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button class="primary" data-act="impCode">入れる</button></div>
+    <div class="hstack"><input id="impCode" value="${esc(JOIN_PRE?fmtInv(JOIN_PRE):'')}" placeholder="共有コード・招待コード・リンクを貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button class="primary" data-act="impCode">受け取る</button></div>
     <p class="note" style="margin:10px 0 0"><b>共有コード</b>: 曲やバンドの曲順・予定を1回だけ取り込みます。<br><b>招待コード</b>(8文字): バンドに参加します。招待した人がそのバンドに足した曲が、アプリを開いたときに自動で届きます。</p></div>
   ${js.length?`<div class="card"><b>参加しているバンド</b>${js.map(b=>`<div class="hstack" style="margin-top:8px"><span>${esc(b.name)}</span><span class="sub">${b.join.gone?'招待した人が配るのをやめました':((b.join.got||[]).length+'曲届きました')}</span><span class="spacer"></span><button class="ghost" data-act="bandLeave" data-id="${b.id}">参加をやめる</button></div>`).join('')}</div>`:''}`}
 async function fetchShort(id){if(!SHARE_API)throw new Error('短いコードの置き場が設定されていません');const r=await fetch(SHARE_API.replace(/\/$/,'')+'/'+id);
@@ -2357,10 +2378,10 @@ function impUpdateSong(ex,s){try{idb('kv','readwrite',st=>st.put({at:Date.now(),
 function impAppHTML(){const code=`<div class="hstack"><input id="impShow" readonly value="${esc(R.name==='s'?R.a:location.href)}" style="flex:1"><button data-act="copy" data-t="impShow">コピー</button></div>`;
   if(GCLIENT&&SY.meta.on)return `<div class="impcode"><b>ホーム画面のアプリにも入ります</b>
     <p class="note" style="margin:2px 0 6px">Googleでログインしているので、「追加」するとGoogleドライブに保存されて、同じGoogleでログインしているホーム画面のアプリにも自動で入ります。</p>
-    <details><summary class="sub">アプリでログインしていないときは</summary><p class="note" style="margin:4px 0 6px">このコードをコピーして、アプリの「☰ メニュー → コードを入れる」に貼り付けてください。</p>${code}</details></div>`;
+    <details><summary class="sub">アプリでログインしていないときは</summary><p class="note" style="margin:4px 0 6px">このコードをコピーして、アプリの「☰ メニュー → 招待・共有を受け取る」に貼り付けてください。</p>${code}</details></div>`;
   return `<div class="impcode"><b>ホーム画面に追加したアプリで使っている人へ</b>
     <p class="note" style="margin:2px 0 6px">リンクはブラウザで開くので、このままではアプリに入りません。</p>
-    ${GCLIENT?`<p class="note" style="margin:0 0 6px">アプリでGoogleにログインしているなら、ここでも同じGoogleでログインしてから「追加」すると、アプリにも自動で入ります。</p><div class="hstack" style="margin-bottom:8px"><button data-act="syncLogin">Googleでログイン</button></div><p class="note" style="margin:0 0 6px">ログインしない場合は、このコードをコピーして、アプリの「☰ メニュー → コードを入れる」に貼り付けてください。</p>`:'<p class="note" style="margin:0 0 6px">このコードをコピーして、アプリの「☰ メニュー → コードを入れる」に貼り付けてください。</p>'}
+    ${GCLIENT?`<p class="note" style="margin:0 0 6px">アプリでGoogleにログインしているなら、ここでも同じGoogleでログインしてから「追加」すると、アプリにも自動で入ります。</p><div class="hstack" style="margin-bottom:8px"><button data-act="syncLogin">Googleでログイン</button></div><p class="note" style="margin:0 0 6px">ログインしない場合は、このコードをコピーして、アプリの「☰ メニュー → 招待・共有を受け取る」に貼り付けてください。</p>`:'<p class="note" style="margin:0 0 6px">このコードをコピーして、アプリの「☰ メニュー → 招待・共有を受け取る」に貼り付けてください。</p>'}
     ${code}</div>`}
 /* ---------- settings ---------- */
 /* ---------- 使い方ガイド ---------- */
@@ -2372,7 +2393,7 @@ const TUT=[
     ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。このアプリでは、この書き方に慣れていない人のために、キーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すと、コード名の入力や、和音からのコード名判定をドレミのまま使えるので、慣れるまで使うとよいでしょう。曲を分析したい人や移調を考えている人のために「ディグリー」ボタンもあるので、ぜひ使ってみてください。']],
   ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)や、YouTube・YouTube Music・SpotifyのURLを入れると、各ブロックの頭から再生・ループ再生もできます。拍子とテンポを正しく入れておくと、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
   ['メンバーに共有','曲やバンドの画面の「共有」を押すと、共有用のリンクと共有コードができます。受け取ったリンクや「☰ メニュー」から入力したコードで、曲の構成や曲順・予定を自分の端末に取り込んで、自由に書き込めます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
-    ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。その場合、同じ曲順をあとで編集したり確認したりするときも、そのアプリの中のブラウザから開く必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー → コードを入れる」に共有コードを入れると、曲や曲順などを受け取れます。']],
+    ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。その場合、同じ曲順をあとで編集したり確認したりするときも、そのアプリの中のブラウザから開く必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー → 招待・共有を受け取る」に共有コードを入れると、曲や曲順などを受け取れます。']],
   ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
     ['データの扱い','・曲や曲順・予定は、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと安心です。']]];
 let TUTI=0,TUTH=false;
@@ -2383,13 +2404,13 @@ function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelect
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
 function tutToc(){return `<div class="tut-step">使い方</div><h2>目次</h2><input id="tutQ" class="tut-q" type="search" value="${esc(TQ)}" placeholder="機能を探す(例: ループ、歌詞、同期)" aria-label="機能を探す" autocomplete="off"><div class="tut-toc" id="tutList">${tutTocList()}</div><a class="tut-helplink" href="#/help" data-act="tutHelpPage">すべての説明を1ページで読む(ヘルプ) →</a>
-  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
+  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
   <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:''}</div>
   <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack"><button class="ghost" data-act="tutGo" data-v="-1">≡ 目次</button><span class="spacer"></span>${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':''}
-  <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ →'}</button></div>`}
+  <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ'}</button></div>`}
 /* ---------- 画面を見ながらの案内(ツアー) ----------
    初めて開いたときに、実際の画面を順に開いて、説明する場所だけを明るく見せる。
    メニューの「使い方を見る」は文章だけ(上の TUT)を読む */
@@ -2437,7 +2458,7 @@ const TOUR=[
   {on:'block',r:tBlk,sel:'.histbtns',kw:'アンドゥ 取り消し 間違えた',h:'元に戻す・やり直す',t:'前の操作を取り消したり、やり直したりできます。間違えて消したときもここで戻せます。',need:tourBlock,before:tNoCell},
   {on:'block',grp:'ブロックの画面',r:()=>tBlk()+'/memo',sel:'.memobar',adv:1,kw:'写真 録音 画像 ボイスメモ 採譜',h:'メモ(写真・録音)',t:'ブロックの「メモ」タブには手書きの採譜やリズムの写真・録音・テキストをまとめて置けます。写真はドラッグで好きな位置に動かせて、右下の ◢ で大きさを変えたり、2本指で拡大縮小したりできます。「● このブロックに録音する」で、その場で口ずさんだフレーズや練習の音を残せます。',need:tourBlock,before:tNoCell},
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
-  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → コードを入れる」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期もこのメニューにあります。',help:TUT[4][2]},
+  {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 招待・共有を受け取る」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期もこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります。'},
   {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',tt:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。ほかの機能は「☰ メニュー → 使い方を見る」で探せます。',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
@@ -2543,8 +2564,8 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}${st.feats&&!THINT?`<div class="tour-feats">${TOUR_FEATS.map(([g,n,d])=>`<button data-act="tourGuide" data-h="${g}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
-    ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目 →</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
-    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
+    ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目へ</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
+    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
@@ -2590,7 +2611,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['共有コードと招待コードの入口を ☰ メニューの「コードを入れる」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2710,7 +2731,7 @@ async function loadMidi(file){const s=curSong();if(!s||!file)return;let m;try{m=
   const r=midiToSong(m,s);save();render();
   alert(`MIDIから読み込みました\n・ブロック ${r.blocks}個(マーカー ${r.marks}個)\n・${r.bars}小節 / 拍子 ${r.meters.join(', ')||'4/4'}\n・テンポ ♩${s.bpm}${r.ramps?` ・ だんだん変わるところ ${r.ramps}か所`:''}${r.key?`\n・キー ${r.key}`:''}${r.marks?'':'\n\nマーカーがなかったので、1つのブロックにまとめました'}`)}
 function insertBlock(ty,at){const s=curSong();const nb=newBlock(ty,blockName(s.blocks,ty));const n=meterSlots(songMeterDefault(s));nb.bars.forEach(b=>resizeBar(b,n));
-  s.blocks.splice(Math.max(0,Math.min(at,s.blocks.length)),0,nb);render();setTimeout(()=>{const r=document.querySelector(`.row[data-bid="${nb.id}"]`);if(r){r.classList.add('justadded');r.scrollIntoView({block:'nearest',behavior:'smooth'})}},30)}
+  s.blocks.splice(Math.max(0,Math.min(at,s.blocks.length)),0,nb);render();setTimeout(()=>{const r=document.querySelector(`.row[data-bid="${nb.id}"]`);if(r){r.classList.add('justadded');r.scrollIntoView({block:'nearest',behavior:RM()?'auto':'smooth'})}},30)}
 /* 追加ボタンを長押し(マウスは押したまま動かす)すると、ブロックをつかんで構成の好きな位置に置ける */
 const ADRAG={};
 function adragPos(y){const rows=[...document.querySelectorAll('.row[data-drag=blk]')];let i=rows.findIndex(r=>{const b=r.getBoundingClientRect();return y<b.top+b.height/2});if(i<0)i=rows.length;
@@ -3086,7 +3107,7 @@ const ACT={
   pickerFiles(){ACT.lbClose();ACT.audioPick()},
   pmRemove(){ACT.lbClose();ACT.audioRemove()},
   async nativeShare(t){const code=$('#shCode').value,link=$('#shLink').value;
-    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「☰ メニュー → コードを入れる」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
+    try{await navigator.share({title:'コピバン練習ノート',text:`${t.dataset.title.replace(/を?$/,'')}\n共有コード: ${code}\n(ホーム画面のアプリで使っている人は「☰ メニュー → 招待・共有を受け取る」にこのコードを入れてね)\n`,url:link})}catch(e){if(e.name!=='AbortError')toast('送れませんでした')}},
   share:()=>openShare('song'),
   async shorten(t){const i=$('#shLink');if(/^https:\/\/da\.gd\//.test(i.value))return;
     if(/^(file:|http:\/\/(127\.|localhost))/.test(i.value))return toast('このPCの中のアドレスは短縮できません');
@@ -3129,7 +3150,7 @@ const ACT={
       try{const r=await fetch(BAND_API()+'new',{method:'POST'});if(!r.ok)throw 0;const j=await r.json();b.feed={key:j.key,sec:j.sec};save();await feedPush()}
       catch(e){return toast('招待コードを作れませんでした。通信を確かめてください')}}
     inviteModal(b)},
-  async inviteSend(t){const k=t.dataset.k;try{await navigator.share({title:'コピバン練習ノート',text:`バンド「${t.dataset.n}」の招待コード: ${fmtInv(k)}\nアプリの「☰ メニュー → コードを入れる」に入れてね`,url:shareBase()+'#/join/'+k})}catch(e){}},
+  async inviteSend(t){const k=t.dataset.k;try{await navigator.share({title:'コピバン練習ノート',text:`バンド「${t.dataset.n}」の招待コード: ${fmtInv(k)}\nアプリの「☰ メニュー → 招待・共有を受け取る」に入れてね`,url:shareBase()+'#/join/'+k})}catch(e){}},
   async inviteStop(){const sl=curSetlist(),b=sl&&S.bands.find(x=>x.id===sl.bandId);if(!b||!b.feed)return;
     if(!confirm('招待をやめますか？メンバーに新しい曲が届かなくなります(もう届いた曲はメンバーの端末に残ります)'))return;
     try{const r=await fetch(BAND_API()+b.feed.key+'/del',{method:'POST',headers:{'Content-Type':'text/plain'},body:b.feed.sec});if(!r.ok&&r.status!==404)throw 0}catch(e){return toast('やめられませんでした。通信を確かめてください')}
