@@ -700,7 +700,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 1:43';
+const APP_VER='10/26 1:55';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2461,7 +2461,7 @@ addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
 const VIDS=[['OSsIkRskEFM','はじめる'],['phRBDOYR6rs','曲を見て練習する'],['AWDOahqXZbE','曲の構成を書く'],['Si5P77xnoJ0','ライブとスタジオの予定'],['BYpgTX_oOB8','メンバーに送る'],['5p2_eSkBNRk','便利な機能']];
 const VNUM='①②③④⑤⑥';
-function vidsHTML(){return `<div class="tut-vids"><div class="hstack"><b>使い方の動画</b><span class="sub">見るには通信が必要です</span></div><div class="tv-list">${VIDS.map(([id,t],i)=>`<button data-act="vidOpen" data-v="${i}"><span class="tv-n">${VNUM[i]}</span>${t}</button>`).join('')}</div></div>`}
+function vidsHTML(){return `<div class="tut-vids"><div class="hstack"><b>使い方の動画</b><span class="sub">見るには通信が必要です</span></div><div class="tv-list">${VIDS.map(([id,t],i)=>i?`<button data-act="vidOpen" data-v="${i}"><span class="tv-n">${VNUM[i]}</span>${t}</button>`:'').join('')}</div></div>`}
 function tutToc(){return `<div class="tut-step">使い方</div><h2>目次</h2>${vidsHTML()}<input id="tutQ" class="tut-q" type="search" value="${esc(TQ)}" placeholder="機能を探す(例: ループ、歌詞、同期)" aria-label="機能を探す" autocomplete="off"><div class="tut-toc" id="tutList">${tutTocList()}</div><a class="tut-helplink" href="#/help" data-act="tutHelpPage">すべての説明を1ページで読む(ヘルプ) →</a>
   <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
@@ -2672,7 +2672,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-26',items:['「☰ メニュー → 使い方を見る」から、使い方の動画(6本)をアプリの中で見られるように']},
+  {d:'2026-10-26',items:['「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
   {d:'2026-10-25',items:['使い始めにGoogleでのログインが必要になりました。スマホ(iPhone・Android)はホーム画面に追加して使います','バンドにも色を付けられるように(バンドの ⋯ → 色を変える)','ホームの次の予定で、本番はオレンジ・スタジオは青に色分け。ホームの初めの並びをオリジナルバンド→近いイベント→次の予定→最近開いた曲に','上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものを選べて、順番は ⋮⋮ をつかんで変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
@@ -3007,7 +3007,7 @@ const ACT={
   vidOpen(t){const i=+t.dataset.v,[id,ti]=VIDS[i];$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal vidmodal">
     <div class="hstack"><button class="ghost" data-act="tutOpen">‹ 使い方</button><b>${VNUM[i]} ${ti}</b><span class="spacer"></span><button class="ghost" data-act="lbClose" aria-label="閉じる">✕</button></div>
     <div class="vidbox">${navigator.onLine===false?'<p class="note" style="padding:20px">通信がないので動画を読み込めません。電波のある所で開いてください。</p>':`<iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1" title="${ti}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`}</div>
-    <div class="hstack" style="margin-top:8px">${i?`<button data-act="vidOpen" data-v="${i-1}">← ${VNUM[i-1]}</button>`:''}<span class="spacer"></span>${i<VIDS.length-1?`<button class="primary" data-act="vidOpen" data-v="${i+1}">${VNUM[i+1]} ${VIDS[i+1][1]} →</button>`:''}</div></div>`},
+    <div class="hstack" style="margin-top:8px">${i>1?`<button data-act="vidOpen" data-v="${i-1}">← ${VNUM[i-1]}</button>`:''}<span class="spacer"></span>${i<VIDS.length-1?`<button class="primary" data-act="vidOpen" data-v="${i+1}">${VNUM[i+1]} ${VIDS[i+1][1]} →</button>`:''}</div></div>`},
   tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
