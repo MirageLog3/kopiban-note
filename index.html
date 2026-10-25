@@ -664,7 +664,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 9:17';
+const APP_VER='10/25 9:22';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1252,6 +1252,11 @@ function metroCard(s){const noBpm=!s.bpm&&!s.blocks.some(b=>b.bpm);const open=UI
       <div class="m-off"><button data-act="mOff" data-v="-0.1">-0.1</button><button data-act="mOff" data-v="-0.01">-0.01</button>
       <input type="number" step="0.01" inputmode="decimal" id="mOffIn" value="${(+s.mOffset||0).toFixed(2)}" data-change="mOffset">
       <button data-act="mOff" data-v="0.01">+0.01</button><button data-act="mOff" data-v="0.1">+0.1</button></div>
+      <div class="sub m-offlab">この端末の音の遅れ(Bluetoothイヤホンなど)</div>
+      <div class="m-off"><button data-act="devLat" data-v="-0.05">-0.05</button><button data-act="devLat" data-v="-0.01">-0.01</button>
+      <input type="number" step="0.01" inputmode="decimal" id="devLatIn" value="${devLat().toFixed(2)}" data-change="devLatSet">
+      <button data-act="devLat" data-v="0.01">+0.01</button><button data-act="devLat" data-v="0.05">+0.05</button></div>
+      <div class="sub" style="font-size:12px;margin-top:2px">クリックが遅れて聞こえるなら＋。この端末だけの設定で、どの曲にも効きます。Bluetoothなら0.15〜0.25くらい</div>
       <button class="m-now" data-act="mOffNow" title="再生中の位置をこのブロックの頭にする">${IC('flag')} 今の再生位置を「${esc(syncAnchor(s).name)}」の頭にする</button>`:''}</div>`:''}
     <div class="mstat" id="metroStat">${s.mSync&&songMedia(s)?`「${esc(syncAnchor(s).name)}」の頭の位置だけ合わせれば、そこから曲のテンポと拍子どおりに刻みます。クリックが早ければ＋、遅ければ－で微調整できます。${syncAnchor(s)!==s.blocks[0]?'それより前のブロック(テンポがない前奏など)ではメトロノームは鳴りません。頭の位置は各ブロックの旗のボタンで登録できます。':''}`
       :noBpm?'テンポが未入力なので ♩120 で鳴らします':''}</div></div>`}
@@ -1285,13 +1290,14 @@ async function ctxReady(){const Ctx=window.AudioContext||window.webkitAudioConte
   try{const c=MT.ctx,b=c.createBuffer(1,1,22050),src=c.createBufferSource();src.buffer=b;src.connect(c.destination);src.start(0)}catch(_){}
   return MT.ctx}
 function mediaRate(){try{return M.kind==='sp'?1:M.kind==='yt'?(M.yt.getPlaybackRate()||1):($('#pa').playbackRate||1)}catch(_){return 1}}
+const devLat=()=>{try{return +(localStorage.getItem('kbLat')||0)||0}catch(_){return 0}};
 function syncTick(){const s=playerSong();
   if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
   const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
-  syncEv(s);const mt=M.time(),pr=mediaRate();
-  if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6+bgAhead())MS.last=mt-0.001;
-  MS.lastMt=mt;const horizon=mt+(0.3+bgAhead())*pr;let cur=null;
-  for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc);(e.subs||[]).forEach(o=>clickAt(ctx.currentTime+Math.max(0,(e.t+o-mt)/pr),-1))}
+  syncEv(s);const mt=M.time(),pr=mediaRate(),ms=mt+devLat()*pr;
+  if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6+bgAhead())MS.last=ms-0.001;
+  MS.lastMt=mt;const horizon=ms+(0.3+bgAhead())*pr;let cur=null;
+  for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-ms)/pr),e.acc);(e.subs||[]).forEach(o=>clickAt(ctx.currentTime+Math.max(0,(e.t+o-ms)/pr),-1))}
   MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur,false,cur?(mt-cur.t)/cur.dur:0)}
 setInterval(syncTick,20);
 function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ctxReady();MS.last=null;M.seek(Math.max(0,(t||0)-0.05));M.play()}
@@ -2475,7 +2481,9 @@ function tourEnd(){const b=$('#tour');if(b)b.remove();removeEventListener('resiz
   if(!THINT){S.prefs.tutDone=true;save()}THINT=false}
 // セトリや曲を消していて案内する場所がないときは、その場限りの見本(サンプル曲が入ったセトリ)を表示して案内する。
 // 見本のあいだは保存しない。案内を閉じたら元のデータに戻してセトリ画面を表示する
-const needDemo=()=>!slHasSong()||!tourBlock();
+function tourPickSl(){if(slHasSong())return;const ok=x=>x.songIds.some(id=>{const s=songById(id);return s&&s.blocks.length});
+  const sl=S.setlists.find(x=>!gigOf(x).regular&&ok(x))||S.setlists.find(ok);if(sl){S.cur.setlist=sl.id;S.cur.band=sl.bandId}}
+const needDemo=()=>{tourPickSl();return !slHasSong()||!tourBlock()};
 function demoOn(){const b=band();ensureGigs();DEMO={setlists:S.setlists,songs:S.songs,gigs:S.gigs,cur:{...S.cur}};
   const g={id:uid(),name:'〇月定例ライブ',events:[]},song=newSong(b.id,'サンプル曲'),sl={id:uid(),bandId:b.id,gigId:g.id,name:g.name,songIds:[song.id],events:[]};
   S.gigs=[...S.gigs,g];S.setlists=[...S.setlists,sl];S.songs=[...S.songs,song];S.cur={...S.cur,setlist:sl.id};render()}
@@ -2491,7 +2499,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい版に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2971,6 +2979,7 @@ const ACT={
       <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button><button data-act="pmDrive">Googleドライブから選ぶ</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
   pmDrive(){ACT.lbClose();drivePick()},
+  devLat(t){const v=Math.max(-0.5,Math.min(1,Math.round((devLat()+ +t.dataset.v)*100)/100));try{localStorage.setItem('kbLat',String(v))}catch(_){}MS.last=null;const i=$('#devLatIn');if(i)i.value=v.toFixed(2)},
   blkMore(t){popMenu(t,`<button data-act="blkDup" data-i="${t.dataset.i}">複製</button><button data-act="blkDel" data-i="${t.dataset.i}" style="color:var(--danger,#c0392b)">削除</button>`,true)},
   blkDup(t){ACT.lbClose();ACT.dupBlock(t)},
   blkDel(t){ACT.lbClose();ACT.delBlock(t)},
@@ -3080,6 +3089,7 @@ const CHG={
     S.songs.forEach(s=>s.blocks.forEach(b=>b.tags=b.tags.map(x=>x===m.name?n:x)));m.name=n;render()},
   slLive(t){const sl=curSetlist();if(sl){sl.liveId=t.value;render()}},
   gigSort(t){const g=gigById(t.dataset.id);if(t.value==='custom')g.order=gigSetsSorted(g).map(x=>x.id);g.sort=t.value==='studio'?undefined:t.value;render()},
+  devLatSet(t){const v=Math.max(-0.5,Math.min(1,Math.round((+t.value||0)*100)/100));try{localStorage.setItem('kbLat',String(v))}catch(_){}MS.last=null;t.value=v.toFixed(2)},
   shareBandSongs(t){S.prefs.shareBandSongs=t.checked;save();openShare('band')},
   audioUpPref(t){S.prefs.audioUp=t.checked;save();if(t.checked)audioUp()},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
