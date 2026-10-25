@@ -697,7 +697,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 22:28';
+const APP_VER='10/25 22:33';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1138,7 +1138,7 @@ function nextEvents(n){const t=todayStr(),seen=new Set(),out=[];
 function pushRecent(id){const r=(S.prefs.recent||[]).filter(x=>x!==id);r.unshift(id);S.prefs.recent=r.slice(0,10)}
 function homeSec(k){const rg=gigSorted().reg[0];
   if(k==='next'){const ev=nextEvents(3);return `<div class="home-sec"><b>次の予定</b></div>${ev.length?`<div class="list cards">${ev.map(x=>{const g=gigOf(x.sl),lv=x.e.type==='live';
-      return `<div class="row studio${lv?' live':''}"><a class="body" href="#/${lv&&!g.regular?'gig/'+g.id:'setlist/'+x.sl.id}"><div class="title"><span class="evtag">${(EV_T[x.e.type]||EV_T.studio).l}</span>${esc(lv&&!g.regular?g.name:x.bands.join('、'))}</div><div class="sub">${studioSum(x.e)}${x.e.place?' ・ '+esc(x.e.place):''}</div></a><span class="sub">${daysLeft(x.e.date)}</span></div>`}).join('')}</div>`:'<div class="empty">これからの予定はまだありません</div>'}`}
+      return `<div class="row studio${lv?' live':''}"><a class="body" href="#/${lv&&!g.regular?'gig/'+g.id:'setlist/'+x.sl.id}"><div class="title"><span class="evtag">${(EV_T[x.e.type]||EV_T.studio).l}</span>${esc(lv&&!g.regular?g.name:x.bands.join('、'))}</div><div class="sub">${studioSum(x.e)}</div></a><span class="sub">${daysLeft(x.e.date)}</span></div>`}).join('')}</div>`:'<div class="empty">これからの予定はまだありません</div>'}`}
   if(k==='orig'){const os=origSets();return `<div class="hstack home-sec"><b>オリジナルバンド</b><span class="spacer"></span>${rg?`<button class="ghost" data-act="gigAddBand" data-id="${rg.id}">＋ オリジナルバンド</button>`:''}</div>${os.map(origCard).join('')||'<div class="empty">自分たちの曲をやるバンドは「＋ オリジナルバンド」から入れられます</div>'}`}
   if(k==='recent'){const ss=(S.prefs.recent||[]).map(songById).filter(Boolean).slice(0,5);
     return `<div class="home-sec"><b>最近開いた曲</b></div>${ss.length?`<div class="list cards">${ss.map(s=>`<div class="row"><a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${esc(bandNameOf(s.bandId)||'バンドなし')}${songMeta(s)?' ・ '+songMeta(s):''}</div>${strip(s)}</a></div>`).join('')}</div>`:'<div class="empty">曲を開くと、ここに並びます</div>'}`}
