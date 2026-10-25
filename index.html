@@ -665,7 +665,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 19:08';
+const APP_VER='10/25 19:10';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1094,7 +1094,7 @@ function viewHome(){const {reg,up,past}=gigSorted();const os=origSets(),rg=reg[0
 function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   const sets=gigSetsSorted(g),cust=(g.sort||'studio')==='custom';
   return topbar('setlist')+`<main><a class="back" href="#/">‹ イベント一覧</a>
-  <div class="slhead">${g.regular?`<h1>${esc(g.name)}</h1>`:`<input class="h1in nameedit" value="${esc(g.name)}" data-input="gigNameId" data-id="${g.id}" aria-label="イベントの名前" enterkeyhint="done">`}<button class="ghost slmore" data-act="gigMore" data-id="${g.id}" title="名前の変更・削除" aria-label="イベントのメニュー">⋯</button></div>
+  <div class="slhead">${g.regular?`<h1>${esc(g.name)}</h1>`:`<input class="h1in nameedit" value="${esc(g.name)}" data-input="gigNameId" data-id="${g.id}" aria-label="イベントの名前" enterkeyhint="done">`}${g.regular?'':`<button class="ghost slmore" data-act="gigMore" data-id="${g.id}" aria-label="イベントのメニュー">⋯</button>`}</div>
   ${g.regular?'<p class="sub gigsub">ライブが決まっていないバンドの、曲とスタジオ練習をまとめる場所です。</p>':g.color?`<div style="--live:${g.color}">${evSection(g,'live')}</div>`:evSection(g,'live')}
   <div class="hstack gig-sorthd"><div class="sec" style="margin:0">${g.regular?'バンド':'出るバンド'} (${sets.length})</div><span class="spacer"></span>${sets.length>1?`<select data-change="gigSort" data-id="${g.id}" aria-label="バンドの並び">${GIG_SORTS.map(([k,l])=>`<option value="${k}" ${(g.sort||'studio')===k?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>
   ${cust&&sets.length>1?'<p class="sub" style="margin:0 0 6px">左の ⋮⋮ をつかんで並べ替えられます</p>':''}
@@ -2708,8 +2708,8 @@ const ACT={
   joinGigGo(t){const g=gigById(t.dataset.g),bid=t.dataset.b;if(!g)return;const sl={id:uid(),bandId:bid,gigId:g.id,name:g.name,songIds:[],events:[]};S.setlists.push(sl);ACT.lbClose();save();location.hash='#/setlist/'+sl.id},
   liveForBand(t){const bid=t.dataset.b;nameModal('出るライブ','<b>ライブの名前</b>をつけてください。日時や曲順は、このあとライブの画面で入れられます。',['「春の対バンライブ」','「11月定例ライブ」'],'',name=>{
     const g={id:uid(),name,events:[]};S.gigs.push(g);const sl={id:uid(),bandId:bid,gigId:g.id,name,songIds:[],events:[]};S.setlists.push(sl);save();location.hash='#/setlist/'+sl.id})},
-  slMore(t){popMenu(t,[['renameBand','バンドの名前を変更'],['shareSetlist','曲順と予定を共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
-  gigMore(t){const g=gigById(t.dataset.id);popMenu(t,`<button data-act="popDo" data-v="renameGig" data-id="${g.id}">名前を変更</button>`+(g.regular?'':`<button data-act="popDo" data-v="gigColorOpen" data-id="${g.id}">色を変える</button><button data-act="popDo" data-v="pinGig" data-id="${g.id}">${g.pin?'ピン留めを外す':'一覧の上にピン留め'}</button>`)+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
+  slMore(t){popMenu(t,[['shareSetlist','曲順と予定を共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
+  gigMore(t){const g=gigById(t.dataset.id);popMenu(t,(g.regular?'':`<button data-act="popDo" data-v="gigColorOpen" data-id="${g.id}">色を変える</button><button data-act="popDo" data-v="pinGig" data-id="${g.id}">${g.pin?'ピン留めを外す':'一覧の上にピン留め'}</button>`)+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
   newGig,
   // バンドの名前を変える。どの画面から呼んでも、いま見ているバンド(セトリのバンド → 曲一覧のバンド)の名前を変える
   renameBand(t){const id=(t&&t.dataset&&t.dataset.id)||(R.name==='setlist'&&curSetlist()?curSetlist().bandId:band().id);const b=S.bands.find(x=>x.id===id);if(!b)return;
