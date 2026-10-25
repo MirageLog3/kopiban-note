@@ -339,7 +339,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .newtag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;margin-left:6px;vertical-align:2px}
 .feednew{border-color:var(--accent);margin:8px 0}.joinnote{display:flex;gap:6px;align-items:flex-start;margin:4px 0 8px}
 .sup-pay{margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:14px}.sup-pay ul{margin:6px 0 0;padding-left:20px;line-height:1.6;font-weight:400}
-.home-ed{padding:6px 0;border-bottom:1px solid var(--line)}.home-ed label{gap:8px;font-size:15px}.home-ed button{padding:4px 10px}
+.home-edl{margin:8px 0 0}.home-edl .home-ed{padding:8px 12px}.home-ed label{gap:8px;font-size:15px;flex:1;cursor:pointer}
 .tour-feats{display:grid;gap:6px;margin-top:10px;max-height:46vh;overflow-y:auto}.tour-feats button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-radius:8px}.tour-feats b{font-size:14px}.tour-feats span{font-size:12px;color:var(--sub);font-weight:400}
 .tour-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tour-more button{padding:5px 10px;font-size:13px;border-radius:10px}
 .tut-tocfoot{flex-wrap:nowrap}.tut-tocfoot button{white-space:nowrap;padding-left:10px;padding-right:10px}.tut-toc{max-height:52vh;overflow-y:auto;margin:4px 0 10px}.tut-toc h3.tut-sec{font-size:15px;margin:18px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.tut-toc h3.tut-sec:first-child{margin-top:0;padding-top:0;border-top:0}.tut-secp{margin:0 0 4px}
@@ -695,7 +695,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 22:19';
+const APP_VER='10/25 22:24';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1147,8 +1147,8 @@ function viewHomeTop(){const secs=homeSecs().filter(x=>x[1]);
   ${syncNudge()}${secs.map(x=>homeSec(x[0])).join('')||'<div class="empty">「並べ替え」から、ホームに出すものを選んでください</div>'}</main>`}
 function homeEditHTML(){const p=homeSecs();
   return `<div class="modal-bg" data-act="lbClose"></div><div class="modal"><div class="hstack"><b>ホームに出すもの</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
-  <p class="note">チェックを外すと出さなくなります。↑↓で並び順を変えられます。</p>
-  ${p.map((x,i)=>`<div class="hstack home-ed"><label class="hstack" style="flex:1"><input type="checkbox" data-change="homeOn" data-k="${x[0]}" ${x[1]?'checked':''}> ${homeLbl(x[0])}</label><button class="ghost" data-act="homeMove" data-i="${i}" data-v="-1" ${i?'':'disabled'} aria-label="上へ">↑</button><button class="ghost" data-act="homeMove" data-i="${i}" data-v="1" ${i<p.length-1?'':'disabled'} aria-label="下へ">↓</button></div>`).join('')}
+  <p class="note">チェックを外すと出さなくなります。左の ⋮⋮ をつかんで並び順を変えられます。</p>
+  <div class="list cards home-edl">${p.map((x,i)=>`<div class="row home-ed" data-drag="home" data-idx="${i}"><span class="handle">⋮⋮</span><label class="hstack body"><input type="checkbox" data-change="homeOn" data-k="${x[0]}" ${x[1]?'checked':''}> ${homeLbl(x[0])}</label></div>`).join('')}</div>
   <div class="hstack" style="margin-top:12px"><button class="ghost" data-act="homeReset">初めの並びに戻す</button><span class="spacer"></span><button class="primary" data-act="lbClose">閉じる</button></div></div>`}
 function viewGig(){const g=gigById(R.a);if(!g){location.replace('#/');return ''}
   const sets=gigSetsSorted(g),cust=(g.sort||'studio')==='custom';
@@ -2641,7 +2641,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものと順番を変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものを選べて、順番は ⋮⋮ をつかんで変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -3176,7 +3176,6 @@ const ACT={
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
   homeEdit(){$('#overlay').innerHTML=homeEditHTML()},
-  homeMove(t){const p=homeSecs(),i=+t.dataset.i,j=i+(+t.dataset.v);if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prefs.home=p;save();render();$('#overlay').innerHTML=homeEditHTML()},
   homeReset(){delete S.prefs.home;save();render();$('#overlay').innerHTML=homeEditHTML()},
   supportOpen(){$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
     <div class="hstack"><b>開発を応援する</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
@@ -3361,7 +3360,7 @@ function pdragMove(){const d=pdrag;if(!d)return;const dy=Math.max(d.minDy,Math.m
 document.addEventListener('pointermove',e=>{if(!pdrag)return;e.preventDefault();pdrag.lastY=e.clientY;pdragMove()},{passive:false});
 function endPdrag(){if(!pdrag)return;const {k,from,to,rows,row,list,timer}=pdrag;pdrag=null;clearInterval(timer);
   rows.forEach(r=>{r.style.transform='';r.style.transition=''});row.classList.remove('lifting');list.classList.remove('drag-list');document.body.classList.remove('dragging-row');
-  if(from!==to){const arr=k==='gb'?gigDragArr():k==='sl'?curSetlist().songIds:curSong().blocks;const [x]=arr.splice(from,1);arr.splice(to,0,x);render()}}
+  if(from!==to){if(k==='home'){const p=homeSecs();const [x]=p.splice(from,1);p.splice(to,0,x);S.prefs.home=p;save();render();$('#overlay').innerHTML=homeEditHTML();return}const arr=k==='gb'?gigDragArr():k==='sl'?curSetlist().songIds:curSong().blocks;const [x]=arr.splice(from,1);arr.splice(to,0,x);render()}}
 document.addEventListener('pointerup',endPdrag);document.addEventListener('pointercancel',endPdrag);
 let drag=null;
 document.addEventListener('dragstart',e=>{const t=e.target.closest&&e.target.closest('[data-drag]');if(t){drag={k:t.dataset.drag,i:+t.dataset.idx};e.dataTransfer.effectAllowed='move'}});
