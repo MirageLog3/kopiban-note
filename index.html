@@ -698,7 +698,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 0:01';
+const APP_VER='10/26 0:44';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -782,7 +782,7 @@ function audioStatHTML(s){const a=s.audio,id=a.blobId;
   if(AUP.get[id]===1){const p=AUP.prog[id];return `<span class="spin"></span>${esc(a.name)} をGoogleドライブから読み込んでいます…${p!=null?' '+p+'%<div class="dl-bar"><i style="width:'+p+'%"></i></div>':''}`}
   if(AUP.have[id]===false){
     if(a.drv&&AUP.get[id]==='ng')return `<span class="ng">${esc(a.name)} をGoogleドライブから読み込めませんでした。通信を確かめて、曲を開き直してください。</span>`;
-    if(a.drv)return `<span class="ng">${esc(a.name)} は別の端末で入れた音源です。メニューの「Googleで自動バックアップ・同期」でログインすると、この端末でも聴けます。</span>`;
+    if(a.drv)return `<span class="ng">${esc(a.name)} は別の端末で入れた音源です。「☰ メニュー → Googleで自動バックアップ・同期」でログインすると、この端末でも聴けます。</span>`;
     return `<span class="ng">${esc(a.name)} は別の端末で入れた音源で、この端末には入っていません。入れた端末でGoogleの同期をオンにしてアプリを開くと、ほかの端末でも聴けるようになります。下のプレーヤーの「⋯」から入れ直すこともできます。</span>`}
   return `${esc(a.name)} を入れてあります。${SY.meta.on&&S.prefs.audioUp!==false?(a.drv?'Googleドライブにも置いてあるので、ほかの端末でも聴けます。':'Googleドライブに上げています…'):''}`}
 function updAudioStat(){const el=$('#audioStat'),s=R.name==='song'&&curSong();if(el&&s&&s.audio)el.innerHTML=audioStatHTML(s)}
@@ -1033,7 +1033,7 @@ function topbar(tab){
   return `<header class="top"><div class="brand"><img class="brand-i" src="icon-192.png" alt=""><span class="brand-t"> コピバン練習ノート</span></div>
   <nav><a href="#/" class="${tab==='home'?'on':''}">ホーム</a><a href="#/events" class="${tab==='setlist'?'on':''}">イベント</a><a href="#/bands" class="${tab==='bands'?'on':''}">バンド</a></nav>
   <span class="histbtns"><button class="ghost" id="undoB" data-act="undo" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" ${H.past.length?'':'disabled'}>${ICON_UNDO}</button><button class="ghost" id="redoB" data-act="redo" title="やり直す (Ctrl+Y)" aria-label="やり直す" ${H.future.length?'':'disabled'}>${ICON_REDO}</button></span>
-  <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・共有コード・同期など)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
+  <button class="ghost menubtn ${tab==='settings'?'on':''}" data-act="menuOpen" title="メニュー(表示・バンド・招待・共有・同期など)">☰${newsUnseen()?'<span class="newdot"></span>':''}</button></header>`}
 /* ---------- バンドの切り替え(セトリと曲の画面のいちばん上)。曲もセトリもバンドごとに分かれる ---------- */
 function bandBar(){const on=S.cur.band===NOBAND?NOBAND:band().id,orf=orphanSongs().length;return `<div class="bandbar" aria-label="バンド">${S.bands.map(b=>`<button class="${b.id===on?'on':''}" data-act="pickBand" data-id="${b.id}">${esc(b.name)}</button>`).join('')}${orf?`<button class="${on===NOBAND?'on':''}" data-act="pickBand" data-id="${NOBAND}">バンドなし (${orf})</button>`:''}<button class="ghost addband" data-act="newBand" title="バンドを追加">＋ バンド</button></div>`}
 function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
@@ -1620,7 +1620,7 @@ function drivePick(){if(IS_IOS&&!S.prefs.pickerOk){
       <button class="sync-row" data-act="pickerFiles"><b>ファイルアプリから選ぶ</b><small class="sub" style="display:block">「音源ファイルを入れる」と同じ</small></button></div></div>`;return}
   drivePickGo()}
 async function drivePickGo(){const s=curSong();if(!s)return;
-  if(!SY.meta.on){toast('先にメニューの「Googleで自動バックアップ・同期」でログインしてください');location.hash='#/settings/sync';return}
+  if(!SY.meta.on){toast('先に「☰ メニュー → Googleで自動バックアップ・同期」でログインしてください');location.hash='#/settings/sync';return}
   if(!(await ensureToken())){toast('Googleのログインが切れています。もう一度ログインしてください');return ACT.syncLogin()}
   try{await pickerLoad()}catch(e){return toast(e.message)}
   // 表示はいちばん最初に動いた形(フォルダつき1画面)のまま。タブを増やすとiPhoneで「アカウントにアクセスできません」になった
@@ -2446,10 +2446,10 @@ const TUT=[
   ['コードを入れる','追加したブロックを開くと、さらに<b>グリッド付きのボックス</b>が現れます。<b>1グリッド = 8分音符1つ分</b>、<b>グリッドで区切られたボックス = 1小節</b>です。ボックスの空白部分をタップ・クリックすると、専用のキーボードが現れます。<b>小節の頭やコードが変わる部分</b>にメモをしていきましょう。<br>コード名がわからない場合は「コード判定」で鍵盤から探せます。',
     ['音階をアルファベットで表すことに慣れていない場合','一般に、コード名はC=ド、D=レ、E=ミ、F=ファ、G=ソ、A=ラ、B=シのように、音にアルファベットを対応付けて表します。このアプリでは、この書き方に慣れていない人のために、キーボードに「ドレミ」ボタンを用意しています。「ドレミ」ボタンを押すと、コード名の入力や、和音からのコード名判定をドレミのまま使えるので、慣れるまで使うとよいでしょう。曲を分析したい人や移調を考えている人のために「ディグリー」ボタンもあるので、ぜひ使ってみてください。']],
   ['音源とメトロノーム','曲の画面で音源ファイル(wavなど)や、YouTube・YouTube Music・SpotifyのURLを入れると、各ブロックの頭から再生・ループ再生もできます。拍子とテンポを正しく入れておくと、音源の展開に合わせてメトロノームを鳴らすこともできます。'],
-  ['メンバーに共有','曲やバンドの画面の「共有」を押すと、共有用のリンクと共有コードができます。受け取ったリンクや「☰ メニュー」から入力したコードで、曲の構成や曲順・予定を自分の端末に取り込んで、自由に書き込めます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
-    ['URLを共有してもらったら','LINEやそのほかのメッセージアプリ、メールなどで共有URLを開くとそのアプリ内でブラウザが立ち上がることがあります。その場合、同じ曲順をあとで編集したり確認したりするときも、そのアプリの中のブラウザから開く必要があります。基本的には「外部ブラウザで開く」「Safariで開く」などを選び、普段使うブラウザに保存しておきましょう。webアプリとしてホーム画面に保存した場合は、「☰ メニュー → 招待・共有を受け取る」に共有コードを入れると、曲や曲順などを受け取れます。']],
-  ['データについて','データはお使いの端末のブラウザの中に保存されます。スマホから利用する方は<b>ホーム画面に追加</b>して使うことをお勧めします。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
-    ['データの扱い','・曲や曲順・予定は、この端末の中だけに保存されます(「共有」したときだけ、共有用のコピーがネットに送られます)。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあります。<br>・<b>「ホーム画面に追加」</b>して使えば、勝手に消えることはありません。<br>・念のため、「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと安心です。']]];
+  ['メンバーに共有','曲の画面の「⋯ → 共有」や、バンドの画面の「⋯ → 曲順と予定を共有」で、共有用のリンクと共有コードができます。受け取ったリンクや、「☰ メニュー → 招待・共有を受け取る」に入れたコードで、曲の構成や曲順・予定を自分の端末に取り込んで、自由に書き込めます(共有元のデータがほかの人によって書き換えられることはありません)。スタジオ練習や本番の日程を共有することもできます。',
+    ['URLを共有してもらったら','LINEやメールで共有URLを開くと、そのアプリの中のブラウザで開くことがあります。リンクでは中身を見るだけにして、ホーム画面に追加したアプリの「☰ メニュー → 招待・共有を受け取る」に共有コードを入れると、曲や曲順などを取り込めます。']],
+  ['データについて','データは、この端末と、ログインしたGoogleのドライブに保存されます。間違えて消したときは、画面上の <b>元に戻すボタン</b>(左回りの矢印)で元に戻せます。<br>この説明は「☰ メニュー → 使い方を見る」からいつでも見られます。',
+    ['データの扱い','・曲や曲順・予定は、この端末と自分のGoogleドライブに保存されます(ほかの人に渡るのは、「共有」や「招待」で送った共有用のコピーだけです)。<br>・写真と録音は、この端末にだけ残ります。<br>・スマホのブラウザのままだと、しばらく開かないうちに消えることがあるので、ホーム画面に追加したアプリで使います。']]];
 let TUTI=0,TUTH=false;
 // 本文の高さを「いちばん長いページ」に合わせて固定し、戻る・次へボタンの位置がページごとに動かないようにする。ヘルプが長いときは本文の枠の中でスクロール
 function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelector('h2'),p=box.querySelector('.tut-p');if(!p)return;let mh=0,mp=0;const cur=p.innerHTML;
@@ -2481,9 +2481,9 @@ const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.sta
 // g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない  grp: 目次での見出し(なければ画面から決める)
 const TOUR=[
   {core:1,r:()=> '#/',sel:null,h:'ようこそ！',map:1,tt:'バンドでコピーする曲の<b>構成</b>(イントロやサビの順番と小節数)をまとめるノートです。中身はこの順につながっています。',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。',ask:'自分たちの曲をやるオリジナルバンドはある？'},
-  {core:1,notApp:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',tt:'スマホで使うなら、書き込む前にホーム画面に追加してください(iPhoneは、ブラウザで書いた内容がホーム画面のアプリに引き継がれません)。ブラウザの共有ボタンや ︙ から「ホーム画面に追加」を選べます。',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
-    g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
-  {r:()=> '#/events',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
+  {core:1,notApp:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',tt:'スマホで使うなら、書き込む前にホーム画面に追加してください(iPhoneは、ブラウザで書いた内容がホーム画面のアプリに引き継がれません)。ブラウザの共有ボタンや ︙ から「ホーム画面に追加」を選べます。',t:'スマホでは、<b>ホーム画面に追加</b>したアプリとして使います。ブラウザのままだと、しばらく開かないうちにデータが消えることがあるためです。<br>ブラウザのメニューの「共有」や ︙ から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。',
+    g:'スマホでは、<b>ホーム画面に追加</b>したアプリとして使います。ブラウザのままだと、しばらく開かないうちにデータが消えることがあるためです。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
+  {r:()=> '#/events',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブや企画ごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは、ホームの「＋ オリジナルバンド」から入れます。ほかの画面からは、いちばん上の「イベント」を押すとここに戻れます。'},
   {on:'setlist',r:()=> '#/events',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、出るバンドを足します。何組か掛け持ちするときは、同じイベントにバンドを並べます。2日間のイベントなら、本番を1日ずつ足して、バンドの画面で「出る日」を選べます。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、バンドには星(1〜3)をつけて並び順を選べます。'},
   {r:tSl,sel:'main',whole:true,h:'バンドの画面',t:'イベントに出る1つのバンドの、曲順(セトリ)とスタジオの予定をまとめる画面です。いちばん上の「‹」でイベントに戻れます。',need:hasSl},
   {on:'bands',r:()=> '#/bands',sel:'#songQ',kw:'バンド 移す 曲一覧 検索 探す',h:'バンドと曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。曲はバンドの中に並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲はバンドの画面の「移す」で別のバンドへ移せます。いちばん上の「曲を探す」では、すべてのバンドの曲から、曲名・メモ・歌詞で探せます。'},
@@ -2514,7 +2514,7 @@ const TOUR=[
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
   {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 招待・共有を受け取る」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期もこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります。'},
-  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',tt:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。ほかの機能は「☰ メニュー → 使い方を見る」で探せます。',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
+  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',tt:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。ほかの機能は「☰ メニュー → 使い方を見る」で探せます。',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
 const TOUR_MORE=['音源','歌詞をまとめて入れる','小節の番号','コード入力キーボード','メモ(写真・録音)','MIDIを読み込む','共有・印刷','曲順と予定を共有','Googleで自動バックアップ・同期'];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
@@ -2525,7 +2525,7 @@ const TG=()=>TGS().map(s=>[s.h,s.g||s.t,s.help,s.grp,!!s.adv,s.kw||'']);
 /* ---------- 機能を探す ----------
    使い方の目次の上の欄に言葉を入れると、項目名・説明・よく使われる言い方(kw)から探して絞り込む。
    使い方の項目にない設定(バックアップなど)も、ここから開けるようにする */
-const TEXTRA=[['ファイルで保存する','Googleを使わずに、データをファイルに書き出す・ファイルから戻す(「Googleで自動バックアップ・同期」の中)','バックアップ 保存 復元 移行 エクスポート インポート ファイル','sync'],
+const TEXTRA=[['ファイルで保存する','データをファイルに書き出す・ファイルから戻す(「Googleで自動バックアップ・同期」の中)','バックアップ 保存 復元 移行 エクスポート インポート ファイル','sync'],
   ['マーカーの編集','ブロックにつけるマーカー(キメ・テンポ注意など)の名前と色を変える','マーカー 目印 色 キメ','markers'],
   ['バンドの管理','バンドの名前を変える・追加する・削除する','バンド 名前 変更 削除 追加','band'],
   ['テーマ・表示の切り替え','ダーク・ライト、コードの表示(アルファベット・ドレミ・ディグリー)','ダーク ライト テーマ 色 ドレミ ディグリー 表示','menu'],
@@ -2582,7 +2582,7 @@ function firstTourRest(orig){const home=()=> '#/events',st=[];
     {r:tBlk,lv:3,whole:true,sel:'main',h:'ブロックの画面',t:'ブロックの画面です。ここにコードやメモ、キメなどの目印を書き込んでいきます。',need:tourBlock,before:tNoCell},
     {r:tBlk,lv:3,sel:'#grid .bar',h:'小節とマス',t:'下のボックス1つが1小節です。中の1マスは8分音符1つ分で、4/4拍子なら1小節に8マスあります。マスを押すとコードを書けて、空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
     {r:tSong,lv:2,sel:'.lyr-open',h:'歌詞',t:'曲の画面の「歌詞をまとめて入れる」に歌詞の全文を貼り付けると、行ごとにブロックへ割り振れます。入れた歌詞は小節の下に出て、「歌詞カード」では再生に合わせて今の行が光ります。',need:tourSong});
-  const hs=TOUR.find(s=>s.notApp);if(hs&&!IS_APP())st.push({...hs,t:hs.tt||hs.t,r:()=>location.hash||'#/',h:'ホーム画面に追加'});
+  const hs=TOUR.find(s=>s.notApp);if(hs&&IS_PHONE()&&!IS_APP())st.push({...hs,t:hs.tt||hs.t,r:()=>location.hash||'#/',h:'ホーム画面に追加'});
   st.push({r:()=>location.hash||'#/',sel:'.menubtn',h:'このアプリではこんなことができます！',t:'気になるものを押すと、その使い方が開きます。あとから「☰ メニュー → 使い方を見る」でも見られます。',feats:1});
   return st.filter(s=>!s.need||s.need())}
 // オリジナルバンドがある人: イベントの前に、ホームの「オリジナル」の段からバンドを開く手順を足す
@@ -2592,8 +2592,8 @@ const TMAP=[['イベント','ライブや企画の一覧'],['バンド','曲順�
 function tourMapFull(){return `<div class="tmapf">${TMAP.map((m,i)=>`<div class="tm-row" style="padding-left:${i*18}px">${i?'<i>└</i>':''}<b>${m[0]}</b><span class="sub">${m[1]}</span></div>`).join('')}</div>`}
 function tourMapMini(lv){return `<div class="tmap">${TMAP.map((m,i)=>`<span class="${i===lv?'on':''}">${m[0]}</span>`).join('<i>›</i>')}</div>`}
 function tourOrigSteps(){const os=origSets().find(x=>x.songIds.some(id=>{const s=songById(id);return s&&s.blocks.length}));
-  if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルの段',lv:0,t:'ここがホームです。自分たちのバンドは「オリジナルバンド」に並びます。ライブが決まっていなくても、ここから曲とスタジオの予定を開けます。'},{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'バンドを開く',lv:0,t:'光っているバンドを押して、バンドの画面を開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
-  return [{r:()=> '#/',sel:'main [data-act=gigAddBand]',h:'オリジナルの段',lv:0,t:'自分たちのバンドは「＋ オリジナルバンド」から入れると、ホームのいちばん上に並びます。このあとは見本のイベントで見ていきます。'}]}
+  if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルバンド',lv:0,t:'ここがホームです。自分たちのバンドは「オリジナルバンド」に並びます。ライブが決まっていなくても、ここから曲とスタジオの予定を開けます。'},{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'バンドを開く',lv:0,t:'光っているバンドを押して、バンドの画面を開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
+  return [{r:()=> '#/',sel:'main [data-act=gigAddBand]',h:'オリジナルバンド',lv:0,t:'自分たちのバンドは「＋ オリジナルバンド」から入れると、ホームのいちばん上に並びます。このあとは見本のイベントで見ていきます。'}]}
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
@@ -2690,10 +2690,10 @@ function settingCards(){return {news:newsCard(),
     <div class="hstack" style="margin-top:8px"><button data-act="newBand">＋ バンドを追加</button></div></div>`,
   app:`<div class="card"><b>スマホでアプリとして使う</b><p class="note">${matchMedia('(display-mode: standalone)').matches||navigator.standalone?'✓ ホーム画面のアプリとして開いています。':''}
     ホーム画面に追加すると、アイコンから全画面で開けて、電波がないスタジオでも使えます。<br>
-    ・iPhone: Safariで開いて、下の共有ボタン → 「ホーム画面に追加」<br>
+    ・iPhone: Safariのアドレスバーの左のメニュー → 「共有」 → 「ホーム画面に追加」(メニューがないときは共有ボタンから)<br>
     ・Android: Chromeのメニュー(︙) → 「ホーム画面に追加」<br>
     ${STORE_OK?'✓ この端末では、データが自動で消されない設定になっています。<br>':'ホーム画面に追加して使うと、しばらく開かなくてもデータが消えにくくなります。<br>'}
-    ※ホーム画面のアプリとブラウザでは、保存されるデータが別々になります。「☰ メニュー → Googleで自動バックアップ・同期」でデータを移してから使ってください(Googleを使わない場合は、その中の「ファイルで保存する」で移せます)。</p></div>`,
+    ※ホーム画面のアプリとブラウザでは、端末の中の保存場所が別々です。どちらも同じGoogleでログインしていれば、同じデータを使えます。</p></div>`,
   markers:`<div class="card"><b>マーカー</b><p class="note">ブロックに付けるマーカーです(キメ・テンポ注意など)。名前と色は自由に変えられて、曲の一覧で注意が必要な箇所がひと目で分かります。</p>
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>`,
@@ -2706,9 +2706,9 @@ function settingCards(){return {news:newsCard(),
     <div class="hstack">${!SY.meta.on?`<button class="primary" data-act="syncLogin">Googleでログインする</button>`:`${syncReady()?'':`<button class="primary" data-act="syncLogin">Googleで続ける</button>`}<button data-act="syncNow">今すぐ同期</button><span class="spacer"></span><button class="ghost" data-act="syncOff">同期をやめる</button>`}</div>${SY.meta.on?'<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="syncRestore">控えから戻す</button></div>':''}
     <label class="sub" style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" data-change="audioUpPref" ${S.prefs.audioUp!==false?'checked':''}> 曲に入れた音源ファイルもドライブに上げる</label>
     <p class="note" style="margin:2px 0 0">オンだと、ほかの端末でもファイルのまま聴けます。mp3なら1曲5〜10MBくらい、wavだと50MBくらいドライブを使います。オフのときは、ドライブに置いた音源の共有リンク(リンクを知っている全員)を参考音源URLに貼れば、どの端末でも聴けます。</p>
-    <details class="filebk"><summary>Googleを使わずに、ファイルで保存する</summary><p class="note" style="margin:6px 0 8px">データを1つのファイルに書き出して、あとで読み込めます。写真と録音も入ります。Googleにログインしないで機種変更するときなどに使います。</p>
+    <details class="filebk"><summary>ファイルにも保存する</summary><p class="note" style="margin:6px 0 8px">データを1つのファイルに書き出して、あとで読み込めます。写真と録音も入ります。Googleドライブとは別に、手元に控えを残したいときに使います。</p>
       <div class="hstack"><button data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></details></div>`,
-  backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">データはこの端末のブラウザの中に保存されています(サーバーには送られません)。ブラウザの閲覧データを消すと一緒に消えるので、ときどき書き出しておくと安心です。写真と録音もまとめて1つのファイルに入ります。</p>
+  backup:`<div class="card"><b>ファイルに書き出す・読み込む</b><p class="note">写真と録音はこの端末にだけあるので、ときどき書き出しておくと安心です。曲や曲順と一緒に、写真と録音もまとめて1つのファイルに入ります。</p>
     <div class="hstack"><button class="primary" data-act="export">ファイルに書き出す</button><button data-act="import">ファイルから読み込む</button></div></div>`,
   tips:`<div class="card"><b>メモ</b><p class="note">・起動するとホームが開きます。ホームに出すものと順番は、右上の「並べ替え」で変えられます。<br>・コードは8分単位のマスに置きます。空白のマスは前のコードが続く扱いです。<br>・テンポやキーは任意です。音源を聴けば分かることは書かなくて大丈夫。<br>・バンドのみんなで1人1曲ずつ構成をコピーすると早く終わります。自分が作った曲は曲の「⋯ → 共有」で送り、受け取る人は「☰ メニュー → 招待・共有を受け取る」で入れます。招待で自動で届くのは、バンドを作った人が足した曲だけです。<br>・スタジオの日時と場所を入れてから、バンドの「⋯ → 曲順と予定を共有」で送ると、受け取ったメンバーも同じ予定を取り込めます。<br>・苦手なブロックを選んでループ再生すると、そこだけくり返し聴けます。<br>・メトロノームを音源のテンポに合わせて鳴らすと、自分が走っているかもたっているか分かります。<br>・キメや合いの手にマーカーを付けておくと、スタジオで「どこだっけ」となりにくくなります。<br>・細かいフレーズは全部書かなくて大丈夫。手書きの写真や録音をブロックに貼っておけば十分です。<br>・本番前は歌詞カードを開いて音源を流すと、今の行を追いながら曲の流れを通しで確認できます。<br>・構成表は印刷やPDF保存ができます。A4 1枚に収まるので、譜面台に置いておけます。<br>・作曲ソフト(DAW)で曲の区切りにマーカーを打ってMIDIに書き出すと、テンポや拍子とブロック分けをまとめて読み込めます。<br>・バンドの「⋯ → 色を変える」で色を付けると、バンドのカードやイベントの中で、どのバンドか見分けやすくなります。</p></div>`}}
 function b64(blob){return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob)})}
