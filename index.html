@@ -490,6 +490,8 @@ body.has-player #sheet .sheet{bottom:54px}
 .gliverow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .slpick{display:flex;align-items:center;gap:8px;min-width:0;background:none;border:none;box-shadow:none!important;padding:4px 0;font-size:24px;font-weight:700;color:var(--text);text-align:left}
 .slpick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.slpick i{font-style:normal;font-size:15px;color:var(--sub);flex:none}
+.tmap{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:12px;margin:0 0 6px}.tmap span{padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--sub)}.tmap span.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}.tmap i{color:var(--sub);font-style:normal}
+.tmapf{margin:8px 0 2px}.tnest{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:5px 8px;margin-top:5px;font-size:13px;line-height:1.4}.tnest b{margin-right:6px}.tnest .sub{font-size:12px}.tmapf>.tnest{margin-top:0}
 .tour-ask{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.tour-ask .hstack{justify-content:flex-end}
 .slmore{margin-left:auto;font-size:22px;line-height:1;padding:6px 12px;flex:none}
 .pop-bg{position:fixed;inset:0;z-index:40}
@@ -665,7 +667,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 19:10';
+const APP_VER='10/25 19:26';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2341,15 +2343,15 @@ const IS_APP=()=>matchMedia('(display-mode: standalone)').matches||navigator.sta
 // core: 初めて開いたときの案内(曲を開いてコードを1つ入れるまで)。それ以外は「使い方を見る」だけに出る
 // g: メニューの「使い方を見る」で使う文章(なければ t)  noguide: 「使い方を見る」には出さない  grp: 目次での見出し(なければ画面から決める)
 const TOUR=[
-  {core:1,r:()=> '#/',sel:null,h:'ようこそ！',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。',ask:'自分たちの曲をやるオリジナルバンドはある？'},
-  {core:1,notApp:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
+  {core:1,r:()=> '#/',sel:null,h:'ようこそ！',map:1,tt:'バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数)をまとめるノートです。中身は、外から順にこんな入れ子になっています。',t:'コピバン練習ノートは、バンドでコピーする曲の<b>構成</b>(イントロ・Aメロ・サビの順番や小節数、キメなどの注意点)をまとめるツールです。コードやメモも書き込めます。<br>最初から入っている「〇月定例ライブ」や「サンプル曲」は見本なので、自由に書き換えて大丈夫です。',ask:'自分たちの曲をやるオリジナルバンドはある？'},
+  {core:1,notApp:1,r:()=> '#/',sel:null,kw:'アプリ インストール ホーム画面',h:'先にホーム画面に追加',tt:'スマホで使うなら、書き込む前にホーム画面に追加してください(iPhoneは、ブラウザで書いた内容がホーム画面のアプリに引き継がれません)。ブラウザの共有ボタンや ︙ から「ホーム画面に追加」を選べます。',t:'スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>してください。iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません。<br>ブラウザのメニュー(共有ボタンや ︙)から「ホーム画面に追加」を選んで、ホーム画面のアイコンから開き直してください。<br>あとで「☰ メニュー → Googleで自動バックアップ・同期」でログインしておくと、データが自動でバックアップされて、PCとも同じデータを使えます。',
     g:'データはお使いの端末のブラウザの中に保存されます。スマホで使う方は、書き込む前に<b>ホーム画面に追加</b>しておくのがおすすめです(iPhoneでは、ブラウザで書いた内容がホーム画面のアプリには引き継がれません)。',help:TUT[5][2],need:()=>IS_PHONE()&&!IS_APP()},
   {r:()=> '#/',sel:'main',whole:true,h:'イベント画面',grp:'イベント画面',t:'ライブやイベントごとに、出るバンドをまとめる画面です。自分たちのオリジナルバンドは「＋ オリジナルバンド」で上の「オリジナル」の段に入れると、バンドから予定・出るライブ・曲を開けます。ほかの画面からは、いちばん上のバーにある「イベント」の文字を押すとここに戻ってこられます。'},
   {on:'setlist',r:()=> '#/',sel:'[data-act=newGig]',grp:'イベント画面',kw:'ライブ 企画 作成',h:'イベントを作る',t:'「＋ イベント」でライブや企画を作って、出るバンドを足します。何組か掛け持ちするときは、同じイベントにバンドを並べます。2日間のイベントなら、本番を1日ずつ足して、バンドの画面で「出る日」を選べます。イベントの「⋯」で色を変えたり一覧の上にピン留めしたりでき、バンドには星(1〜3)をつけて並び順を選べます。'},
   {r:tSl,sel:'main',whole:true,h:'バンドの画面',t:'イベントに出る1つのバンドの、曲順(セトリ)とスタジオの予定をまとめる画面です。いちばん上の「‹」でイベントに戻れます。',need:hasSl},
   {on:'bands',r:()=> '#/bands',sel:'#songQ',kw:'バンド 移す 曲一覧 検索 探す',h:'バンドと曲',t:'上の「バンド」タブでは、イベントが決まる前でもバンドと曲を先に作っておけて、日程が決まったら「＋ イベントに出る」で入れられます。曲はバンドの中に並びます。同じバンドで別のイベントに出るときは、前の曲をそのまま使えます。混ざってしまった曲はバンドの画面の「移す」で別のバンドへ移せます。いちばん上の「曲を探す」では、すべてのバンドの曲から、曲名・メモ・歌詞で探せます。'},
   {on:'setlist',r:tSl,sel:'.sec.hstack',adv:1,kw:'練習 日程 カレンダー',h:'スタジオの予定',t:'バンドのスタジオ練習の日程を入れておけます。本番の日時はイベントの画面で1回だけ入れます。カレンダーへの追加やメンバーへの共有もできます。',need:hasSl},
-  {core:1,r:tSl,sel:'main .list .row:has(a.body[href^="#/song/"])',h:'曲を開く',t:'このバンドの曲順です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'曲順に入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body[href^="#/song/"]',need:slHasSong},
+  {core:1,r:tSl,sel:'main .list .row:has(a.body[href^="#/song/"])',h:'曲を開く',lv:1,tt:'バンドの画面です。ここにこのバンドの曲順が並びます。光っている曲をタップして開いてみましょう。',t:'このバンドの曲順です。光っている曲をタップして、曲の画面を開いてみましょう。',g:'曲順に入っている曲をタップすると、曲の画面が開きます。',tap:'main .list .row a.body[href^="#/song/"]',need:slHasSong},
   // 曲の画面
   {r:tSong,sel:'main',whole:true,h:'曲の画面',t:'1曲ごとの情報と構成をまとめる画面です。上から順に、曲の基本情報・音源・メトロノーム、その下に曲の構成が並んでいます。',need:tourSong},
   {on:'song',r:tSong,sel:'#songInfo',kw:'テンポ 拍子 キー BPM',h:'曲の基本情報',t:'テンポ・拍子・キー(調)を入れておきます。途中で変わる部分はブロックごとに変えられます。',need:tourSong},
@@ -2361,9 +2363,9 @@ const TOUR=[
   {on:'song',r:tSong,sel:'[data-act=songMore]',adv:1,kw:'Cubase DAW マーカー オリジナル 自作',h:'MIDIを読み込む',t:'自分の曲なら、DAW(Cubaseなど)から書き出したMIDIファイルで、テンポ・拍子・キーと、マーカーでのブロック分けをまとめて読み込めます。曲名の右の「⋯」の「MIDIを読み込む」から使います。マーカーの名前がそのままブロックの名前になります。',need:tourSong},
   {on:'song',r:tSong,sel:'[data-act=songMore]',kw:'PDF 印刷 コード譜 構成表 送る LINE',h:'共有・印刷',t:'曲の構成を書き終えたら、曲名の右の「⋯」から、「共有」でメンバーに送ったり、「印刷・PDF」で構成表やコード譜を印刷・保存したりできます。',need:tourSong},
   // ブロックの画面
-  {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。左端をつかんで並べ替えることができ、いちばん下のボタンからブロックを追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
+  {core:1,r:tSong,sel:'main .list .row',h:'ブロックを開く',lv:2,tt:'曲の画面です。イントロ・Aメロ・サビなどの「ブロック」が曲の順番に並びます。光っているブロックをタップしてみましょう。',t:'イントロ・Aメロ・サビなどの「ブロック」が、曲の順番に並んでいます。左端をつかんで並べ替えることができ、いちばん下のボタンからブロックを追加できます。<br>光っているブロックをタップして、中を見てみましょう。',g:'ブロックをタップすると、その中に入ってコードなどを書き込めます。',tap:'main .list .row a.body',need:tourBlock,noguide:1},
   {on:'block',r:tBlk,sel:'#bquick',h:'ブロックの画面',t:'1つのブロックの中身です。小節数・メモ・マーカー(キメ・テンポ注意など)を付けておけます。',need:tourBlock,before:tNoCell},
-  {core:1,r:tBlk,sel:'#grid .bar',kw:'コード 8分 小節 マス',h:'小節とマス',t:'コードも書いておきたいときは、マスをタップすると専用のキーボードが出ます。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。空いているマスは「前のコードが続く」という意味です。',tt:'1つのブロックの中身です。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>で、マスをタップするとコードを書けます。空いているマスは「前のコードが続く」という意味です。上では小節数・メモ・マーカー(キメ・テンポ注意など)も付けられます。',
+  {core:1,r:tBlk,sel:'#grid .bar',kw:'コード 8分 小節 マス',h:'小節とマス',t:'コードも書いておきたいときは、マスをタップすると専用のキーボードが出ます。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。空いているマスは「前のコードが続く」という意味です。',lv:3,tt:'ブロックの画面です。<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>で、マスをタップするとコードを書けます。',
     g:'<b>1つのボックス = 1小節</b>、<b>1マス = 8分音符1つ分</b>です。マスをタップすると専用のキーボードが出ます。<b>小節の頭やコードが変わる部分</b>に入れていきましょう。空いているマスは「前のコードが続く」という意味です。',need:tourBlock,before:tNoCell},
   {on:'block',r:tBlk,sel:'#grid .bn',adv:1,kw:'ループ 繰り返し リピート ここから再生 accel rit テンポ変化 だんだん 拍子',h:'小節の番号',t:'小節の左の番号を押すと、その小節から再生する・何小節かを選んで繰り返す・テンポをだんだん変える(accel.・rit.)・その小節だけ拍子を変える、ができます。',need:tourBlock,before:tNoCell},
   {on:'block',r:tBlk,sel:'[data-k=bset]',adv:1,kw:'転調 変拍子 拍子 テンポ キー 種類',h:'詳しい設定',t:'途中で転調する・拍子が変わる・テンポが変わるなど、曲の一部だけ変化があるときは、「詳しい設定」でそのブロックだけ拍子・テンポ・キーを変えられます。ブロックの種類(イントロ・Aメロなど)もここで変えられます。',need:tourBlock,before:tNoCell},
@@ -2375,7 +2377,7 @@ const TOUR=[
   {on:'setlist',grp:'共有・同期',r:tSl,sel:'.slmore',adv:1,kw:'セトリ 曲順 送る メンバー',h:'曲順と予定を共有',t:'バンドの画面の右上「⋯」→「曲順と予定を共有」で、曲順(セトリ)とスタジオ・本番の予定をメンバーに送れます。「バンドごと共有」なら、バンドと出るイベントをまとめて渡せます。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できます(自分の写真・録音・メモは残ります)。',need:hasSl},
   {on:'setlist',grp:'共有',r:tSl,sel:'.menubtn',kw:'共有コード 読み込む リンク',h:'共有を受け取ったら',t:'共有リンクは開くだけで見られます。ホーム画面に追加したアプリで使っている人は、「☰ メニュー → 共有コードを読み込む」にコードを入れてください。ブラウザとアプリの両方で同じGoogleにログインしていれば、ブラウザで「追加」したものがアプリにも自動で入ります。テーマやコードの表示の切り替え、Googleでの同期もこのメニューにあります。',help:TUT[4][2]},
   {grp:'共有・同期',r:()=> '#/',sel:'.menubtn',adv:1,kw:'Google ドライブ 引き継ぎ 機種変更 パソコン バックアップ',h:'Googleで自動バックアップ・同期',t:'「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。曲に入れた音源ファイルもドライブに置くので、ほかの端末でも聴けます。写真と録音は、それぞれの端末にだけ残ります。'},
-  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
+  {core:1,noguide:1,r:tBlk,sel:'.menubtn',h:'これで準備OK',tt:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。ほかの機能は「☰ メニュー → 使い方を見る」で探せます。',t:'あとは同じように、ブロックを並べて曲の構成を作っていきましょう。<br>ほかの機能の説明は「☰ メニュー → 使い方を見る」にまとめてあります。気になるものを押すと、その説明が開きます。<br>データを守るために、「☰ メニュー → Googleで自動バックアップ・同期」でGoogleにログインしておくのがおすすめです。',more:1,need:tourBlock,before:tNoCell}];
 // 最後のステップに並べる「使い方を見る」の見出し
 const TOUR_MORE=['音源','歌詞をまとめて入れる','小節の番号','コード入力キーボード','メモ(写真・録音)','MIDIを読み込む','共有・印刷','曲順と予定を共有','Googleで自動バックアップ・同期'];
 // メニューの「使い方を見る」は、この案内と同じ文章を順に読む形にする
@@ -2425,11 +2427,14 @@ const tgCan=i=>{const st=TGS()[i];return !!(st&&st.sel)};
 const tgNext=i=>{for(let j=i+1;j<TGS().length;j++)if(tgCan(j))return j;return -1};
 // 「？」の説明を開いているときは、その説明で話している場所(helpSel)を明るくする
 const tourEl=st=>{const sel=TH&&st.helpSel?st.helpSel:st.sel;return sel&&document.querySelector(sel)};
-function tourStart(){ACT.lbClose();THINT=false;if(!DEMO&&needDemo())demoOn();TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need())&&!(s.notApp&&IS_APP())).map(s=>s.tt?{...s,t:s.tt}:s);TI=0;TH=false;tourGo()}
+function tourStart(){ACT.lbClose();THINT=false;if(!DEMO&&needDemo())demoOn();TSTEPS=TOUR.filter(s=>s.core&&(!s.need||s.need())&&!(s.notApp&&IS_APP())).map(s=>s.tt?{...s,t:s.tt}:s).map(s=>s.notApp?{...s,r:()=>location.hash||'#/',h:'ホーム画面に追加'}:s);{const i=TSTEPS.findIndex(s=>s.notApp);if(i>=0){const [x]=TSTEPS.splice(i,1);TSTEPS.splice(TSTEPS.length-1,0,x)}}TI=0;TH=false;tourGo()}
 // オリジナルバンドがある人: イベントの前に、ホームの「オリジナル」の段からバンドを開く手順を足す
+const TMAP=[['ホーム','ライブや企画のイベント(自分たちのバンドは「オリジナル」)'],['バンド','出るバンドと、その曲順・スタジオの予定'],['曲','1曲の構成'],['ブロック','イントロ・Aメロ・サビなど。中にコードやメモ']];
+function tourMapFull(){const n=i=>i>=TMAP.length?'':`<div class="tnest"><b>${TMAP[i][0]}</b><span class="sub">${TMAP[i][1]}</span>${n(i+1)}</div>`;return `<div class="tmapf">${n(0)}</div>`}
+function tourMapMini(lv){return `<div class="tmap">${TMAP.map((m,i)=>`<span class="${i===lv?'on':''}">${m[0]}</span>`).join('<i>›</i>')}</div>`}
 function tourOrigSteps(){const os=origSets().find(x=>x.songIds.some(id=>{const s=songById(id);return s&&s.blocks.length}));
-  if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルの段',t:'自分たちのバンドは、ライブが決まっていなくてもホームのいちばん上の「オリジナル」に並びます。光っているバンドをタップして開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
-  return [{r:()=> '#/',sel:'main [data-act=gigAddBand]',h:'オリジナルの段',t:'自分たちのバンドは「＋ オリジナルバンド」から入れると、ホームのいちばん上の「オリジナル」に並びます。ライブが決まっていなくても、ここから曲とスタジオの予定を開けます。<br>このあとは、見本のイベントで使い方を見ていきます。'}]}
+  if(os){S.cur.setlist=os.id;S.cur.band=os.bandId;return [{r:()=> '#/',sel:'main a.card.orig[href="#/setlist/'+os.id+'"]',h:'オリジナルの段',lv:0,t:'自分たちのバンドは、ホームのいちばん上の「オリジナル」に並びます。光っているバンドをタップして開いてみましょう。',tap:'main a.card.orig[href="#/setlist/'+os.id+'"]'}]}
+  return [{r:()=> '#/',sel:'main [data-act=gigAddBand]',h:'オリジナルの段',lv:0,t:'自分たちのバンドは「＋ オリジナルバンド」から入れると、ホームのいちばん上に並びます。このあとは見本のイベントで見ていきます。'}]}
 function tourGo(){const st=TSTEPS[TI];if(!st)return tourEnd();const h=st.r();tourBox();const b=$('#tourBub');if(b)b.classList.remove('in');
   const show=()=>{if(st.before)st.before();setTimeout(tourShow,st.before?320:60)};
   if(location.hash!==h&&!(h==='#/'&&!location.hash)){location.hash=h;setTimeout(show,320)}else show()}
@@ -2450,8 +2455,8 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   const el=tourEl(st);if(st.whole)scrollTo(0,0);else if(el)el.scrollIntoView({block:'center'});
   const last=TI===TSTEPS.length-1,showH=TH&&st.help,bub=$('#tourBub');
   bub.classList.remove('in');
-  bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}</div><b class="tour-h">${st.h}</b>
-    <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>
+  bub.innerHTML=`<div class="tut-step">${THINT?'▶ 画面で見る':`${TI+1} / ${TSTEPS.length}`}</div>${!THINT&&st.lv!=null?tourMapMini(st.lv):''}<b class="tour-h">${st.h}</b>
+    <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>${!THINT&&st.map&&!showH?tourMapFull():''}
     ${DEMO?`<p class="sub" style="margin:6px 0 0;font-size:12px">※ イベントや曲がないので、見本を表示しています(閉じると元に戻ります)</p>`:''}
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
@@ -2503,7 +2508,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2983,7 +2988,7 @@ const ACT={
       <button data-act="pmPick">${k==='audio'?'音源ファイルを差し替える':'音源ファイルを入れる'}</button><button data-act="pmDrive">Googleドライブから選ぶ</button>${k==='audio'?'<button data-act="pmRemove">音源ファイルを外す</button>':''}`,true,true)},
   pmPick(){ACT.lbClose();ACT.audioPick()},
   pmDrive(){ACT.lbClose();drivePick()},
-  tourAsk(t){S.prefs.hasOrig=t.dataset.v==='1';const add=S.prefs.hasOrig?tourOrigSteps():[];const i=TSTEPS.findIndex((s,j)=>j>TI&&!s.notApp);TSTEPS.splice(i<0?TI+1:i,0,...add);TI++;TH=false;tourGo()},
+  tourAsk(t){S.prefs.hasOrig=t.dataset.v==='1';const add=S.prefs.hasOrig?tourOrigSteps():[];TSTEPS.splice(TI+1,0,...add);TI++;TH=false;tourGo()},
   songMore(t){const s=curSong();if(!s)return;popMenu(t,`<button data-act="smShare">共有</button><button data-act="smPrint">印刷・PDF</button><button data-act="smMidi">MIDIを読み込む</button><hr><div class="sub" style="padding:6px 12px">バンド: ${esc(bandNameOf(s.bandId))}</div><button data-act="smMove" data-id="${s.id}">別のバンドへ移す</button>`,true)},
   smShare(t){ACT.lbClose();ACT.share(t)},
   smPrint(){const s=curSong();ACT.lbClose();if(s)location.hash='#/print/'+s.id+'/map'},
