@@ -394,7 +394,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .pnotes{font-size:11px;color:#333;margin-top:4px;white-space:pre-wrap}
 .pphotos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .pphotos img{max-height:160px;max-width:48%;border:1px solid #ccc}
-.pbar-actions label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.pbar-opts{margin-top:8px}.pbar-opts .primary{margin-left:auto}
+.pbar-actions label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.pbar-opts{margin-top:8px}.pbar-go{justify-content:flex-end;margin-top:8px}
 .pbar-actions{max-width:860px;margin:0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ptabs{display:inline-flex;margin-left:12px;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px}
 .ptabs a{padding:4px 12px;border-radius:6px;color:var(--sub);font-size:13px}
@@ -702,7 +702,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 8:07';
+const APP_VER='10/26 8:20';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2195,12 +2195,17 @@ async function pdfSelf(){const s=songById(R.a);const title=(s&&s.title)||'コピ
   catch(e){return toast('PDFを作る部品を読み込めませんでした。通信を確かめてください')}
   await Promise.all([...document.querySelectorAll('.pv img')].map(i=>i.complete&&i.src?0:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,1500)})));
   const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),W=210,H=297,M=10,iw=W-2*M,ihMax=H-2*M,one=R.b==='map';let first=true;
-  for(const pv of document.querySelectorAll('.pv')){const c=await html2canvas(pv,{scale:Math.max(2,Math.min(3,1100/pv.offsetWidth)),backgroundColor:'#ffffff',useCORS:true,logging:false});
+  // 画面の幅に関係なく、A4の幅(PCで見たときと同じ組み方)で組んでから写す。見えない枠の中にPC幅の紙を作って、そこを写す
+  const fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:-10000px;top:0;width:960px;height:1400px;border:0';document.body.appendChild(fr);
+  const fd=fr.contentDocument;fd.open();fd.write('<!doctype html><html data-theme="light"><head><meta charset="utf-8">'+[...document.querySelectorAll('link[rel=stylesheet],style')].map(x=>x.outerHTML).join('')+'</head><body style="margin:0;background:#fff">'+[...document.querySelectorAll('.pv')].map(x=>x.outerHTML).join('')+'</body></html>');fd.close();
+  await new Promise(r=>setTimeout(r,300));try{await fd.fonts.ready}catch(_){}await Promise.all([...fd.querySelectorAll('img')].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,1500)})));
+  try{for(const pv of fd.querySelectorAll('.pv')){pv.style.margin='0';pv.style.boxShadow='none';pv.style.boxSizing='border-box';pv.style.width='100%';pv.style.maxWidth='none';if(one){const f=pv.style.getPropertyValue('--pfs');pv.style.width='703px';pv.style.padding='0';pv.style.boxSizing='content-box';if(f)pv.style.fontSize=f}const c=await html2canvas(pv,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,windowWidth:960});
     const ih=c.height*iw/c.width;
     if(one||ih<=ihMax){const k=Math.min(1,ihMax/ih);if(!first)pdf.addPage();pdf.addImage(c,'JPEG',M+(iw-iw*k)/2,M,iw*k,ih*k);first=false;continue}
     // 長いコード譜は、A4の高さごとに切ってページを分ける
     const ph=Math.floor(ihMax*c.width/iw);for(let y=0;y<c.height;y+=ph){const hh=Math.min(ph,c.height-y),cv=document.createElement('canvas');cv.width=c.width;cv.height=hh;
       cv.getContext('2d').drawImage(c,0,y,c.width,hh,0,0,c.width,hh);if(!first)pdf.addPage();pdf.addImage(cv,'JPEG',M,M,iw,hh*iw/c.width);first=false}}
+  }finally{fr.remove()}
   const file=new File([pdf.output('blob')],title.replace(/[\\/:*?"<>|]/g,'_')+'.pdf',{type:'application/pdf'});
   try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title});return}}catch(e){if(e&&e.name==='AbortError')return}
   const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
@@ -2212,7 +2217,7 @@ function viewPrint(){
   <div class="pbar-actions noprint"><a class="back" href="#/song/${s.id}">‹ 構成に戻る</a>${printTabs(s,'chord')}</div>
   <div class="pbar-actions pbar-opts noprint"><label class="sub"><input type="checkbox" data-change="printOpt" data-k="printNotes" ${withNotes?'checked':''}> テキストメモ</label>
     <label class="sub"><input type="checkbox" data-change="printOpt" data-k="printPhotos" ${withPhotos?'checked':''}> 写真</label>
-    <button class="primary" data-act="doPrint">PDFに保存</button></div>
+    </div><div class="pbar-actions pbar-go noprint"><button class="primary" data-act="doPrint">PDFに保存</button></div>
   <p class="sub noprint" style="max-width:860px;margin:6px auto">${PDF_SELF()?'「PDFに保存」を押すと共有の画面が出ます。「ファイルに保存」か「プリント」を選んでください。':'「PDFに保存」を押したら、印刷画面の送信先で「PDFに保存」を選んでください。'}</p>
   ${chordSheetHTML(s,withNotes,withPhotos,true)}</main>`}
 function chordSheetHTML(s,withNotes,withPhotos,showBand){
@@ -2238,7 +2243,7 @@ function viewMap(s){
   <div class="pbar-actions pbar-opts noprint">${hasLyr?`<label class="sub"><input type="checkbox" data-change="printOpt" data-k="printLyrics" ${withLyr?'checked':''}> 歌詞</label>`:''}
     ${hasLyr&&withLyr?`<label class="sub" title="各行の頭の3文字だけ載せる(本番のカンペ用)"><input type="checkbox" data-change="printOpt" data-k="printLyrHead" ${S.prefs.printLyrHead?'checked':''}> 頭の文字だけ</label>`:''}
     <label class="sub"><input type="checkbox" data-change="printOpt" data-k="printNotes" ${withNotes?'checked':''}> テキストメモ</label>
-    <button class="primary" data-act="doPrint">印刷 / PDFに保存</button></div>
+    </div><div class="pbar-actions pbar-go noprint"><button class="primary" data-act="doPrint">印刷 / PDFに保存</button></div>
   <p class="sub noprint" style="max-width:860px;margin:6px auto">A4 1枚に収まるよう自動で縮小されます。譜面台に置く用。${PDF_SELF()?'押すと共有の画面が出るので、「ファイルに保存」か「プリント」を選んでください。':''}</p>
   ${mapHTML(s,withNotes,withLyr)}</main>`}
 // withLyr: ブロックごとに、小節に入れた歌詞を「 / 」でつないで載せる(歌詞を覚えきれない人が譜面台で見る用)
