@@ -702,7 +702,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 8:20';
+const APP_VER='10/26 8:30';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1995,7 +1995,7 @@ function barHTML(bl,bi){
     cells+=`<div class="cell ${c?'start':''} ${beat?'beat':''} ${i===0?'first':''} ${sel?'sel':''}" data-act="cell" data-bar="${bi}" data-slot="${i}">${c?`<span class="ct" style="--sp:${sp}">${esc(showC(c,bl))}</span>`:''}</div>`}
   return `<div class="bar ${LOOPR&&LOOPR.bid===bl.id&&bi>=LOOPR.from&&bi<=LOOPR.to?'lr':''} ${LOOPSEL&&LOOPSEL.bid===bl.id&&bi===LOOPSEL.from?'lr':''}" id="bar-${bi}"><button class="bn" data-act="barMenu" data-bar="${bi}" title="この小節から再生・繰り返し・テンポや拍子の変更">${bi+1}${(()=>{const r=(bl.ramps||[]).find(r=>r.from===bi);return r?`<small>♩${r.a}→${r.b}</small>`:''})()}${bm!==blockMeter(bl,curSong())?`<small>${bm||bar.n+'マス'}</small>`:''}</button>
   <div class="cells" style="grid-template-columns:repeat(${bar.n},1fr)">${cells}</div>
-  <input class="lyric" data-input="lyric" data-bar="${bi}" value="${esc(bar.lyric)}" placeholder="歌詞・メモ"></div>`}
+  <input class="lyric" data-input="lyric" data-bar="${bi}" value="${esc(bar.lyric)}" placeholder="歌詞"></div>`}
 function fitCells(){document.querySelectorAll('#grid .ct').forEach(el=>{el.style.fontSize='';if(!el.clientWidth||el.scrollWidth<=el.clientWidth+1)return;
   let fs=parseFloat(getComputedStyle(el).fontSize);while(fs>8&&el.scrollWidth>el.clientWidth+1){fs-=0.5;el.style.fontSize=fs+'px'}})}
 let fitT=0;const fitSoon=()=>{clearTimeout(fitT);fitT=setTimeout(fitCells,30)};
