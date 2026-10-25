@@ -600,6 +600,25 @@ body.dragging-row{user-select:none;-webkit-user-select:none}
   .memo-item input{width:100%}.memo-item{flex-wrap:wrap}
 }
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:8px 16px;border-radius:10px;z-index:60}
+
+/* キーボードで移動したときだけ、今どこにいるかを青い枠で見せる(指やマウスで押したときは出さない) */
+button:focus-visible,a:focus-visible,summary:focus-visible,[tabindex]:focus-visible,input[type=checkbox]:focus-visible,input[type=radio]:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* はみ出しを切っている入れ物の中では、枠が切れないよう内側に描く */
+.gig :focus-visible,.list :focus-visible,.cells :focus-visible,.popmenu :focus-visible{outline-offset:-2px}
+/* スマホで押したときの灰色の四角を消し、代わりにボタン自体を少し暗くして押した手ごたえを出す */
+button,a,summary,label{-webkit-tap-highlight-color:transparent}
+@media (hover:none){button:not(:disabled):active{filter:brightness(.9)}}
+/* 指で押す端末では、小さく見える押せる所の当たり判定を広げる(見た目の位置はほぼ変えない) */
+@media (pointer:coarse){
+  .back,.backlink{display:inline-block;padding:8px 8px 8px 0;margin:-6px 0}
+  .tagbtn{padding:6px 11px}
+}
+/* 端末で「動きを減らす」がオンのときは、飾りの動きを止める。読み込み中のくるくるだけは状態を伝えるので残す */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .spin,.pm-play.loading::after{animation-duration:.8s!important;animation-iteration-count:infinite!important}
+  .tour-spot.tap{outline-width:4px;outline-offset:3px}
+}
 </style>
 </head>
 <body>
@@ -669,7 +688,9 @@ let DEMO=null; // 案内用の見本を表示中(このあいだは保存しな�
 /* ホーム画面のアプリでは、ページ全体ではなく #app の中をスクロールさせる。
    iPadのアプリ表示では、ページ全体がスクロールすると画面上端にOSのぼかしがかかって、上のバーの文字がにじむため */
 const scrEl=()=>document.documentElement.classList.contains('appscroll')?document.getElementById('app'):null;
-function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
+// 端末で「動きを減らす」がオンなら、なめらかなスクロールをやめて一気に動かす
+const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
 const APP_VER='10/25 20:48';
@@ -2380,13 +2401,13 @@ function tutFit(){const box=$('#tutBody');if(!box)return;const h=box.querySelect
 addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
 function tutToc(){return `<div class="tut-step">使い方</div><h2>目次</h2><input id="tutQ" class="tut-q" type="search" value="${esc(TQ)}" placeholder="機能を探す(例: ループ、歌詞、同期)" aria-label="機能を探す" autocomplete="off"><div class="tut-toc" id="tutList">${tutTocList()}</div><a class="tut-helplink" href="#/help" data-act="tutHelpPage">すべての説明を1ページで読む(ヘルプ) →</a>
-  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む →</button></div>`}
+  <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
   return `<div class="tut-step">${TUTI+1} / ${TG().length}</div><h2>${h}</h2><div class="tut-p ${showH?'help':''}">${showH?`<b>${help[0]}</b><br>${help[1]}`:p}</div>
   <div class="tut-helprow">${help?`<button class="tut-help" data-act="tutHelp"><span class="qm">?</span>${showH?'説明にもどる':help[0]}</button>`:''}<span class="spacer"></span>${tgCan(TUTI)?`<button class="tut-play" data-act="tutTour" data-v="${TUTI}">▶ 画面で見る</button>`:''}</div>
   <div class="tut-dots">${TG().map((_,i)=>`<i class="${i===TUTI?'on':''}"></i>`).join('')}</div>
   <div class="hstack"><button class="ghost" data-act="tutGo" data-v="-1">≡ 目次</button><span class="spacer"></span>${TUTI?'<button data-act="tutMove" data-v="-1">← 戻る</button>':''}
-  <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ →'}</button></div>`}
+  <button class="primary" data-act="${last?'tutEnd':'tutMove'}" data-v="1">${last?'閉じる':'次へ'}</button></div>`}
 /* ---------- 画面を見ながらの案内(ツアー) ----------
    初めて開いたときに、実際の画面を順に開いて、説明する場所だけを明るく見せる。
    メニューの「使い方を見る」は文章だけ(上の TUT)を読む */
@@ -2540,8 +2561,8 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}${st.feats&&!THINT?`<div class="tour-feats">${TOUR_FEATS.map(([g,n,d])=>`<button data-act="tourGuide" data-h="${g}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
-    ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目 →</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
-    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
+    ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目へ</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
+    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
@@ -2710,7 +2731,7 @@ async function loadMidi(file){const s=curSong();if(!s||!file)return;let m;try{m=
   const r=midiToSong(m,s);save();render();
   alert(`MIDIから読み込みました\n・ブロック ${r.blocks}個(マーカー ${r.marks}個)\n・${r.bars}小節 / 拍子 ${r.meters.join(', ')||'4/4'}\n・テンポ ♩${s.bpm}${r.ramps?` ・ だんだん変わるところ ${r.ramps}か所`:''}${r.key?`\n・キー ${r.key}`:''}${r.marks?'':'\n\nマーカーがなかったので、1つのブロックにまとめました'}`)}
 function insertBlock(ty,at){const s=curSong();const nb=newBlock(ty,blockName(s.blocks,ty));const n=meterSlots(songMeterDefault(s));nb.bars.forEach(b=>resizeBar(b,n));
-  s.blocks.splice(Math.max(0,Math.min(at,s.blocks.length)),0,nb);render();setTimeout(()=>{const r=document.querySelector(`.row[data-bid="${nb.id}"]`);if(r){r.classList.add('justadded');r.scrollIntoView({block:'nearest',behavior:'smooth'})}},30)}
+  s.blocks.splice(Math.max(0,Math.min(at,s.blocks.length)),0,nb);render();setTimeout(()=>{const r=document.querySelector(`.row[data-bid="${nb.id}"]`);if(r){r.classList.add('justadded');r.scrollIntoView({block:'nearest',behavior:RM()?'auto':'smooth'})}},30)}
 /* 追加ボタンを長押し(マウスは押したまま動かす)すると、ブロックをつかんで構成の好きな位置に置ける */
 const ADRAG={};
 function adragPos(y){const rows=[...document.querySelectorAll('.row[data-drag=blk]')];let i=rows.findIndex(r=>{const b=r.getBoundingClientRect();return y<b.top+b.height/2});if(i<0)i=rows.length;
