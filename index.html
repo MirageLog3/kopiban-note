@@ -698,7 +698,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 23:15';
+const APP_VER='10/25 23:42';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2618,7 +2618,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     <div class="tour-t ${showH?'help':''}">${showH?`<b>${st.help[0]}</b><br>${st.help[1]}`:st.t}</div>${!THINT&&st.map&&!showH?tourMapFull():''}
     ${DEMO?`<p class="sub" style="margin:6px 0 0;font-size:12px">※ イベントや曲がないので、見本を表示しています(閉じると元に戻ります)</p>`:''}
     ${THINT&&st.sel&&!el?`<p class="sub" style="margin:6px 0 0">今はこの場所が画面にないため、光らせられませんでした。</p>`:''}
-    ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}${st.feats&&!THINT?`<div class="tour-feats">${TOUR_FEATS.map(([g,n,d])=>`<button data-act="tourGuide" data-h="${g}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`:''}
+    ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}${st.feats&&!THINT?`<div class="tour-feats">${TOUR_FEATS.map(([g,n,d])=>`<button data-act="tourFeat" data-h="${g}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目へ</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
     ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ'}</button>`}</div>`}`;
@@ -2991,6 +2991,8 @@ const ACT={
   tutHelpPage(){HQ=TQ;ACT.lbClose();location.hash='#/help'},
   tutSet(t){const k=t.dataset.k;ACT.tutEnd();if(k==='menu')location.hash='#/settings';else location.hash='#/settings/'+k},
   tutGo(t){TUTI=+t.dataset.v;TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
+  // できることの一覧から: 画面で見られるものは画面で、見られないものは説明を開く
+  tourFeat(t){const i=TG().findIndex(x=>x[0]===t.dataset.h);if(i>=0&&tgCan(i)){tourEnd();ACT.tutTour({dataset:{v:i}})}else ACT.tourGuide(t)},
   tourGuide(t){tourEnd();ACT.tutOpen(TG().findIndex(x=>x[0]===t.dataset.h))},
   // 使い方の1項目を、実際の画面を開いて光らせて見せる。終わったら使い方の一覧(目次)に戻り、見ていた項目に印をつける
   tutTour(t){const i=+t.dataset.v,st=TGS()[i];if(!tgCan(i))return;TBACK=i;if(!DEMO&&needDemo())demoOn();ACT.lbClose();THINT=true;TSTEPS=[{...st,t:st.g||st.t,tap:null}];TI=0;TH=false;tourGo()},
