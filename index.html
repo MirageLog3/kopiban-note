@@ -700,7 +700,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 1:55';
+const APP_VER='10/26 3:37';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2461,7 +2461,7 @@ addEventListener('resize',()=>{if($('#tutBody'))tutFit()});
 // 「使い方を見る」は目次から開く。見出しを押すとそのページへ、どのページからも目次に戻れる
 const VIDS=[['OSsIkRskEFM','はじめる'],['phRBDOYR6rs','曲を見て練習する'],['AWDOahqXZbE','曲の構成を書く'],['Si5P77xnoJ0','ライブとスタジオの予定'],['BYpgTX_oOB8','メンバーに送る'],['5p2_eSkBNRk','便利な機能']];
 const VNUM='①②③④⑤⑥';
-function vidsHTML(){return `<div class="tut-vids"><div class="hstack"><b>使い方の動画</b><span class="sub">見るには通信が必要です</span></div><div class="tv-list">${VIDS.map(([id,t],i)=>i?`<button data-act="vidOpen" data-v="${i}"><span class="tv-n">${VNUM[i]}</span>${t}</button>`:'').join('')}</div></div>`}
+function vidsHTML(){return `<div class="tut-vids"><div class="hstack"><b>使い方の動画</b><span class="sub">見るには通信が必要です</span></div><div class="tv-list">${VIDS.map(([id,t],i)=>i?`<button data-act="vidOpen" data-v="${i}"><span class="tv-n">▶</span>${t}</button>`:'').join('')}</div></div>`}
 function tutToc(){return `<div class="tut-step">使い方</div><h2>目次</h2>${vidsHTML()}<input id="tutQ" class="tut-q" type="search" value="${esc(TQ)}" placeholder="機能を探す(例: ループ、歌詞、同期)" aria-label="機能を探す" autocomplete="off"><div class="tut-toc" id="tutList">${tutTocList()}</div><a class="tut-helplink" href="#/help" data-act="tutHelpPage">すべての説明を1ページで読む(ヘルプ) →</a>
   <div class="hstack tut-tocfoot"><button class="ghost" data-act="tutEnd">閉じる</button><button class="ghost" data-act="tourStart" title="初めて開いたときの案内をもう一度見る">最初の案内</button><span class="spacer"></span><button class="primary" data-act="tutGo" data-v="0">順に読む</button></div>`}
 function tutBody(){if(TUTI<0)return tutToc();const [h,p,help]=TG()[TUTI],last=TUTI===TG().length-1,showH=TUTH&&help;
@@ -3005,9 +3005,9 @@ const ACT={
   tourNextTopic(){const j=tgNext(TBACK);if(j<0)return ACT.tourBack();ACT.tutTour({dataset:{v:j}})},
   tourBack(){const i=TBACK;tourEnd();ACT.tutOpen(-1);const b=document.querySelector(`.tut-toc [data-act=tutGo][data-v="${i}"]`);if(b){b.scrollIntoView({block:'center'});b.classList.add('tut-last')}},
   vidOpen(t){const i=+t.dataset.v,[id,ti]=VIDS[i];$('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal vidmodal">
-    <div class="hstack"><button class="ghost" data-act="tutOpen">‹ 使い方</button><b>${VNUM[i]} ${ti}</b><span class="spacer"></span><button class="ghost" data-act="lbClose" aria-label="閉じる">✕</button></div>
+    <div class="hstack"><button class="ghost" data-act="tutOpen">‹ 使い方</button><b>${ti}</b><span class="spacer"></span><button class="ghost" data-act="lbClose" aria-label="閉じる">✕</button></div>
     <div class="vidbox">${navigator.onLine===false?'<p class="note" style="padding:20px">通信がないので動画を読み込めません。電波のある所で開いてください。</p>':`<iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1" title="${ti}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`}</div>
-    <div class="hstack" style="margin-top:8px">${i>1?`<button data-act="vidOpen" data-v="${i-1}">← ${VNUM[i-1]}</button>`:''}<span class="spacer"></span>${i<VIDS.length-1?`<button class="primary" data-act="vidOpen" data-v="${i+1}">${VNUM[i+1]} ${VIDS[i+1][1]} →</button>`:''}</div></div>`},
+    <div class="hstack" style="margin-top:8px">${i>1?`<button data-act="vidOpen" data-v="${i-1}">← 前へ</button>`:''}<span class="spacer"></span>${i<VIDS.length-1?`<button class="primary" data-act="vidOpen" data-v="${i+1}">次: ${VIDS[i+1][1]} →</button>`:''}</div></div>`},
   tutOpen(i){TUTI=typeof i==='number'?i:-1;TUTH=false;$('#overlay').innerHTML=`<div class="modal-bg"></div><div class="modal tut"><div id="tutBody">${tutBody()}</div></div>`;tutFit()},
   tutMove(t){TUTI=Math.max(0,Math.min(TG().length-1,TUTI+ +t.dataset.v));TUTH=false;$('#tutBody').innerHTML=tutBody();tutFit()},
   tutHelp(){TUTH=!TUTH;$('#tutBody').innerHTML=tutBody();tutFit()},
