@@ -668,7 +668,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 20:04';
+const APP_VER='10/25 20:06';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2469,7 +2469,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
   if(el&&!st.whole){const r=el.getBoundingClientRect(),bh=bub.offsetHeight,H=innerHeight;
     if(r.bottom+bh+24>H&&r.top-bh-24<0&&getComputedStyle(el).position!=='fixed'&&!el.closest('.sheet,header,#sheet'))scrBy(0,r.top-70)}
-  tourPlace();setTimeout(()=>{if(seq!==TSEQ)return;tourPlace();bub.classList.add('in')},330)}
+  tourPlace();setTimeout(()=>{if(seq!==TSEQ)return;tourPlace();bub.classList.add('in')},THINT||!el?330:1300)}
 // 下にホームバーがあるiPhoneでは、枠と吹き出しをホームバーより上に収める(画面の丸い角で枠が欠けないように)
 function safeBottom(){let p=$('#sabProbe');if(!p){p=document.createElement('div');p.id='sabProbe';p.style.cssText='position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:0;visibility:hidden;pointer-events:none';document.body.appendChild(p)}return p.offsetHeight||0}
 function tourPlace(){const st=TSTEPS[TI],sp=$('#tourSpot'),bub=$('#tourBub');if(!st||!sp||!bub)return;
