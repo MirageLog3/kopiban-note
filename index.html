@@ -408,7 +408,7 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .mtable td{border-bottom:1px solid #ddd;padding:.8em .5em;vertical-align:middle;line-height:1.35}
 .mtable .mi{width:1.4em;color:#999;font-size:.75em;text-align:right}
 .mtable .mc{width:.5em;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.mtable .mn{font-size:1.25em;font-weight:700;white-space:nowrap;padding-left:.5em}
+.mtable .mn{font-size:1.25em;font-weight:700;white-space:nowrap;padding-left:.5em;width:1%}
 .mtable .mb{white-space:nowrap;text-align:right;width:4.4em}
 .mtable .mb b{font-size:1.4em}.mtable .mb span{font-size:.7em;color:#666;margin-left:2px}
 .mtable .mx{padding-left:1em}
@@ -523,7 +523,7 @@ body.has-player #sheet .sheet{bottom:54px}
   .top nav a{padding:4px 8px}
   main{padding:12px 12px 260px}
   .pv{padding:18px 14px;margin:10px 0}
-  .pv.map:not(.measure) .mtable .mn{font-size:1em;white-space:normal}
+  .pv.map:not(.measure) .mtable .mn{font-size:1em;white-space:normal;width:auto}
   .pv.map:not(.measure) .mtable .mb{width:auto}
   .pv.map:not(.measure) .mtable .mp,.pv.map:not(.measure) .mtable .mi{display:none}
   .pgrid{grid-template-columns:1fr}
@@ -702,7 +702,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 8:32';
+const APP_VER='10/26 8:35';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
