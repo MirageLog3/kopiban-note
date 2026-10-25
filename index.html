@@ -664,7 +664,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 8:59';
+const APP_VER='10/25 9:17';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -943,7 +943,7 @@ let R={};
 let P=null;   // chord picker state
 let rec=null; // recorder
 
-function render(){
+function render(){try{MT.pk=null}catch(_){}
   R=route();let html='';ensureGigs();
   if(MT.playing&&!((R.name==='song'||R.name==='block'||R.name==='lyrics')&&R.a===MT.songId))mStop();
   document.documentElement.dataset.theme=S.prefs.theme||'auto';
@@ -1290,7 +1290,7 @@ function syncTick(){const s=playerSong();
   const ctx=ensureCtx();if(!ctx||ctx.state!=='running')return;
   syncEv(s);const mt=M.time(),pr=mediaRate();
   if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6+bgAhead())MS.last=mt-0.001;
-  MS.lastMt=mt;const horizon=mt+(0.12+bgAhead())*pr;let cur=null;
+  MS.lastMt=mt;const horizon=mt+(0.3+bgAhead())*pr;let cur=null;
   for(const e of MS.ev){if(e.t<=mt)cur=e;if(e.t<=MS.last)continue;if(e.t>horizon)break;clickAt(ctx.currentTime+Math.max(0,(e.t-mt)/pr),e.acc);(e.subs||[]).forEach(o=>clickAt(ctx.currentTime+Math.max(0,(e.t+o-mt)/pr),-1))}
   MS.last=Math.max(MS.last,horizon);MT.songId=s.id;mPaint(cur,false,cur?(mt-cur.t)/cur.dur:0)}
 setInterval(syncTick,20);
@@ -1314,11 +1314,11 @@ async function mStart(s,blocks,loopId,rg){mStop();HANDS=false;const tok=MT.tok;c
   MT.pass=clicksFor(s,blocks,barsOf);if(!MT.pass.ev.length)return;
   const pre=S.prefs.mCount!==false?clicksFor(s,[blocks[0]],()=>[rg?rg.from:0]):{ev:[],total:0};
   Object.assign(MT,{pre:pre.ev,preDur:pre.total,i:0,start:MT.ctx.currentTime+0.12,vis:[],playing:true,songId:s.id,loop:loopId||null});
-  MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.15+bgAhead()){clickAt(e.at,e.acc);if(!e.count)(e.subs||[]).forEach(o=>clickAt(e.at+o,-1));MT.vis.push(e);MT.i++}
+  MT.timer=setInterval(()=>{let e;while((e=mNext())&&e.at<MT.ctx.currentTime+0.3+bgAhead()){clickAt(e.at,e.acc);if(!e.count)(e.subs||[]).forEach(o=>clickAt(e.at+o,-1));MT.vis.push(e);MT.i++}
     if(!e&&MT.vis.length&&MT.ctx.currentTime>MT.vis[MT.vis.length-1].at+0.6)mStop()},25);
   const draw=()=>{if(!MT.playing)return;const now=MT.ctx.currentTime;let cur=null;while(MT.vis.length>1&&MT.vis[1].at<=now)MT.vis.shift();if(MT.vis[0]&&MT.vis[0].at<=now)cur=MT.vis[0];
     mPaint(cur,false,cur?(now-cur.at)/cur.dur:0);MT.raf=requestAnimationFrame(draw)};draw()}
-function mStop(){MT.tok=(MT.tok||0)+1;clearInterval(MT.timer);cancelAnimationFrame(MT.raf);const was=MT.playing;MT.playing=false;MT.loop=null;if(was)mPaint(null,true)}
+function mStop(){MT.tok=(MT.tok||0)+1;MT.pk=null;clearInterval(MT.timer);cancelAnimationFrame(MT.raf);const was=MT.playing;MT.playing=false;MT.loop=null;if(was)mPaint(null,true)}
 // 再生中のマス: 拍の中の進み具合(sub 0〜1)から、小節のマス数に割り当てる
 function mCell(e,sub){const want=e&&!e.count&&R.name==='block'&&R.b===e.bid;let el=null;
   if(want){const bar=$('#bar-'+e.bar);const n=bar?bar.querySelectorAll('.cell').length:0;
@@ -1330,7 +1330,10 @@ function follow(sid,bid,looping){
   // 歌詞を小節に置いているあいだ・範囲を繰り返しているあいだは、次のブロックへ勝手に移らない
   if(R.name==='block'&&R.a===sid&&!looping&&!PLACE&&!LOOPR&&!HANDS&&!document.body.classList.contains('sheet-open')&&FOL&&FOL===R.b&&bid&&bid!==R.b)location.replace(`#/block/${sid}/${bid}`);
   FOL=bid||null}
-function mPaint(e,stopped,sub){const s=songById(MT.songId);const st=$('#metroStat');if(e&&!e.count)lyrFollow(e);
+function mPaint(e,stopped,sub){
+  const pk=e?(e.bid+':'+e.bar+':'+e.beat+':'+(e.count?1:0)+':'+(R.name==='block'?Math.floor(Math.min(0.999,Math.max(0,sub||0))*4):0)+':'+R.name+R.b):'-'+!!stopped;
+  if(pk===MT.pk&&!stopped)return;MT.pk=pk;
+  const s=songById(MT.songId);const st=$('#metroStat');if(e&&!e.count)lyrFollow(e);
   if(!e)FOL=null;else if(!e.count)follow(MT.songId,e.bid,!!(MT.loop||PL.loop));
   document.querySelectorAll('.row.mplaying,.bar.mbar').forEach(x=>{if(!e||x.dataset.bid!==e.bid&&x.id!=='bar-'+(e&&e.bar))x.classList.remove('mplaying','mbar')});
   mCell(e,sub);
