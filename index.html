@@ -701,7 +701,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 6:34';
+const APP_VER='10/26 6:37';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1388,6 +1388,7 @@ function syncTick(){const s=playerSong();
   if(!s||!s.mSync||!M.kind||MT.playing||$('#player').style.display==='none'||M.paused()){if(MS.bad){MS.bad=0;ctxWarn(false)}if(MS.last!=null&&!MT.playing){MS.last=null;mPaint(null)}return}
   const ctx=ensureCtx();if(!ctx||ctx.state!=='running'){MS.bad=MS.bad||performance.now();if(performance.now()-MS.bad>1500)ctxWarn(true);return}
   if(MS.bad){MS.bad=0;ctxWarn(false)}
+  {const now=performance.now();if(ctx.currentTime!==MS.ct){if(MS.frozen){MS.frozen=false;clickCancel();MS.last=null}MS.ct=ctx.currentTime;MS.cw=now}else if(now-MS.cw>150){MS.frozen=true;return}}
   syncEv(s);const mt=M.time(),pr=mediaRate(),ms=mt+devLat()*pr;
   if(MS.last==null||mt<MS.lastMt-0.05||mt>MS.lastMt+0.6+bgAhead())MS.last=ms-0.001;
   MS.lastMt=mt;const horizon=ms+(0.3+bgAhead())*pr;let cur=null;
@@ -1398,11 +1399,15 @@ function syncPlayFrom(s,i){const t=blockTime(s,s.blocks[i]);ctxReady();MS.last=n
 // acc: 2=小節の頭 1=中くらいの強拍 0=拍 -1=刻み(拍の間の小さい音)
 // 音量は0〜2。1より大きいときは、音割れしないよう最大の大きさは抑えたまま、角ばった音を重ねて余韻も少し伸ばし、音源に埋もれにくくする
 function clickOut(c){if(!c._bus){const k=c.createDynamicsCompressor();k.threshold.value=-2;k.knee.value=0;k.ratio.value=20;k.attack.value=0.001;k.release.value=0.05;k.connect(c.destination);c._bus=k}return c._bus}
-function clickAt(at,acc){const c=MT.ctx,vol=S.prefs.mVol??1;if(vol<=0.001)return;const out=clickOut(c);
+// 予約したクリックを覚えておき、要らなくなったら(裏から戻ったときなど)まとめて取り消す
+let CLK=[];
+function clickCancel(){const c=MT.ctx;if(!c)return;const t=c.currentTime;CLK.forEach(x=>{if(x.at>t)try{x.o.stop(0)}catch(_){}});CLK=[]}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!MT.playing){clickCancel();MS.last=null}});
+function clickAt(at,acc){const c=MT.ctx,vol=S.prefs.mVol??1;if(vol<=0.001)return;const out=clickOut(c);if(CLK.length>200)CLK=CLK.filter(x=>x.at>c.currentTime-1);
   const f=acc===2?1600:acc===1?1200:acc<0?660:880,base=acc>0?0.9:acc<0?0.22:0.5,extra=Math.max(0,vol-1),dec=0.06+0.08*extra;
   const tone=(type,peak)=>{const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;
     g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak),at+0.002);g.gain.exponentialRampToValueAtTime(0.0001,at+dec);
-    o.connect(g).connect(out);o.start(at);o.stop(at+dec+0.01)};
+    o.connect(g).connect(out);o.start(at);o.stop(at+dec+0.01);CLK.push({o,at})};
   tone('sine',base*Math.min(vol,1));if(extra>0)tone('square',base*0.8*extra)}
 function mNext(){if(MT.i<MT.pre.length){const e=MT.pre[MT.i];return Object.assign({},e,{at:MT.start+e.t,count:true})}
   const j=MT.i-MT.pre.length,L=MT.pass.ev.length,cyc=Math.floor(j/L);if(cyc>0&&!MT.loop)return null;
@@ -2694,7 +2699,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-26',items:['YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
+  {d:'2026-10-26',items:['ほかのアプリから戻ったとき、たまっていたメトロノームの音が一度に鳴ってしまう不具合を修正','YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
   {d:'2026-10-25',items:['使い始めにGoogleでのログインが必要になりました。スマホ(iPhone・Android)はホーム画面に追加して使います','バンドにも色を付けられるように(バンドの ⋯ → 色を変える)','ホームの次の予定で、本番はオレンジ・スタジオは青に色分け。ホームの初めの並びをオリジナルバンド→近いイベント→次の予定→最近開いた曲に','上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものを選べて、順番は ⋮⋮ をつかんで変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
