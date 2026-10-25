@@ -492,7 +492,7 @@ body.has-player #sheet .sheet{bottom:54px}
 .slpick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.slpick i{font-style:normal;font-size:15px;color:var(--sub);flex:none}
 .tmap{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:12px;margin:0 0 6px}.tmap span{padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--sub)}.tmap span.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}.tmap i{color:var(--sub);font-style:normal}
 .tmapf{margin:10px 0 2px;padding:10px 12px;border-radius:10px;background:var(--panel2,var(--bg));display:grid;gap:6px}.tm-row{display:flex;align-items:baseline;gap:6px;font-size:14px;line-height:1.3;white-space:nowrap}.tm-row i{font-style:normal;color:var(--sub)}.tm-row b{flex:none}.tm-row .sub{font-size:12px;overflow:hidden;text-overflow:ellipsis}
-.tap-hint{font-size:13px;color:var(--accent);font-weight:700;align-self:center}
+.tap-hint{font-size:12px;color:var(--sub);align-self:center}
 .tour-ask{margin-top:12px}.tour-bub .hstack:has(+ .tour-ask){display:none}.tut-step:has(.tour-skip){display:flex;align-items:center}.tour-skip{margin-left:auto;padding:2px 8px;font-size:13px;color:var(--sub)}.tour-ask .hstack{justify-content:flex-end}
 .slmore{margin-left:auto;font-size:22px;line-height:1;padding:6px 12px;flex:none}
 .pop-bg{position:fixed;inset:0;z-index:40}
@@ -668,7 +668,7 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 19:36';
+const APP_VER='10/25 19:37';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -2463,7 +2463,7 @@ function tourShow(){const st=TSTEPS[TI];if(!st)return;tourBox();const seq=++TSEQ
     ${st.more?`<div class="tour-more">${TOUR_MORE.map(h=>`<button data-act="tourGuide" data-h="${h}">${h}</button>`).join('')}</div>`:''}
     ${st.help?`<button class="tut-help" data-act="tourHelp"><span class="qm">?</span>${showH?'説明にもどる':st.help[0]}</button>`:''}
     ${THINT?`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">閉じる</button><span class="spacer"></span><button data-act="tourBack">≡ 一覧へ</button>${tgNext(TBACK)>=0?`<button class="primary" data-act="tourNextTopic">次の項目 →</button>`:''}</div>`:`<div class="hstack" style="margin-top:8px"><button class="ghost" data-act="tourEnd">終了</button><span class="spacer"></span>
-    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint">光っているところをタップ</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
+    ${TI?'<button data-act="tourMove" data-v="-1">← 戻る</button>':''}${st.ask&&!THINT?`</div><div class="tour-ask"><b>${st.ask}</b><div class="hstack" style="margin-top:6px"><button data-act="tourAsk" data-v="0">ない(コピバンだけ)</button><button class="primary" data-act="tourAsk" data-v="1">ある</button></div>`:st.tap?'<span class="tap-hint" data-act="tourTap">光っているところを押すと進みます</span>':`<button class="primary" data-act="${last?'tourEnd':'tourMove'}" data-v="1">${last?'はじめる':'次へ →'}</button>`}</div>`}`;
   $('#tourSpot').classList.toggle('tap',!!st.tap);
   wbrize(bub.querySelector('.tour-t'));
   // 吹き出しが上にも下にも入らないときは、説明する場所が画面の上の方に来るようにずらす
