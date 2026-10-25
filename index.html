@@ -335,6 +335,9 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 @keyframes tourRip{0%{transform:scale(.3);opacity:.8}100%{transform:scale(2);opacity:0}}
 .bunsetsu{overflow-wrap:anywhere;line-break:strict}/*nowrap-pretty-off*/
 .tour-h{font-size:16px;display:block;margin:2px 0 4px}.tour-t{font-size:14px;line-height:1.7;max-height:38vh;overflow-y:auto}.tour-t.help{color:var(--sub)}
+.invcode{font:700 30px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;text-align:center;padding:12px;margin:10px 0;border:1px dashed var(--line);border-radius:10px;user-select:all}
+.newtag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;margin-left:6px;vertical-align:2px}
+.feednew{border-color:var(--accent);margin:8px 0}.joinnote{display:flex;gap:6px;align-items:flex-start;margin:4px 0 8px}
 .tour-feats{display:grid;gap:6px;margin-top:10px;max-height:46vh;overflow-y:auto}.tour-feats button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-radius:8px}.tour-feats b{font-size:14px}.tour-feats span{font-size:12px;color:var(--sub);font-weight:400}
 .tour-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tour-more button{padding:5px 10px;font-size:13px;border-radius:10px}
 .tut-tocfoot{flex-wrap:nowrap}.tut-tocfoot button{white-space:nowrap;padding-left:10px;padding-right:10px}.tut-toc{max-height:52vh;overflow-y:auto;margin:4px 0 10px}.tut-toc h3.tut-sec{font-size:15px;margin:18px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.tut-toc h3.tut-sec:first-child{margin-top:0;padding-top:0;border-top:0}.tut-secp{margin:0 0 4px}
@@ -669,8 +672,8 @@ const scrEl=()=>document.documentElement.classList.contains('appscroll')?documen
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object')s.scrollBy(a);else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/25 20:22';
-function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon()}
+const APP_VER='10/25 20:48';
+function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
    権限は「このアプリが作ったファイルだけ」(drive.file)。写真と録音は重いので同期しない(文字のデータと、曲の音源ファイルだけ)。
@@ -860,7 +863,7 @@ function syncUI(){let b=$('#syncBar');const need=SY.meta.on&&!syncReady()&&!SY.m
   const st=$('#syncStat');if(st)st.innerHTML=syncStatText()}
 function syncStatText(){if(!SY.meta.on)return 'まだ同期していません';if(SY.busy)return '同期しています…';
   return `${syncReady()?'✓ Googleドライブと同期中':'ログインが切れています'}${SY.meta.at?`<br><span class="sub">最後に保存: ${fmtWhen(+SY.meta.at)}</span>`:''}`}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SY.meta.on&&Date.now()-SY.lastPull>20000)syncPull()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;if(SY.meta.on&&Date.now()-SY.lastPull>20000)syncPull().finally(()=>feedPull());else feedPull()});
 /* ---------- 元に戻す・やり直す ----------
    保存のたびに曲・セトリなどの中身を比べて、変わっていたら前の状態を積む。0.8秒以内の連続した変更(文字入力など)は1回分にまとめる */
 const H={past:[],future:[],last:null,t:0,busy:false};
@@ -988,7 +991,7 @@ function bandBar(){const on=S.cur.band===NOBAND?NOBAND:band().id,orf=orphanSongs
 function mkBand(name){const b={id:uid(),name};S.bands.push(b);return b.id}
 const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
-const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','共有コードを読み込む'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
+const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','共有コードを読み込む'],['join','users','バンドに参加'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
   ['sync','cloud','Googleで自動バックアップ・同期'],['app','phone','スマホでアプリとして使う'],['tips','bulb','使い方のコツ']];
 function menuDisp(){const th=S.prefs.theme||'auto';
   return `<div class="mdisp"><div class="mline"><span>テーマ</span><span class="mseg">${Object.entries(THEMES).map(([k,l])=>`<button class="${th===k?'on':''}" data-act="menuTheme" data-v="${k}">${l}</button>`).join('')}</span></div>
@@ -1119,6 +1122,7 @@ function viewSetlist(){
   <div class="slhead"><input class="h1in nameedit" value="${esc(bandNameOf(sl.bandId))}" data-input="bandNameId" data-id="${sl.bandId}" aria-label="バンドの名前" enterkeyhint="done">
     <button class="ghost slmore" data-act="slMore" title="共有・移動・外す" aria-label="バンドのメニュー">⋯</button></div>
   <p class="sub gigsub">${orig?'オリジナル':esc(g.name)}${ls?` ・ 本番 <b>${ls}</b>`:''}${myDay?` <span class="sub">${daysLeft(myDay.date)}</span>`:''}</p>
+  ${(()=>{const jb=S.bands.find(x=>x.id===sl.bandId);if(!jb||!jb.join)return '';return `<p class="note joinnote">${IC('users')} ${jb.join.gone?'招待した人が配るのをやめました。届いた曲はそのまま使えます。':'招待コードで参加しているバンドです。招待した人がこのバンドに足した曲は、自動でここに届きます。'}</p>`})()}
   ${days.length>1?`<label class="hstack dayPick">出る日 <select data-change="slLive" aria-label="出る日">${days.map((e,i)=>`<option value="${e.id}" ${myDay===e?'selected':''}>${i+1}日目 ${dayLbl(e.date)}${e.place?' '+esc(e.place):''}</option>`).join('')}</select></label>`:''}
   ${evSection(sl,'studio')}
   ${orig?`<div class="sec">出るライブ (${lives.length})</div>
@@ -1127,7 +1131,7 @@ function viewSetlist(){
   <div class="sec">曲 (${songs.length})</div>
   <div class="list cards">${songs.map((s,i)=>`<div class="row" data-drag="sl" data-idx="${i}">
       <span class="handle">⋮⋮</span><span class="num">${i+1}</span>
-      <a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}</div><div class="sub">${songMeta(s)}</div>${strip(s)}${tagChips(s)}</a>
+      <a class="body" href="#/song/${s.id}"><div class="title">${esc(s.title)}${FEEDNEW[s.id]?'<span class="newtag">新しい版</span>':''}</div><div class="sub">${songMeta(s)}</div>${strip(s)}${tagChips(s)}</a>
       <div class="rowbtns"><button data-act="slRemove" data-i="${i}" title="この曲順から外す(曲は消えません)">外す</button></div></div>`).join('')||'<div class="empty">まだ曲がありません</div>'}</div>
   <div class="adds"><button class="primary" data-act="newSongToSetlist">＋ 新しい曲</button>
     ${others.length?`<select data-change="addExisting"><option value="">既存の曲を追加…</option>${others.map(s=>`<option value="${s.id}">${esc(s.title)}</option>`).join('')}</select>`:''}</div>
@@ -1187,6 +1191,7 @@ function viewSong(){
   return topbar('')+`<main>
   <a class="back" href="${sl?'#/setlist/'+sl.id:S.bands.some(b=>b.id===s.bandId)?'#/bands/'+s.bandId:'#/bands'}">‹ ${sl?esc(bandNameOf(sl.bandId)+'(' +gigOf(sl).name+')'):S.bands.some(b=>b.id===s.bandId)?esc(bandNameOf(s.bandId)):'バンド'}</a>
   <div class="slhead"><input class="name nameedit" style="display:block;font-size:24px;font-weight:700;padding:4px 0;flex:1;min-width:0" value="${esc(s.title)}" data-input="songField" data-k="title" aria-label="曲名"><button class="ghost slmore" data-act="songMore" aria-label="曲のメニュー">⋯</button></div>
+  ${FEEDNEW[s.id]?`<div class="card feednew"><b>この曲の新しい版が届いています</b><p class="note" style="margin:4px 0 8px">招待してくれた人が、この曲を書き直しました。取り込むと、構成・コード・歌詞が新しい版になります(写真・録音・自分で書いたテキストメモは残ります)。</p><div class="hstack"><button class="ghost" data-act="feedKeep">今のままにする</button><span class="spacer"></span><button class="primary" data-act="feedTake">取り込む</button></div></div>`:''}
   <div class="hstack meta" id="songInfo">
     <label>テンポ<input value="${esc(s.bpm)}" data-input="songField" data-k="bpm" placeholder="例 84"></label>
     <label>拍子<input value="${esc(s.meter)}" data-input="songField" data-k="meter" data-change="songMeter" placeholder="例 4/4"></label>
@@ -2252,6 +2257,58 @@ async function makeShort(code){
     const {id}=await r.json();if(!$('#shCode'))return;const link=shareBase()+'#/s/'+id;
     $('#shLink').value=link;$('#shLen').textContent='('+link.length+'文字)';$('#shCode').value=id;$('#shCodeLen').textContent='('+id.length+'文字)'}
   catch(e){if(!$('#shCode'))return;$('#shCode').value=code;$('#shCodeLen').textContent='('+code.length+'文字・短いコードは作れませんでした)';const b=$('#shBtn');if(b)b.style.display=''}}
+/* ---------- バンドに参加: 招待コードを1回入れれば、招待した人がそのバンドに足した曲が自動で届く ----------
+   招待した人の端末: band.feed={key,sec}。曲を変えるたびに、そのバンドの曲ぜんぶを置き場に置き直す
+   参加した人の端末: band.join={key,got:[届いた曲の目印]}。開いたときに見に行って、まだない曲を足す。
+   前に届いた曲が招待した人の側で変わっていたら、取り込むかを聞く(勝手には変えない)。消した曲はもう一度は足さない */
+const BAND_API=()=>SHARE_API.replace(/\/$/,'')+'/band/';
+const strH=t=>{let x=2166136261;for(let i=0;i<t.length;i++){x^=t.charCodeAt(i);x=Math.imul(x,16777619)}return (x>>>0).toString(36)};
+const normInv=v=>String(v||'').trim().toLowerCase().replace(/^.*#\/join\//,'').replace(/[^0-9a-z]/g,'');
+const fmtInv=k=>k.slice(0,4)+'-'+k.slice(4);
+let FEEDNEW={},feedT=0,feedLast=0,JOIN_PRE='';
+async function unpackRaw(code){const bytes=Uint8Array.from(atob(code.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+  const ds=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(ds).text())}
+function feedData(b){const songs=S.songs.filter(s=>s.bandId===b.id);return packData([5,b.name,oidOf(b),songs.map(songArr),songs.map(oidOf)])}
+function feedSoon(){if(DEMO||!S.bands.some(b=>b.feed))return;clearTimeout(feedT);feedT=setTimeout(feedPush,4000)}
+// 最後に置いた中身の目印は端末にだけ持つ(元に戻すの履歴に入れないため)
+async function feedPush(){for(const b of S.bands.filter(x=>x.feed)){try{const d=await feedData(b),fh=strH(d),lk='kbFeed:'+b.feed.key;
+    let last='';try{last=localStorage.getItem(lk)||''}catch(e){}if(fh===last)continue;
+    const r=await fetch(BAND_API()+b.feed.key,{method:'POST',headers:{'Content-Type':'text/plain'},body:b.feed.sec+'.'+d});
+    if(!r.ok)throw new Error(r.status);try{localStorage.setItem(lk,fh)}catch(e){}}catch(e){clearTimeout(feedT);feedT=setTimeout(feedPush,60000)}}}
+async function feedPull(force){const bs=S.bands.filter(b=>b.join);if(!bs.length||DEMO)return 0;if(!force&&Date.now()-feedLast<60000)return 0;feedLast=Date.now();
+  let added=0,ch=false,news=0;const names=[];
+  for(const b of bs){try{const r=await fetch(BAND_API()+b.join.key,{cache:'no-store'});
+    if(r.status===404){if(!b.join.gone){b.join.gone=1;ch=true}continue}if(!r.ok)continue;
+    const t=(await r.text()).trim();if(!t)continue;const d=await unpackRaw(t);if(!Array.isArray(d)||d[0]!==5)continue;
+    if(b.join.gone){delete b.join.gone;ch=true}
+    const got=new Set(b.join.got||[]),n0=got.size,a0=added;
+    (d[3]||[]).forEach((a,i)=>{const o=(d[4]||[])[i];if(!o)return;const fh=strH(JSON.stringify(a)),ex=S.songs.find(x=>x.oid===o||x.id===o);
+      if(!ex){if(got.has(o))return;const s=songFromSharedFull(arrSong(a),b.id);s.oid=o;s.feedH=fh;S.songs.push(s);got.add(o);added++;ch=true;
+        const sl=S.setlists.find(x=>x.bandId===b.id&&gigOf(x).regular);if(sl)sl.songIds.push(s.id);ensureMarkers(s.blocks.flatMap(x=>x.tags||[]));return}
+      got.add(o);
+      if(ex.feedH===fh){delete FEEDNEW[ex.id];return}
+      if(ex.feedH==null&&strH(JSON.stringify(songArr(ex)))===fh){ex.feedH=fh;ch=true;return}
+      if(!FEEDNEW[ex.id]||FEEDNEW[ex.id].h!==fh)news++;FEEDNEW[ex.id]={h:fh,a}});
+    if(got.size!==n0){b.join.got=[...got];ch=true}if(added>a0)names.push(b.name)
+  }catch(e){}}
+  if(ch)save();
+  if(added&&!force)toast(`「${names.join('」「')}」に新しい曲が${added}曲届きました`);
+  const ae=document.activeElement;if((added||news||ch)&&!(ae&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName)))render();
+  return added}
+function inviteModal(b){const k=b.feed.key,link=shareBase()+'#/join/'+k;
+  $('#overlay').innerHTML=`<div class="modal-bg" data-act="lbClose"></div><div class="modal">
+  <div class="hstack"><b>「${esc(b.name)}」にメンバーを招待</b><span class="spacer"></span><button class="ghost" data-act="lbClose">✕</button></div>
+  <p class="note">このコードをメンバーに送って、アプリの「☰ メニュー → バンドに参加」に入れてもらってください。一度入れてもらえば、このバンドに曲を足すたびに、メンバーのアプリにも自動で届きます。</p>
+  <div class="invcode">${fmtInv(k)}</div>
+  ${navigator.share?`<button class="primary sendbtn" data-act="inviteSend" data-k="${k}" data-n="${esc(b.name)}">LINEなどのアプリで送る</button>`:''}
+  <div class="sub sh-lab">招待リンク(ブラウザで使っている人向け)</div>
+  <div class="hstack sh-row"><input id="invLink" readonly value="${esc(link)}" style="flex:1"><button data-act="copy" data-t="invLink">コピー</button></div>
+  <p class="note" style="margin:8px 0 0">届くのは構成・コード・歌詞・テキストメモと参考音源のリンクです。メンバーが書き込んだ内容はそれぞれの端末に残ります。あなたが曲を直したときは、取り込むかどうかをメンバーが選べます。</p>
+  <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="ghost danger" data-act="inviteStop">招待をやめる</button></div></div>`}
+function joinCard(){const js=S.bands.filter(b=>b.join);
+  return `<div class="card"><b>バンドに参加</b><p class="note">バンドの人から届いた招待コード(8文字)を入れてください。参加すると、招待した人がそのバンドに足した曲が、アプリを開いたときに自動で届きます。届いた曲には自由に書き込めます。</p>
+    <div class="hstack"><input id="joinCode" value="${esc(JOIN_PRE?fmtInv(JOIN_PRE):'')}" placeholder="例 k7m2-p9qa" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button class="primary" data-act="joinBand">参加する</button></div></div>
+  ${js.length?`<div class="card"><b>参加しているバンド</b>${js.map(b=>`<div class="hstack" style="margin-top:8px"><span>${esc(b.name)}</span><span class="sub">${b.join.gone?'招待した人が配るのをやめました':((b.join.got||[]).length+'曲届きました')}</span><span class="spacer"></span><button class="ghost" data-act="bandLeave" data-id="${b.id}">参加をやめる</button></div>`).join('')}</div>`:''}`}
 async function fetchShort(id){if(!SHARE_API)throw new Error('短いコードの置き場が設定されていません');const r=await fetch(SHARE_API.replace(/\/$/,'')+'/'+id);
   if(r.status===404)throw new Error('このコードは見つかりませんでした');if(!r.ok)throw new Error('HTTP '+r.status);return (await r.text()).trim()}
 function viewImport(){
@@ -2530,7 +2587,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-25',items:['最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
+  {d:'2026-10-25',items:['バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
   {d:'2026-10-09',items:['参考音源にYouTube MusicとSpotifyも使えるように','メトロノームを大きい音にできるように。音源と別々に音量を変えられるように','音源を読み込み直すとメトロノームが鳴らなくなることがあったのを修正','音源に合わせて鳴らすとき、始めるブロックを選べるように','YouTubeのリンクが読み込めたかどうか分かるように','メトロノームに「刻み」を追加(8分・ハネ・3連・16分など)','iPhoneで入力欄を押すと画面が拡大される不具合を修正','歌詞をまとめて貼り付けられるように','使い方を短くして、項目ごとに「▶ 画面で見る」で確認できるように','右上の ☰ メニューに設定をまとめました']},
@@ -2563,6 +2620,7 @@ function settingCards(){return {news:newsCard(),
   share:`<div class="card"><b>共有</b><p class="note">友達から届いた共有コード(またはリンク)を入れると、その曲やバンドの曲順・予定を取り込めます。</p>
     <div class="hstack"><input id="impCode" placeholder="共有コードかリンクを貼り付け" style="flex:1"><button class="primary" data-act="impCode">読み込む</button></div>
     </div>`,
+  join:joinCard(),
   sync:`<div class="card"><b>Googleで自動バックアップ・同期</b><p class="note">Googleでログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
     ・同期するのは曲・構成・曲順・予定などの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
     ・ドライブの「${KB_FOLDER}」フォルダに、同期のファイルと控え(新しい10個)ができます。このアプリはほかのファイルを見ることはできません<br>
@@ -2735,7 +2793,7 @@ const ACT={
   joinGigGo(t){const g=gigById(t.dataset.g),bid=t.dataset.b;if(!g)return;const sl={id:uid(),bandId:bid,gigId:g.id,name:g.name,songIds:[],events:[]};S.setlists.push(sl);ACT.lbClose();save();location.hash='#/setlist/'+sl.id},
   liveForBand(t){const bid=t.dataset.b;nameModal('出るライブ','<b>ライブの名前</b>をつけてください。日時や曲順は、このあとライブの画面で入れられます。',['「春の対バンライブ」','「11月定例ライブ」'],'',name=>{
     const g={id:uid(),name,events:[]};S.gigs.push(g);const sl={id:uid(),bandId:bid,gigId:g.id,name,songIds:[],events:[]};S.setlists.push(sl);save();location.hash='#/setlist/'+sl.id})},
-  slMore(t){popMenu(t,[['shareSetlist','曲順と予定を共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
+  slMore(t){const sb=S.bands.find(x=>x.id===(curSetlist()||{}).bandId);popMenu(t,[sb&&sb.join?['bandLeave','参加をやめる']:['bandInvite','メンバーを招待'],['shareSetlist','曲順と予定を共有'],['shareBand','バンドごと共有'],['moveGig','別のイベントへ移す'],['moveSetlist','別のバンドに変える']].map(([a,l])=>`<button data-act="popDo" data-v="${a}">${l}</button>`).join('')+'<hr><button class="danger" data-act="popDo" data-v="delSetlist">このイベントから外す</button>',true)},
   gigMore(t){const g=gigById(t.dataset.id);popMenu(t,(g.regular?'':`<button data-act="popDo" data-v="gigColorOpen" data-id="${g.id}">色を変える</button><button data-act="popDo" data-v="pinGig" data-id="${g.id}">${g.pin?'ピン留めを外す':'一覧の上にピン留め'}</button>`)+(g.regular?'':`<hr><button class="danger" data-act="popDo" data-v="delGig" data-id="${g.id}">イベントを削除</button>`),true)},
   newGig,
   // バンドの名前を変える。どの画面から呼んでも、いま見ているバンド(セトリのバンド → 曲一覧のバンド)の名前を変える
@@ -3066,6 +3124,32 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
+  async bandInvite(){const sl=curSetlist(),b=sl&&S.bands.find(x=>x.id===sl.bandId);if(!b)return;if(DEMO)return toast('見本の画面では招待できません');
+    if(!b.feed){toast('招待コードを作っています…');
+      try{const r=await fetch(BAND_API()+'new',{method:'POST'});if(!r.ok)throw 0;const j=await r.json();b.feed={key:j.key,sec:j.sec};save();await feedPush()}
+      catch(e){return toast('招待コードを作れませんでした。通信を確かめてください')}}
+    inviteModal(b)},
+  async inviteSend(t){const k=t.dataset.k;try{await navigator.share({title:'コピバン練習ノート',text:`バンド「${t.dataset.n}」の招待コード: ${fmtInv(k)}\nアプリの「☰ メニュー → バンドに参加」に入れてね`,url:shareBase()+'#/join/'+k})}catch(e){}},
+  async inviteStop(){const sl=curSetlist(),b=sl&&S.bands.find(x=>x.id===sl.bandId);if(!b||!b.feed)return;
+    if(!confirm('招待をやめますか？メンバーに新しい曲が届かなくなります(もう届いた曲はメンバーの端末に残ります)'))return;
+    try{const r=await fetch(BAND_API()+b.feed.key+'/del',{method:'POST',headers:{'Content-Type':'text/plain'},body:b.feed.sec});if(!r.ok&&r.status!==404)throw 0}catch(e){return toast('やめられませんでした。通信を確かめてください')}
+    try{localStorage.removeItem('kbFeed:'+b.feed.key)}catch(e){}delete b.feed;save();ACT.lbClose();toast('招待をやめました')},
+  async joinBand(){const k=normInv($('#joinCode').value);if(k.length!==8)return toast('招待コードは8文字です');if(DEMO)return toast('見本の画面では参加できません');
+    if(S.bands.some(b=>b.feed&&b.feed.key===k))return toast('これは自分で作った招待コードです');
+    const jb=S.bands.find(b=>b.join&&b.join.key===k);if(jb)return toast(`「${jb.name}」にはもう参加しています`);
+    let t;try{const r=await fetch(BAND_API()+k,{cache:'no-store'});if(r.status===404)return toast('このコードのバンドは見つかりませんでした');if(!r.ok)throw 0;t=(await r.text()).trim()}
+    catch(e){return toast('つながりませんでした。通信を確かめてください')}
+    let name='参加したバンド',oid=null;if(t){try{const d=await unpackRaw(t);if(d[0]===5){name=d[1]||name;oid=d[2]||null}}catch(e){}}
+    let b=oid&&S.bands.find(x=>x.oid===oid||x.id===oid);if(b&&b.feed)return toast('これは自分で作った招待コードです');
+    if(!b){b={id:uid(),name};if(oid)b.oid=oid;S.bands.push(b)}
+    b.join={key:k,got:[]};ensureGigs();const g=S.gigs.find(x=>x.regular);let sl=S.setlists.find(x=>x.bandId===b.id&&x.gigId===g.id);
+    if(!sl){sl={id:uid(),bandId:b.id,gigId:g.id,name:g.name,songIds:[],events:[]};S.setlists.push(sl)}
+    JOIN_PRE='';save();const n=await feedPull(true);S.cur.setlist=sl.id;S.cur.band=b.id;location.hash='#/setlist/'+sl.id;
+    toast(`「${b.name}」に参加しました${n?'('+n+'曲届きました)':''}`)},
+  bandLeave(t){const id=t.dataset.id||(curSetlist()||{}).bandId,b=S.bands.find(x=>x.id===id);if(!b||!b.join)return;
+    if(!confirm(`「${b.name}」への参加をやめますか？届いた曲はそのまま残ります。`))return;delete b.join;save();render();toast('参加をやめました')},
+  feedTake(){const s=curSong(),f=s&&FEEDNEW[s.id];if(!f)return;impUpdateSong(s,songFromSharedFull(arrSong(f.a),s.bandId));s.feedH=f.h;delete FEEDNEW[s.id];save();render();toast('新しい版にしました。元に戻すボタンで戻せます')},
+  feedKeep(){const s=curSong(),f=s&&FEEDNEW[s.id];if(!f)return;s.feedH=f.h;delete FEEDNEW[s.id];save();render();toast('今のままにしました')},
   syncRestore(){syncRestoreOpen()},
   syncNudgeOff(){S.prefs.syncNudgeOff=true;render();toast('あとからでも ☰ メニューでログインできます')},
   syncNow(){if(!syncReady())return syncLogin();SY.err='';syncPull(true)},
@@ -3237,7 +3321,7 @@ document.addEventListener('paste',e=>{if(!(R.name==='block'||$('.host-memo'))||/
   const files=[...e.clipboardData.files];if(files.length){e.preventDefault();handleFiles(files)}});
 $('#filePick').addEventListener('change',e=>{const fs=[...e.target.files];if(pickMode==='midi')loadMidi(fs[0]);else if(pickMode==='song')setSongAudio(curSong(),fs[0]);else handleFiles(fs)});
 $('#importPick').addEventListener('change',e=>{if(e.target.files[0])doImport(e.target.files[0])});
-window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';render();scrTo0()});
+window.addEventListener('hashchange',()=>{{const jm=location.hash.match(/^#\/join\/([0-9A-Za-z-]+)/);if(jm){JOIN_PRE=normInv(jm[1]);location.replace('#/settings/join');return}}P=null;$('#overlay').innerHTML='';render();scrTo0()});
 
 (async()=>{
   initPlayer();
@@ -3249,8 +3333,9 @@ window.addEventListener('hashchange',()=>{P=null;$('#overlay').innerHTML='';rend
   S.prefs=S.prefs||{step:2};
   S.markers=S.markers||DEFAULT_MARKERS.map(([name,color])=>({name,color}));recolorMarkers();
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(v=>{STORE_OK=v}).catch(()=>{});
-  render();gcBlobs();if(SY.meta.on)syncPull()
-  if(!S.prefs.tutDone&&!/^#\/(s|import)\//.test(location.hash))setTimeout(tourStart,400);
+  {const jm=location.hash.match(/^#\/join\/([0-9A-Za-z-]+)/);if(jm){JOIN_PRE=normInv(jm[1]);location.replace('#/settings/join')}}
+  render();gcBlobs();(SY.meta.on?syncPull():Promise.resolve()).finally(()=>{feedSoon();feedPull(true)});
+  if(!S.prefs.tutDone&&!/^#\/(s|import|settings\/join)\b/.test(location.hash))setTimeout(tourStart,400);
 })();
 </script>
 </body>
