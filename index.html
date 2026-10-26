@@ -342,7 +342,8 @@ input.nameedit:focus{border-bottom:1.5px solid var(--accent);outline:none}
 .list.cards .row.studio{background-image:linear-gradient(90deg,var(--bc) 0 5px,transparent 5px);padding-left:16px}
 .evtag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;margin-right:6px;vertical-align:1px;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}.studio.live .evtag{background:color-mix(in srgb,var(--live) 15%,transparent);color:var(--live)}
 .home-edl{margin:8px 0 0}.home-edl .home-ed{padding:8px 12px}.home-ed label{gap:8px;font-size:15px;flex:1;cursor:pointer}
-.gate{max-width:440px;margin:8vh auto 0;display:flex;flex-direction:column;gap:6px}.gate h1{font-size:22px;margin:10px 0 4px;text-wrap:balance}.gate-brand{display:flex;align-items:center;gap:10px}.gate-brand img{width:40px;height:40px;border-radius:10px}.gate-steps{margin:8px 0;padding-left:22px;line-height:1.9;font-size:15px}.gate-ic{width:1.1em;height:1.1em;vertical-align:-.15em;margin:0 2px}.gate-steps .sub{font-size:13px}.gate-btn{margin-top:10px;padding:12px;font-size:16px}
+.gate{max-width:440px;margin:8vh auto 0;display:flex;flex-direction:column;gap:6px}.gate h1{font-size:22px;margin:10px 0 4px;text-wrap:balance}.gate-brand{display:flex;align-items:center;gap:10px}.gate-brand img{width:40px;height:40px;border-radius:10px}.gate-steps{margin:8px 0;padding-left:22px;line-height:1.9;font-size:15px}.gate-ic{width:1.1em;height:1.1em;vertical-align:-.15em;margin:0 2px}.gate-steps .sub{font-size:13px}.gate-inv{margin:6px 0 4px}.gate-inv .invcode{margin:8px 0}
+.gate-btn{margin-top:10px;padding:12px;font-size:16px}
 .tour-feats{display:grid;gap:6px;margin-top:10px;max-height:46vh;overflow-y:auto}.tour-feats button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:7px 10px;border-radius:8px}.tour-feats b{font-size:14px}.tour-feats span{font-size:12px;color:var(--sub);font-weight:400}
 .tour-more{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tour-more button{padding:5px 10px;font-size:13px;border-radius:10px}
 .tut-tocfoot{flex-wrap:nowrap}.tut-tocfoot button{white-space:nowrap;padding-left:10px;padding-right:10px}.tut-toc{max-height:52vh;overflow-y:auto;margin:4px 0 10px}.tut-toc h3.tut-sec{font-size:15px;margin:18px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.tut-toc h3.tut-sec:first-child{margin-top:0;padding-top:0;border-top:0}.tut-secp{margin:0 0 4px}
@@ -702,7 +703,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 8:40';
+const APP_VER='10/26 9:01';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -988,7 +989,10 @@ addEventListener('appinstalled',()=>{INSTALL_EV=null;if(GATED)render()});
 function needGate(){if(DEMO||!GCLIENT||location.protocol==='file:')return null;try{if(localStorage.getItem('kbNoGate'))return null}catch(e){}
   if(R.name==='import'||R.name==='s')return null;if((IS_IOS||IS_ANDROID)&&!IS_APP())return 'home';if(!SY.meta.on)return 'login';return null}
 function viewGate(k){const brand='<div class="gate-brand"><img src="icon-192.png" alt=""><b>コピバン練習ノート</b></div>';
-  if(k==='home')return `<main class="gate">${brand}<h1>ホーム画面に追加してください</h1>
+  const inv=JOIN_PRE?`<div class="card gate-inv"><b>バンドの招待コード</b><div class="invcode" id="gateInv">${fmtInv(JOIN_PRE)}</div>
+    <div class="hstack"><button class="primary" data-act="gateInvCopy">コードをコピー</button></div>
+    <p class="note" style="margin:8px 0 0">ホーム画面に追加したアプリを開いて、「☰ メニュー → 招待・共有を受け取る」に貼り付けると参加できます。</p></div>`:'';
+  if(k==='home')return `<main class="gate">${brand}<h1>ホーム画面に追加してください</h1>${inv}
     <p class="note">スマホでは、ホーム画面に追加したアプリとして使います。ブラウザのままだと、しばらく開かないうちにデータが消えることがあるためです。</p>
     ${IS_IOS?`<ol class="gate-steps"><li>アドレスバーの左のメニュー <svg class="ic gate-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-label="メニューのマーク"><path d="M4 7h16M4 12h16M4 17h10"/></svg> を押す<br><span class="sub">(メニューがないときは、画面の下か上の共有ボタン <svg class="ic gate-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="共有のマーク"><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg> を押して3へ)</span></li><li>「共有」 <svg class="ic gate-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="共有のマーク"><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/></svg> を選ぶ</li><li>「ホーム画面に追加」を選ぶ<span class="sub">(見当たらないときは下へずらす)</span></li><li>ホーム画面にできたアイコンから開く</li></ol>
     <p class="note">共有ボタンが見当たらないときは、Safariで開き直してください(LINEなどの中のブラウザでは追加できません)。</p>`
@@ -2437,7 +2441,7 @@ function inviteModal(b){const k=b.feed.key,link=shareBase()+'#/join/'+k;
   <div class="hstack" style="margin-top:12px"><span class="spacer"></span><button class="ghost danger" data-act="inviteStop">招待をやめる</button></div></div>`;membersFill(k)}
 function joinCard(){const js=S.bands.filter(b=>b.join);
   return `<div class="card"><p class="note" style="margin-top:0">友達やバンドの人から届いたコード(またはリンク)を入れてください。</p>
-    <div class="hstack"><input id="impCode" value="${esc(JOIN_PRE?fmtInv(JOIN_PRE):'')}" placeholder="共有コード・招待コード・リンクを貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button class="primary" data-act="impCode">受け取る</button></div>
+    <div class="hstack"><input id="impCode" value="${esc(JOIN_PRE?fmtInv(JOIN_PRE):'')}" placeholder="共有コード・招待コード・リンクを貼り付け" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1"><button data-act="codePaste">貼り付け</button><button class="primary" data-act="impCode">受け取る</button></div>
     <p class="note" style="margin:10px 0 0"><b>共有コード</b>: 曲やバンドの曲順・予定を1回だけ取り込みます。<br><b>招待コード</b>(8文字): バンドに参加します。招待した人がそのバンドに足した曲が、アプリを開いたときに自動で届きます。</p></div>
   ${js.length?`<div class="card"><b>参加しているバンド</b>${js.map(b=>`<div class="hstack" style="margin-top:8px"><span>${esc(b.name)}</span><span class="sub">${b.join.me?'表示名: '+esc(b.join.me)+' ・ ':''}${b.join.gone?'招待した人が配るのをやめました':((b.join.got||[]).length+'曲届きました')}</span><span class="spacer"></span><button class="ghost" data-act="bandLeave" data-id="${b.id}">参加をやめる</button></div>`).join('')}</div>`:''}`}
 async function fetchShort(id){if(!SHARE_API)throw new Error('短いコードの置き場が設定されていません');const r=await fetch(SHARE_API.replace(/\/$/,'')+'/'+id);
@@ -2723,7 +2727,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-26',items:['印刷・PDFの「メモ」のチェックを外すと、ブロックのメモの一言も載らないように','iPhone・iPadのアプリで「PDFに保存」を押しても何も起きなかったのを修正。共有の画面から「ファイルに保存」や「プリント」を選べます','印刷・PDFの画面のチェックボックスの並びを整理','ほかのアプリから戻ったとき、たまっていたメトロノームの音が一度に鳴ってしまう不具合を修正','YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
+  {d:'2026-10-26',items:['招待リンクをスマホのブラウザで開いたとき、招待コードをコピーしてアプリに持っていけるように。「招待・共有を受け取る」に「貼り付け」ボタン','印刷・PDFの「メモ」のチェックを外すと、ブロックのメモの一言も載らないように','iPhone・iPadのアプリで「PDFに保存」を押しても何も起きなかったのを修正。共有の画面から「ファイルに保存」や「プリント」を選べます','印刷・PDFの画面のチェックボックスの並びを整理','ほかのアプリから戻ったとき、たまっていたメトロノームの音が一度に鳴ってしまう不具合を修正','YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
   {d:'2026-10-25',items:['使い始めにGoogleでのログインが必要になりました。スマホ(iPhone・Android)はホーム画面に追加して使います','バンドにも色を付けられるように(バンドの ⋯ → 色を変える)','ホームの次の予定で、本番はオレンジ・スタジオは青に色分け。ホームの初めの並びをオリジナルバンド→近いイベント→次の予定→最近開いた曲に','上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものを選べて、順番は ⋮⋮ をつかんで変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
@@ -3274,6 +3278,8 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;if(/#\/join\//.test(v)||/^[0-9a-z]{4}[-\s]?[0-9a-z]{4}$/i.test(v))return ACT.joinBand();const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
+  async gateInvCopy(){const t=fmtInv(JOIN_PRE);try{await navigator.clipboard.writeText(t);toast('招待コードをコピーしました')}catch(e){const r=document.createRange(),el=$('#gateInv');if(el){r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}toast('コードを長押ししてコピーしてください')}},
+  async codePaste(){try{const t=(await navigator.clipboard.readText()||'').trim();if(!t)return toast('コピーしたものがありません');$('#impCode').value=t;ACT.impCode()}catch(e){toast('貼り付けられませんでした。入力欄を長押しして貼り付けてください')}},
   async appInstall(){const e=INSTALL_EV;if(!e)return;e.prompt();try{await e.userChoice}catch(_){}INSTALL_EV=null;render()},
   homeEdit(){$('#overlay').innerHTML=homeEditHTML()},
   homeReset(){delete S.prefs.home;save();render();$('#overlay').innerHTML=homeEditHTML()},
@@ -3294,7 +3300,7 @@ const ACT={
   feedName(){const sl=curSetlist(),b=sl&&S.bands.find(x=>x.id===sl.bandId);if(!b||!b.feed)return;
     nickModal(b.name,b.feed.me,async nm=>{b.feed.me=nm;save();await feedPush();inviteModal(b);toast('表示名を変えました')})},
   nickOk(){const v=(($('#bandNick')||{}).value||'').trim().slice(0,20);if(!v)return toast('名前を入れてください');const cb=NAMECB;NAMECB=null;ACT.lbClose();if(cb)cb(v)},
-  async inviteSend(t){const k=t.dataset.k;try{await navigator.share({title:'コピバン練習ノート',text:`バンド「${t.dataset.n}」の招待コード: ${fmtInv(k)}\nアプリの「☰ メニュー → 招待・共有を受け取る」に入れてね`,url:shareBase()+'#/join/'+k})}catch(e){}},
+  async inviteSend(t){const k=t.dataset.k;try{await navigator.share({title:'コピバン練習ノート',text:`コピバン練習ノートのバンド「${t.dataset.n}」に招待します。\n招待コード: ${fmtInv(k)}\nアプリの「☰ メニュー → 招待・共有を受け取る」にこのコードを入れてください。\nまだアプリがない人は、下のリンクから開いてホーム画面に追加してください。`,url:shareBase()+'#/join/'+k})}catch(e){}},
   async inviteStop(){const sl=curSetlist(),b=sl&&S.bands.find(x=>x.id===sl.bandId);if(!b||!b.feed)return;
     if(!confirm('招待をやめますか？メンバーに新しい曲が届かなくなります(もう届いた曲はメンバーの端末に残ります)'))return;
     try{const r=await fetch(BAND_API()+b.feed.key+'/del',{method:'POST',headers:{'Content-Type':'text/plain'},body:b.feed.sec});if(!r.ok&&r.status!==404)throw 0}catch(e){return toast('やめられませんでした。通信を確かめてください')}
