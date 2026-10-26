@@ -703,7 +703,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='10/26 9:12';
+const APP_VER='10/26 10:07';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1049,7 +1049,7 @@ const bandNameOf=id=>(S.bands.find(b=>b.id===id)||{}).name||'';
 const bandBc=id=>{const b=S.bands.find(x=>x.id===id);return b&&b.color?` style="--bc:${b.color}"`:''};
 /* ---------- ☰ メニュー: 表示の切り替えと、設定ページへの入り口をまとめる ---------- */
 const MENU=[['tut','book','使い方を見る'],['help','search','ヘルプ・機能を探す'],['news','bell','お知らせ'],['share','inbox','招待・共有を受け取る'],['band','users','バンドの管理'],['markers','tag','マーカーの編集'],
-  ['sync','cloud','Googleで自動バックアップ・同期'],['app','phone','スマホでアプリとして使う'],['tips','bulb','使い方のコツ'],['support','heart','開発を応援する']];
+  ['sync','cloud','Googleで自動バックアップ・同期'],['app','phone','スマホでアプリとして使う'],['tips','bulb','使い方のコツ'],['report','flag','不具合を報告'],['support','heart','開発を応援する']];
 // 開発者への応援(投げ銭)はOFUSEのページを別タブで開くだけ。アプリの機能は何も変わらない
 const SUPPORT_URL='https://ofuse.me/miragelog3/letter';
 function menuDisp(){const th=S.prefs.theme||'auto';
@@ -2214,6 +2214,24 @@ async function pdfSelf(){const s=songById(R.a);const title=(s&&s.title)||'コピ
   const file=new File([pdf.output('blob')],title.replace(/[\\/:*?"<>|]/g,'_')+'.pdf',{type:'application/pdf'});
   try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title});return}}catch(e){if(e&&e.name==='AbortError')return}
   const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+/* ---------- 不具合の報告 ----------
+   ☰ メニュー → 不具合を報告。文とスクショ(任意)に、版・端末・直前に見ていた画面・日時を添えて置き場に送る。
+   届いた報告はアプリの中には出さない(置き場から作者側で見る) */
+let LAST_SCREEN=location.hash||'#/',RP_IMG=null;
+addEventListener('hashchange',()=>{if(!/^#\/(settings|reports)/.test(location.hash))LAST_SCREEN=location.hash||'#/'});
+function devInfo(){const u=navigator.userAgent;const os=/iPad/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)?'iPad':/iPhone/.test(u)?'iPhone':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac/.test(u)?'Mac':'その他';
+  const br=/Edg\//.test(u)?'Edge':/CriOS|Chrome\//.test(u)?'Chrome':/FxiOS|Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'ブラウザ';
+  return `${os} ${br}${IS_APP()?'(ホーム画面のアプリ)':''} ${innerWidth}×${innerHeight}`}
+function reportCard(){return `<div class="card"><p class="note" style="margin-top:0">うまく動かないところや、気になったことを教えてください。作者に直接届きます。</p>
+  <textarea id="rpText" rows="6" maxlength="3000" placeholder="例: 曲の画面で再生ボタンを押しても音が出ない" style="width:100%"></textarea>
+  <div class="hstack" style="margin-top:8px"><button data-act="rpPick">${IC('camera')} スクショを付ける</button><span class="sub" id="rpImgName">${RP_IMG?'1枚付けました':''}</span>${RP_IMG?'<button class="ghost" data-act="rpImgDel">外す</button>':''}</div>
+  ${RP_IMG?`<img src="${RP_IMG}" alt="付けたスクショ" style="max-width:160px;max-height:240px;margin-top:8px;border-radius:6px;border:1px solid var(--line)">`:''}
+  <input type="file" id="rpFile" accept="image/*" hidden data-change="rpFile">
+  <p class="sub" style="margin:10px 0 0">一緒に送る情報: 版 ${APP_VER} ・ ${esc(devInfo())} ・ 画面 ${esc(LAST_SCREEN)}</p>
+  <div class="hstack" style="margin-top:10px"><span class="spacer"></span><button class="primary" data-act="rpSend">送る</button></div></div>`}
+// 画像は長い辺を1280pxまでに縮めて、JPEGにしてから送る
+function shrinkImg(file){return new Promise((ok,ng)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+  c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',0.72))};im.onerror=()=>{URL.revokeObjectURL(u);ng(new Error('img'))};im.src=u})}
 function viewPrint(){
   const s=songById(R.a);if(!s)return topbar('')+`<main><div class="empty">曲が見つかりません</div></main>`;
   if(R.b==='map')return viewMap(s);
@@ -2728,7 +2746,7 @@ function wbrize(el){if(!el)return;el.classList.add('bunsetsu');if(!WBRIZE_ON)ret
 const WBRIZE_ON=false;
 /* ---------- お知らせ(更新情報) ---------- 新しいものを上に足していく */
 const NEWS=[
-  {d:'2026-10-26',items:['招待リンクをスマホのブラウザで開いたとき、招待コードをコピーしてアプリに持っていけるように。「招待・共有を受け取る」に「貼り付け」ボタン','印刷・PDFの「メモ」のチェックを外すと、ブロックのメモの一言も載らないように','iPhone・iPadのアプリで「PDFに保存」を押しても何も起きなかったのを修正。共有の画面から「ファイルに保存」や「プリント」を選べます','印刷・PDFの画面のチェックボックスの並びを整理','ほかのアプリから戻ったとき、たまっていたメトロノームの音が一度に鳴ってしまう不具合を修正','YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
+  {d:'2026-10-26',items:['「バンドごと共有」を受け取ったとき、スタジオの予定が入らないことがあったのを修正','☰ メニューに「不具合を報告」を追加。スクショを付けて、作者に直接送れます','招待リンクをスマホのブラウザで開いたとき、招待コードをコピーしてアプリに持っていけるように。「招待・共有を受け取る」に「貼り付け」ボタン','印刷・PDFの「メモ」のチェックを外すと、ブロックのメモの一言も載らないように','iPhone・iPadのアプリで「PDFに保存」を押しても何も起きなかったのを修正。共有の画面から「ファイルに保存」や「プリント」を選べます','印刷・PDFの画面のチェックボックスの並びを整理','ほかのアプリから戻ったとき、たまっていたメトロノームの音が一度に鳴ってしまう不具合を修正','YouTubeを音源にしているとき、メトロノームが鳴らなくなったら自動で戻すように。戻らないときは「押して戻す」ボタンが出ます','画面の下のほうの小節を押すと、メニューが画面の外にはみ出してしまう不具合を修正','招待を作るとき・バンドに参加するときに、そのバンドで見せる名前を決められるように。招待した人の画面に参加しているメンバーが並びます','「☰ メニュー → 使い方を見る」から、使い方の動画をアプリの中で見られるように']},
   {d:'2026-10-25',items:['使い始めにGoogleでのログインが必要になりました。スマホ(iPhone・Android)はホーム画面に追加して使います','バンドにも色を付けられるように(バンドの ⋯ → 色を変える)','ホームの次の予定で、本番はオレンジ・スタジオは青に色分け。ホームの初めの並びをオリジナルバンド→近いイベント→次の予定→最近開いた曲に','上のタブを「ホーム / イベント / バンド」に。ホームに次の予定・オリジナルバンド・最近開いた曲・近いイベントが並び、「並べ替え」で出すものを選べて、順番は ⋮⋮ をつかんで変えられます','バンドのタブのコピバンは、次の本番が近い順に','「開発を応援する」を押したとき、OFUSEがどんなサイトか・使える支払い方法を見てから、開くか選べるように','キーボードで操作したときに、いまどこを選んでいるか枠で見えるように。端末で「動きを減らす」をオンにしていると、画面の動きを控えめに','共有コードと招待コードの入口を ☰ メニューの「招待・共有を受け取る」1つにまとめました','☰ メニューに「開発を応援する」を追加(OFUSEで応援できます)','バンドの「⋯ → メンバーを招待」で招待コードを送ると、そのバンドに足した曲がメンバーのアプリにも自動で届くように','最初の使い方の案内を、全体の図から始めて、いまどの画面かが分かる短い流れに。光っているところを自分でタップして進む形に','最初の使い方の案内で、オリジナルバンドがあるかを聞いて、ある人にはオリジナルの段からの開き方も案内するように','曲の画面の共有・印刷・MIDIの読み込みを、曲名の横の「⋯」から開けるように','メトロノームを音源に合わせるとき、Bluetoothイヤホンなどの遅れを端末ごとに補正できるように','絵文字のアイコンを線のアイコンに。曲の画面は構成を上にして、音源とメトロノームは畳めるように。ブロックの複製・削除は「…」の中へ','Googleドライブのリンクの音源を、端末のブラウザデータとして取り込むように','Googleドライブに作るファイルを「コピバン練習ノート」フォルダにまとめて、控えは新しい10個だけ残すように','ドライブから選んだ音源を、メンバーも聴ける共有リンクとして入れられるように','音源の欄から、Googleドライブの音源を選んで入れられるように','バンドとイベントにもメモ(テキスト・写真・録音)を置けるように','テキストメモにコピーボタン。リンクはメモの下から開ける','参考音源URLに、Googleドライブの共有リンクも貼れるように','音源ファイルをドライブに上げるかどうかを、同期の画面で選べるように','Googleで同期していると、曲に入れた音源ファイルもほかの端末で聴けるように','YouTubeの映像を音源の欄に出して、再生バーを広く','音源の欄に「YouTubeで探す」','再生バーの「⋯」をポップアップに','上のタブを「イベント」「バンド」の2つに。曲はバンドの中に並び、バンドのタブから全部の曲を探せるように','上に「バンド」タブを追加。イベントが決まる前でもバンドと曲を作っておけて、あとで「＋ イベントに出る」で入れられるように','何日かあるイベントに対応。本番を1日ずつ足すと一覧に「11/02〜11/03」のように出て、バンドの画面で「出る日」を選べるように','画面の呼び方をそろえました(「セトリ」は曲順のことだけ、「普段の練習」は「オリジナル」に、ファイルのバックアップは「ファイルに書き出す・読み込む」に)','イベント名・バンド名・曲名・ブロック名は、点線のところを押すとその場で変えられるように','曲を作るときに最初のブロックの形を選べるように(よくある形・からっぽ)。ブロックの追加ボタンは、押すとアウトロの手前に入り、長押しでつかむと好きな位置に置けるように','イベントの色分け・一覧の上へのピン留め(イベントの「⋯」)と、出るバンドに星1〜3をつけて「スタジオが近い順・星の多い順・自分で並べる」から並びを選べるように','オリジナルバンドを最初の画面の上の段に。バンドを開くと、スタジオの予定・出るライブ・曲がまとめて見られて、「＋ ライブに出る」でライブも作れるように','バンドごと共有を追加(バンドの画面の「⋯」)。前に受け取った曲がもう一度届くと、同じバンドに入って新しい内容に更新できるように','ヘルプのページを追加。使い方の目次とヘルプで、機能を言葉で探せるように(☰ メニュー →「ヘルプ・機能を探す」)','Googleでログインすると、スマホとPCのデータが自動で同期されるように(☰ メニュー →「Googleで自動バックアップ・同期」)']},
   {d:'2026-10-24',items:['MIDIファイルから、テンポ・拍子・キーとマーカーでのブロック分けを読み込めるように(曲の画面の「MIDIを読み込む」)','再生中に画面を触ると、自動スクロールと自動のブロック移動が止まるように','小節の範囲でテンポをだんだん変えられるように(小節の番号から)','小節の番号から「この小節から再生」「範囲を繰り返す」ができるように','ブロックの拍子を変えても反映されない不具合を修正','歌詞の入れ方を作り直し: 全文を貼って行をブロックに割り当て、歌い出しの小節をタップして置く形に','歌詞の割り当て画面でスクロールが戻る不具合を修正','バンドの名前を変えられるように','「イベント」を追加: ライブの中に出るバンドごとに曲順とスタジオを持てるように','iPhoneで日付を選ぶ途中に確定されてしまう不具合を修正','バンドの切り替えを画面の上に。曲やセトリを別のバンドへ移せるように','配色を変更(色の見え方が違う人にも区別しやすく)']},
   {d:'2026-10-11',items:['歌詞カード: 再生に合わせて今の行が光る。頭の文字だけにして覚えたか確認も','構成表に歌詞の頭の文字だけ載せて印刷できるように','共有に、音源に合わせてメトロノームを鳴らす設定も入るように','並べ替えのとき、置く場所が見えるように']},
@@ -2760,6 +2778,7 @@ function settingCards(){return {news:newsCard(),
     ${S.markers.map((m,i)=>`<div class="hstack mk" style="margin-top:6px"><input type="color" value="${m.color}" data-change="mkColor" data-i="${i}"><input value="${esc(m.name)}" data-change="mkName" data-i="${i}" style="width:180px"><button class="ghost" data-act="mkDel" data-i="${i}">削除</button></div>`).join('')}
     <div style="margin-top:10px"><button data-act="mkAdd">＋ マーカーを追加</button></div></div>`,
   share:joinCard(),
+  report:reportCard(),
   sync:`<div class="card"><b>Googleで自動バックアップ・同期</b><p class="note">Googleでログインすると、データが自分のGoogleドライブに自動でバックアップされます。スマホとPCの両方でログインすれば、どちらでも同じデータを使えます。開いたときに新しいほうを取ってきて、変えたら数秒後に保存します。<br>
     ・同期するのは曲・構成・曲順・予定などの文字のデータです。写真と録音は、それぞれの端末にだけ残ります<br>
     ・ドライブの「${KB_FOLDER}」フォルダに、同期のファイルと控え(新しい10個)ができます。このアプリはほかのファイルを見ることはできません<br>
@@ -3263,8 +3282,11 @@ const ACT={
     ensureMarkers(p.songs.flatMap(s=>s.blocks.flatMap(b=>b.tags)));PENDING=null;
     const msg=`${added.length?added.length+'曲を追加':''}${added.length&&updated.length?'、':''}${updated.length?updated.length+'曲を更新':''}しました`;
     if(p.band){S.cur.band=bid;
-      (p.setlists||[]).forEach(x=>{const ids=x.idx.map(i=>idMap[i]).filter(Boolean);let sl=x.oid&&S.setlists.find(y=>y.oid===x.oid||y.id===x.oid);
-        if(sl){sl.songIds=ids;return}let g;
+      (p.setlists||[]).forEach(x=>{const ids=x.idx.map(i=>idMap[i]).filter(Boolean);let sl=(x.oid&&S.setlists.find(y=>y.oid===x.oid||y.id===x.oid))||(x.regular&&S.setlists.find(y=>y.bandId===bid&&gigOf(y).regular));
+        // 前に受け取った(または招待で作った)曲順があれば、そこに予定を足す。同じ日時の予定は重ねない。曲が入っていない共有なら曲順はそのまま
+        if(sl){if(ids.length)sl.songIds=ids;if(x.oid&&!sl.oid&&sl.id!==x.oid)sl.oid=x.oid;const same=(o,e)=>o.type===e.type&&o.date===e.date&&(o.start||'')===(e.start||'');
+          sl.events=sl.events||[];x.events.filter(e=>x.regular||e.type!=='live').forEach(e=>{if(!sl.events.some(o=>same(o,e)))sl.events.push(Object.assign({id:uid()},e))});
+          const sg=gigOf(sl);if(sg&&!sg.regular){sg.events=sg.events||[];x.events.filter(e=>e.type==='live').forEach(e=>{if(!sg.events.some(o=>same(o,e)))sg.events.push(Object.assign({id:uid()},e))})}return}let g;
         if(x.regular)g=S.gigs.find(y=>y.regular);else{g={id:uid(),name:x.name,events:x.events.filter(e=>e.type==='live').map(e=>Object.assign({id:uid()},e))};S.gigs.push(g)}
         S.setlists.push({id:uid(),bandId:bid,gigId:g.id,name:g.name,songIds:ids,events:x.events.filter(e=>x.regular||e.type!=='live').map(e=>Object.assign({id:uid()},e)),oid:x.oid||undefined})});
       save();location.hash='#/'}
@@ -3279,6 +3301,13 @@ const ACT={
   impCode(){const v=$('#impCode').value.trim();if(!v)return;if(/#\/join\//.test(v)||/^[0-9a-z]{4}[-\s]?[0-9a-z]{4}$/i.test(v))return ACT.joinBand();const sm=v.match(/#\/s\/([0-9A-Za-z]+)/);
     if(sm||isShortId(v)){location.hash='#/s/'+(sm?sm[1]:v);return}location.hash='#/import/'+v.replace(/^.*#\/import\//,'')},
   syncLogin(){syncLogin()},
+  rpPick(){$('#rpFile').click()},
+  rpImgDel(){RP_IMG=null;const t=($('#rpText')||{}).value;render();if($('#rpText'))$('#rpText').value=t||''},
+  async rpSend(){const t=(($('#rpText')||{}).value||'').trim();if(!t)return toast('何が起きたかを書いてください');
+    const b=$('[data-act=rpSend]');if(b)b.disabled=true;
+    try{const r=await fetch(SHARE_API.replace(/\/$/,'')+'/report',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({t,v:APP_VER,dev:devInfo(),scr:LAST_SCREEN,img:RP_IMG})});if(!r.ok)throw 0;
+      RP_IMG=null;$('#rpText').value='';render();toast('送りました。ありがとうございます！')}
+    catch(e){if(b)b.disabled=false;toast('送れませんでした。通信を確かめてください')}},
   async invCopy(t){const v=fmtInv(t.dataset.k);try{await navigator.clipboard.writeText(v);toast('招待コードをコピーしました')}catch(e){const el=$('#invCodeBox');if(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}toast('コードを長押ししてコピーしてください')}},
   async gateInvCopy(){const t=fmtInv(JOIN_PRE);try{await navigator.clipboard.writeText(t);toast('招待コードをコピーしました')}catch(e){const r=document.createRange(),el=$('#gateInv');if(el){r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}toast('コードを長押ししてコピーしてください')}},
   async codePaste(){try{const t=(await navigator.clipboard.readText()||'').trim();if(!t)return toast('コピーしたものがありません');$('#impCode').value=t;ACT.impCode()}catch(e){toast('貼り付けられませんでした。入力欄を長押しして貼り付けてください')}},
@@ -3390,6 +3419,7 @@ const CHG={
   shareBandSongs(t){S.prefs.shareBandSongs=t.checked;save();openShare('band')},
   audioUpPref(t){S.prefs.audioUp=t.checked;save();if(t.checked)audioUp()},
   homeOn(t){const p=homeSecs(),x=p.find(y=>y[0]===t.dataset.k);if(x)x[1]=t.checked?1:0;S.prefs.home=p;save();render();$('#overlay').innerHTML=homeEditHTML()},
+  async rpFile(t){const f=t.files&&t.files[0];if(!f)return;try{RP_IMG=await shrinkImg(f)}catch(e){return toast('画像を読み込めませんでした')}const v=($('#rpText')||{}).value;render();if($('#rpText'))$('#rpText').value=v||''},
   shareStudio(t){S.prefs.shareStudio=t.checked;save();openShare('setlist')},
   studioTime(t){const {e:st}=evFind(t.dataset.id);if(!st)return;const k=t.dataset.k;const box=t.parentElement;const h=box.querySelector('[data-p=h]').value,m=box.querySelector('[data-p=m]').value;
     st[k]=h?h+':'+m:'';const s=$('#evSum-'+st.id);if(s)s.innerHTML=studioSum(st);save()},
