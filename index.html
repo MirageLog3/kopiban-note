@@ -705,7 +705,7 @@ const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function scrBy(a,b){const s=scrEl()||window;if(typeof a==='object'){if(RM()&&a.behavior)a={...a,behavior:'auto'};s.scrollBy(a)}else s.scrollBy(a,b)}
 function scrTo0(){const s=scrEl();if(s)s.scrollTop=0;else window.scrollTo(0,0)}
 const scrY=()=>{const s=scrEl();return s?s.scrollTop:scrollY};
-const APP_VER='11/9 1:46';
+const APP_VER='11/9 1:58';
 function save(){if(DEMO)return;histTrack();clearTimeout(saveT);saveT=setTimeout(()=>idb('kv','readwrite',s=>s.put(S,'state')),250);syncSoon();feedSoon()}
 /* ---------- Googleドライブで同期 ----------
    ログインした人のドライブに「kopiban-note-sync.json」を1つ作って、開いたときに新しいほうを取ってきて、変えたら数秒後に保存する。
@@ -1744,7 +1744,7 @@ function viewBlock(){
 /* ---------- chord grid ---------- */
 function chordTab(bl){
   const noKey=S.prefs.degree&&keyTonic(blockKey(bl,curSong()))==null;
-  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = 8分音符1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのキー(調)を入れると度数になります</span>':''}
+  return `<div class="legend hstack"><span class="sub" style="font-size:12px">1マス = ${slotUnit(blockMeter(bl,curSong()))}1つ分</span>${S.prefs.degree?'<span class="sub" style="font-size:12px">・ディグリー表示中</span>':S.prefs.doremi?'<span class="sub" style="font-size:12px">・ドレミ表示中</span>':''}${noKey?'<span style="color:var(--accent)">曲かブロックのキー(調)を入れると度数になります</span>':''}
     <span class="spacer"></span><button class="foldbtn ${PLACE&&PLACE.bid===bl.id?'on':''}" data-act="lyrPlaceStart">歌詞を小節に置く</button><button class="foldbtn" data-act="uiToggle" data-k="help">？ 記号の意味</button></div>
   ${placeBarHTML(bl)}${loopBarHTML(bl)}
   ${UI('help')?`<div class="legend panel symlist">${SYMBOLS.map(([k,v])=>`<div><b>「${k}」</b><span>${v}</span></div>`).join('')}
@@ -2009,6 +2009,8 @@ const normMeter=m=>String(m||'').trim().replace(/[／]/g,'/').replace(/[０-９]
 function meterSlots(m){const x=normMeter(m).match(/^(\d{1,2})\/(2|4|8|16)$/);if(!x)return 0;const n=+x[1],d=+x[2];const v=d===2?n*4:d===4?n*2:n;return n>0&&v<=32?v:0}
 const songMeterDefault=s=>{const m=normMeter(s&&s.meter).split(/[,、\s]+/).find(meterSlots);return m||'4/4'};
 const blockMeter=(bl,s)=>bl.meter||songMeterDefault(s);
+// 1マスの長さ: 分母が16の拍子は16分音符、それ以外(2・4・8)は8分音符
+const slotUnit=m=>/\/16$/.test(normMeter(m||''))?'16分音符':'8分音符';
 const barMeter=(bl,bar,s)=>bar.m||(bar.n===meterSlots(blockMeter(bl,s))?blockMeter(bl,s):null);
 function resizeBar(bar,n){bar.cells=Array.from({length:n},(_,i)=>bar.cells[i]||'');bar.n=n}
 function barHTML(bl,bi){
